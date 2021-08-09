@@ -9,7 +9,7 @@
     <PackageReference Include="Dapper" Version="2.0.90" />
     <PackageReference Include="FluentValidation" Version="10.3.0" />
     <PackageReference Include="FluentValidator" Version="2.0.4" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="5.0.7" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="5.0.8" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.14" />
     <PackageReference Include="Serilog.Exceptions" Version="6.1.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="4.1.2" />
