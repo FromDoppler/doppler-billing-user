@@ -351,6 +351,7 @@ namespace Doppler.BillingUser.Controllers
 
                     if (payment.Status == PaymentStatusEnum.Approved)
                     {
+                        authorizationNumber = payment.AuthorizationNumber;
                         var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
                         AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment);
                         AccountingEntry paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
