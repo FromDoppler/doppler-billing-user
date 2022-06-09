@@ -1,4 +1,7 @@
 using Doppler.BillingUser.Authorization;
+using Doppler.BillingUser.Encryption;
+using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.ExternalServices.FirstData;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Logging;
@@ -15,17 +18,24 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly IFlurlClient _flurlClient;
         private readonly ILogger<MercadoPagoService> _logger;
+        private readonly IEncryptionService _encryptionService;
+
+        const string TransactionDescription = "Doppler Email Marketing";
+        const string Description = "MERPAGO*DOPPLER";
+        const string Master = "master";
 
         public MercadoPagoService(
             IOptions<MercadoPagoSettings> options,
             IJwtTokenGenerator jwtTokenGenerator,
             IFlurlClientFactory flurlClientFactory,
-            ILogger<MercadoPagoService> logger)
+            ILogger<MercadoPagoService> logger,
+            IEncryptionService encryptionService)
         {
             _options = options;
             _jwtTokenGenerator = jwtTokenGenerator;
             _flurlClient = flurlClientFactory.Get(_options.Value.MercadoPagoApiUrlTemplate);
             _logger = logger;
+            _encryptionService = encryptionService;
         }
 
         public async Task<MercadoPagoPayment> GetPaymentById(long id, string accountname)
@@ -45,6 +55,76 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
                 _logger.LogError(e, $"Error to get payment for user: {accountname} with payment ID: {id}");
                 throw;
             }
+        }
+
+        public async Task<MercadoPagoPayment> CreateMercadoPagoPayment(string accountname, decimal total, CreditCard creditCard)
+        {
+            try
+            {
+                var paymentRequestDto = CreatePaymentRequestDto(total, creditCard);
+                var payment = await PostMercadoPagoPayment(accountname, paymentRequestDto);
+
+                if (payment.Status is MercadoPagoPaymentStatusEnum.Rejected or
+                    MercadoPagoPaymentStatusEnum.Cancelled or
+                    MercadoPagoPaymentStatusEnum.Refunded or
+                    MercadoPagoPaymentStatusEnum.ChargedBack)
+                {
+                    var errorCode = PaymentErrorCode.DeclinedPaymentTransaction;
+                    var errorMessage = payment.StatusDetail;
+
+                    _logger.LogError(String.Format("Mercadopago payment Declained with Accountname:{0}, ErrorCode:{1}, ErrorMessage: {2}", accountname, errorCode, errorMessage));
+                    //TODO: send email
+                    throw new DopplerApplicationException(errorCode, errorMessage);
+                }
+
+                //TODO: If it is pending send email
+                return payment;
+            }
+            catch (Exception ex) when (ex is not DopplerApplicationException)
+            {
+                _logger.LogError(ex, "Unexpected error");
+                throw new DopplerApplicationException(PaymentErrorCode.ClientPaymentTransactionError, ex.Message, ex);
+            }
+        }
+
+        private async Task<MercadoPagoPayment> PostMercadoPagoPayment(string accountname, PaymentRequestDto paymentRequestDto)
+        {
+            var payment = await _flurlClient.Request(new UriTemplate(_options.Value.MercadoPagoApiUrlTemplate)
+                .AddParameter("accountname", accountname)
+                .Resolve())
+                .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
+                .PostJsonAsync(paymentRequestDto)
+                .ReceiveJson<MercadoPagoPayment>();
+            return payment;
+        }
+
+        private PaymentRequestDto CreatePaymentRequestDto(decimal total, CreditCard creditCard)
+        {
+            var paymentRequestDto = new PaymentRequestDto
+            {
+                TransactionAmount = total,
+                Installments = 1,
+                TransactionDescription = TransactionDescription,
+                Description = Description,
+                PaymentMethodId = creditCard.CardType == Enums.CardTypeEnum.Mastercard ? Master : creditCard.CardType.ToString().ToLower(),
+                Card = new CardDto
+                {
+                    Cardholder = new PaymentCardholder
+                    {
+                        Identification = new Identification
+                        {
+                            Number = creditCard.IdentificationNumber,
+                            Type = creditCard.IdentificationType
+                        },
+                        Name = _encryptionService.DecryptAES256(creditCard.HolderName)
+                    },
+                    CardNumber = _encryptionService.DecryptAES256(creditCard.Number),
+                    SecurityCode = _encryptionService.DecryptAES256(creditCard.Code),
+                    ExpirationMonth = creditCard.ExpirationMonth.ToString(),
+                    ExpirationYear = creditCard.ExpirationYearFull.ToString()
+                }
+            };
+            return paymentRequestDto;
         }
     }
 }

@@ -18,8 +18,8 @@ namespace Doppler.BillingUser.Utils
             {
                 PaymentMethodEnum.CC => false,
                 PaymentMethodEnum.TRANSF => promotion == null || (promotion.DiscountPercentage.HasValue && promotion.DiscountPercentage.Value < 100) || !promotion.DiscountPercentage.HasValue,
-                PaymentMethodEnum.MP => creditCardPayment?.Status == PaymentStatusEnum.Pending ||
-                                        promotion == null || (promotion.DiscountPercentage.HasValue && promotion.DiscountPercentage.Value < 100) || !promotion.DiscountPercentage.HasValue,
+                PaymentMethodEnum.MP => creditCardPayment?.Status == PaymentStatusEnum.Pending &&
+                                        (promotion == null || (promotion.DiscountPercentage.HasValue && promotion.DiscountPercentage.Value < 100) || !promotion.DiscountPercentage.HasValue),
                 _ => true,
             };
         }

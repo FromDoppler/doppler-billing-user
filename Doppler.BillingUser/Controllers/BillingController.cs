@@ -25,6 +25,8 @@ using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.Mappers;
 using Doppler.BillingUser.Mappers.BillingCredit;
+using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
+using Doppler.BillingUser.Mappers.PaymentStatus;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -50,6 +52,8 @@ namespace Doppler.BillingUser.Controllers
         private readonly IZohoService _zohoService;
         private readonly IEmailTemplatesService _emailTemplatesService;
         private readonly ICurrencyRepository _currencyRepository;
+        private readonly IMercadoPagoService _mercadoPagoService;
+        private readonly IPaymentStatusMapper _paymentStatusMapper;
 
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -96,7 +100,9 @@ namespace Doppler.BillingUser.Controllers
             IOptions<ZohoSettings> zohoSettings,
             IZohoService zohoService,
             IEmailTemplatesService emailTemplatesService,
-            ICurrencyRepository currencyRepository)
+            ICurrencyRepository currencyRepository,
+            IMercadoPagoService mercadopagoService,
+            IPaymentStatusMapper paymentStatusMapper)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -116,6 +122,8 @@ namespace Doppler.BillingUser.Controllers
             _zohoService = zohoService;
             _emailTemplatesService = emailTemplatesService;
             _currencyRepository = currencyRepository;
+            _mercadoPagoService = mercadopagoService;
+            _paymentStatusMapper = paymentStatusMapper;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -349,14 +357,16 @@ namespace Doppler.BillingUser.Controllers
 
                     payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod);
 
+                    var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
+                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment);
+                    AccountingEntry paymentEntry = null;
+
                     if (payment.Status == PaymentStatusEnum.Approved)
                     {
-                        authorizationNumber = payment.AuthorizationNumber;
-                        var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
-                        AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment);
-                        AccountingEntry paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
-                        invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+                        paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
                     }
+
+                    invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
                 }
 
                 var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
@@ -400,7 +410,7 @@ namespace Doppler.BillingUser.Controllers
 
                 if (agreementInformation.Total.GetValueOrDefault() > 0 &&
                     ((user.PaymentMethod == PaymentMethodEnum.CC) ||
-                    (user.PaymentMethod == PaymentMethodEnum.MP && payment.Status == PaymentStatusEnum.Approved) ||
+                    (user.PaymentMethod == PaymentMethodEnum.MP) ||
                     (user.PaymentMethod == PaymentMethodEnum.TRANSF && user.IdBillingCountry == (int)CountryEnum.Argentina)))
                 {
                     var billingCredit = await _billingRepository.GetBillingCredit(billingCreditId);
@@ -549,7 +559,8 @@ namespace Doppler.BillingUser.Controllers
                     var authorizationNumber = await _paymentGateway.CreateCreditCardPayment(total, encryptedCreditCard, userId);
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved, AuthorizationNumber = authorizationNumber };
                 case PaymentMethodEnum.MP:
-                    return new CreditCardPayment { Status = PaymentStatusEnum.Pending, AuthorizationNumber = String.Empty };
+                    var mercadoPagoPayment = await _mercadoPagoService.CreateMercadoPagoPayment(accountname, total, encryptedCreditCard);
+                    return new CreditCardPayment { Status = _paymentStatusMapper.MapToPaymentStatus(mercadoPagoPayment.Status), AuthorizationNumber = mercadoPagoPayment.Id.ToString() };
                 default:
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved };
             }
