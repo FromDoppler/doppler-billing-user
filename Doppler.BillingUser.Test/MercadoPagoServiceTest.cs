@@ -1,7 +1,6 @@
 using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
-using Doppler.BillingUser.Mappers.PaymentStatus;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
@@ -29,8 +28,7 @@ namespace Doppler.BillingUser.Test
                 Mock.Of<IJwtTokenGenerator>(),
                 factory,
                 Mock.Of<ILogger<MercadoPagoService>>(),
-                Mock.Of<IEncryptionService>(),
-                Mock.Of<IPaymentStatusMapper>());
+                Mock.Of<IEncryptionService>());
 
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(new MercadoPagoPayment
@@ -61,8 +59,7 @@ namespace Doppler.BillingUser.Test
                 Mock.Of<IJwtTokenGenerator>(),
                 factory,
                 Mock.Of<ILogger<MercadoPagoService>>(),
-                Mock.Of<IEncryptionService>(),
-                Mock.Of<IPaymentStatusMapper>());
+                Mock.Of<IEncryptionService>());
 
             // Act
             using var httpTest = new HttpTest();
