@@ -35,5 +35,6 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         public bool IsFirstPurchase { get; set; }
         public DateTime? InvoiceDate { get; set; }
         public DateTime? PaymentDate { get; set; }
+        public bool IsUpSelling { get; set; }
     }
 }
