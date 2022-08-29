@@ -132,7 +132,7 @@ namespace Doppler.BillingUser.Services
                         discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail },
+                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(adminEmail, upgradeEmail);
@@ -214,7 +214,8 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail });
+                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(creditsEmail, adminEmail);
         }
@@ -254,7 +255,8 @@ namespace Doppler.BillingUser.Services
                         email = accountname,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail });
+                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
 
         public Task SendNotificationForMercadoPagoPaymentInProcess(int userId, string accountname, string errorCode, string errorMessage)
@@ -272,7 +274,8 @@ namespace Doppler.BillingUser.Services
                         errorMessage,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.CommercialEmail, _emailSettings.Value.BillingEmail });
+                    to: new[] { _emailSettings.Value.CommercialEmail, _emailSettings.Value.BillingEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
 
         public Task SendNotificationForUpdatePlan(
@@ -382,7 +385,7 @@ namespace Doppler.BillingUser.Services
                         total = amountDetails != null ? amountDetails.Total : 0,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail },
+                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(updatePlanAdminEmail, updatePlanEmail);
