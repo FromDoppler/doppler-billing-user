@@ -350,6 +350,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(GetZohoServiceSettingsMock().Object);
                     services.AddSingleton(zohoServiceMock.Object);
+                    services.AddSingleton(sapServiceMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -2036,6 +2037,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(paymentGatewayMock.Object);
                     services.AddSingleton(Mock.Of<IPromotionRepository>());
                     services.AddSingleton(emailSenderMock.Object);
+                    services.AddSingleton(Mock.Of<ISapService>());
                 });
             });
             var client = factory.CreateClient(new WebApplicationFactoryClientOptions());
