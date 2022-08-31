@@ -318,6 +318,28 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("Invalid selected plan");
                 }
 
+                if (currentPlan != null && currentPlan.IdUserType == UserTypeEnum.SUBSCRIBERS)
+                {
+                    if (currentPlan.SubscribersQty >= newPlan.SubscribersQty)
+                    {
+                        var messageError = $"Failed at creating new agreement for user {accountname}, Invalid selected plan {agreementInformation.PlanId}. Only supports upselling.";
+                        _logger.LogError(messageError);
+                        await _slackService.SendNotification(messageError);
+                        return new BadRequestObjectResult("Invalid selected plan");
+                    }
+                }
+
+                if (currentPlan != null && currentPlan.IdUserType == UserTypeEnum.MONTHLY)
+                {
+                    if (currentPlan.EmailQty >= newPlan.EmailQty)
+                    {
+                        var messageError = $"Failed at creating new agreement for user {accountname}, Invalid selected plan {agreementInformation.PlanId}. Only supports upselling.";
+                        _logger.LogError(messageError);
+                        await _slackService.SendNotification(messageError);
+                        return new BadRequestObjectResult("Invalid selected plan");
+                    }
+                }
+
                 if (!AllowedPlanTypesForBilling.Any(p => p == newPlan.IdUserType))
                 {
                     var messageError = $"Failed at creating new agreement for user {accountname}, invalid selected plan type {newPlan.IdUserType}";
