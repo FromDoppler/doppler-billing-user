@@ -61,7 +61,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
             }
         }
 
-        public async Task<MercadoPagoPayment> CreatePayment(string accountname, int clientId, decimal total, CreditCard creditCard)
+        public async Task<MercadoPagoPayment> CreatePayment(string accountname, int clientId, decimal total, CreditCard creditCard, bool isFreeUser)
         {
             try
             {
@@ -78,7 +78,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
 
                     _logger.LogError(String.Format("Mercadopago payment Declined with Accountname:{0}, ErrorCode:{1}, ErrorMessage: {2}", accountname, errorCode, errorMessage));
 
-                    await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, string.Empty, String.Empty, PaymentMethodEnum.MP);
+                    await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, string.Empty, String.Empty, PaymentMethodEnum.MP, isFreeUser);
 
                     throw new DopplerApplicationException(errorCode, errorMessage);
                 }
@@ -87,7 +87,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
                 {
                     var errorCode = payment.Status.ToString();
                     var errorMessage = string.Format("payment is in process, MercadopagoStatus: {0}, MercadopagoStatusDetail:{1}", payment.Status, payment.StatusDetail);
-                    await _emailTemplatesService.SendNotificationForMercadoPagoPaymentInProcess(clientId, accountname, errorCode, errorMessage);
+                    await _emailTemplatesService.SendNotificationForMercadoPagoPaymentInProcess(clientId, accountname, errorCode, errorMessage, isFreeUser);
                 }
 
                 return payment;

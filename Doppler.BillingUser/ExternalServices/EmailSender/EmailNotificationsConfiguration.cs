@@ -20,8 +20,11 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public string UpgradeRequestAdminTemplateId { get; set; }
         public string CreditsPendingAdminTemplateId { get; set; }
         public string FailedCreditCardFreeUserPurchaseNotificationAdminTemplateId { get; set; }
+        public string FailedCreditCardPurchaseNotificationAdminTemplateId { get; set; }
         public string MercadoPagoPaymentApprovedAdminTemplateId { get; set; }
         public string FailedMercadoPagoFreeUserPurchaseNotificationAdminTemplateId { get; set; }
+        public string FailedMercadoPagoPurchaseNotificationAdminTemplateId { get; set; }
+        public string MercadoPagoFreeUserPaymentInProcessAdminTemplateId { get; set; }
         public string MercadoPagoPaymentInProcessAdminTemplateId { get; set; }
         public Dictionary<string, string> UpdatePlanTemplateId { get; set; }
         public string UpdatePlanAdminTemplateId { get; set; }

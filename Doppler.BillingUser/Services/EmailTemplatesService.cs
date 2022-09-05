@@ -220,11 +220,12 @@ namespace Doppler.BillingUser.Services
             return Task.WhenAll(creditsEmail, adminEmail);
         }
 
-        public Task SendNotificationForPaymentFailedTransaction(int userId, string errorCode, string errorMessage, string transactionCTR, string bankMessage, PaymentMethodEnum paymentMethod)
+        public Task SendNotificationForPaymentFailedTransaction(int userId, string errorCode, string errorMessage, string transactionCTR, string bankMessage, PaymentMethodEnum paymentMethod, bool isFreeUser)
         {
             var template = paymentMethod == PaymentMethodEnum.CC ?
-                _emailSettings.Value.FailedCreditCardFreeUserPurchaseNotificationAdminTemplateId :
-                _emailSettings.Value.FailedMercadoPagoFreeUserPurchaseNotificationAdminTemplateId;
+                isFreeUser ? _emailSettings.Value.FailedCreditCardFreeUserPurchaseNotificationAdminTemplateId : _emailSettings.Value.FailedCreditCardPurchaseNotificationAdminTemplateId :
+                //Mercadopago
+                isFreeUser ? _emailSettings.Value.FailedMercadoPagoFreeUserPurchaseNotificationAdminTemplateId : _emailSettings.Value.FailedMercadoPagoPurchaseNotificationAdminTemplateId;
 
             return _emailSender.SafeSendWithTemplateAsync(
                     templateId: template,
@@ -259,9 +260,11 @@ namespace Doppler.BillingUser.Services
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
 
-        public Task SendNotificationForMercadoPagoPaymentInProcess(int userId, string accountname, string errorCode, string errorMessage)
+        public Task SendNotificationForMercadoPagoPaymentInProcess(int userId, string accountname, string errorCode, string errorMessage, bool isFreeUser)
         {
-            var template = _emailSettings.Value.MercadoPagoPaymentInProcessAdminTemplateId;
+            var template = isFreeUser ?
+                _emailSettings.Value.MercadoPagoFreeUserPaymentInProcessAdminTemplateId :
+                _emailSettings.Value.MercadoPagoPaymentInProcessAdminTemplateId;
 
             return _emailSender.SafeSendWithTemplateAsync(
                     templateId: template,
