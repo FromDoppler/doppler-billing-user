@@ -120,7 +120,8 @@ namespace Doppler.BillingUser.Test
                 .Setup(x => x.CreateCreditCardPayment(
                     It.IsAny<decimal>(),
                     It.IsAny<CreditCard>(),
-                    It.IsAny<int>()))
+                    It.IsAny<int>(),
+                    It.IsAny<bool>()))
                 .ReturnsAsync(authorizationNumber);
 
             var sapServiceMock = new Mock<ISapService>();

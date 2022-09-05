@@ -362,7 +362,7 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod);
+                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod, currentPlan == null);
 
                     var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
                     AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment);
@@ -624,18 +624,18 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod)
+        private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod, bool isFreeUser)
         {
             var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
 
             switch (paymentMethod)
             {
                 case PaymentMethodEnum.CC:
-                    var authorizationNumber = await _paymentGateway.CreateCreditCardPayment(total, encryptedCreditCard, userId);
+                    var authorizationNumber = await _paymentGateway.CreateCreditCardPayment(total, encryptedCreditCard, userId, isFreeUser);
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved, AuthorizationNumber = authorizationNumber };
                 case PaymentMethodEnum.MP:
                     var paymentDetails = await _paymentAmountService.ConvertCurrencyAmount(CurrencyTypeEnum.UsS, CurrencyTypeEnum.sARG, total);
-                    var mercadoPagoPayment = await _mercadoPagoService.CreatePayment(accountname, userId, paymentDetails.Total, encryptedCreditCard);
+                    var mercadoPagoPayment = await _mercadoPagoService.CreatePayment(accountname, userId, paymentDetails.Total, encryptedCreditCard, isFreeUser);
                     return new CreditCardPayment { Status = _paymentStatusMapper.MapToPaymentStatus(mercadoPagoPayment.Status), AuthorizationNumber = mercadoPagoPayment.Id.ToString() };
                 default:
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved };

@@ -60,7 +60,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             _logger = logger;
         }
 
-        private async Task<string> PostRequest(Transaction txn, int clientId)
+        private async Task<string> PostRequest(Transaction txn, int clientId, bool isFreeUser)
         {
             PaymentErrorCode errorCode;
             try
@@ -105,7 +105,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
 
                     if (txn.Transaction_Type != TransactionTypes.REFUND)
                     {
-                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, apiResponse.CTR, apiResponse.Bank_Message, PaymentMethodEnum.CC);
+                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, apiResponse.CTR, apiResponse.Bank_Message, PaymentMethodEnum.CC, isFreeUser);
                     }
 
                     throw new DopplerApplicationException(errorCode, errorMessage);
@@ -141,12 +141,12 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             return txn;
         }
 
-        public async Task<bool> IsValidCreditCard(CreditCard creditCard, int clientId)
+        public async Task<bool> IsValidCreditCard(CreditCard creditCard, int clientId, bool isFreeUser)
         {
             try
             {
                 var paymentRequest = CreateDirectPaymentRequest(TransactionTypes.PRE_AUTH, _amountToValidateCreditCard, creditCard, clientId);
-                await PostRequest(paymentRequest, clientId);
+                await PostRequest(paymentRequest, clientId, isFreeUser);
                 return true;
             }
             catch (DopplerApplicationException ex)
@@ -164,10 +164,10 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             }
         }
 
-        public async Task<string> CreateCreditCardPayment(decimal chargeTotal, CreditCard creditCard, int clientId)
+        public async Task<string> CreateCreditCardPayment(decimal chargeTotal, CreditCard creditCard, int clientId, bool isFreeUser)
         {
             var paymentRequest = CreateDirectPaymentRequest(TransactionTypes.PURCHASE, chargeTotal, creditCard, clientId);
-            return await PostRequest(paymentRequest, clientId);
+            return await PostRequest(paymentRequest, clientId, isFreeUser);
         }
     }
 }

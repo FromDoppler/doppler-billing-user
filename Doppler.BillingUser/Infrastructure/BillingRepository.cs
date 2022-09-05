@@ -251,7 +251,7 @@ WHERE
                 paymentMethod.CCType = textInfo.ToTitleCase(paymentMethod.CCType);
 
                 //Validate CC
-                var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await _paymentGateway.IsValidCreditCard(creditCard, user.IdUser);
+                var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await _paymentGateway.IsValidCreditCard(creditCard, user.IdUser, true);
                 if (!validCc)
                 {
                     return false;
