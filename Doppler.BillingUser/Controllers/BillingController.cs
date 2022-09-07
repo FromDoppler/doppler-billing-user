@@ -793,9 +793,15 @@ namespace Doppler.BillingUser.Controllers
 
             var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
-            user.IdCurrentBillingCredit = billingCreditId;
+            var isUpgradePending = BillingHelper.IsUpgradePending(user, promotion, payment);
+
+            if (!isUpgradePending)
+            {
+                user.IdCurrentBillingCredit = billingCreditId;
+            }
+
             user.OriginInbound = agreementInformation.OriginInbound;
-            user.UpgradePending = BillingHelper.IsUpgradePending(user, promotion, payment);
+            user.UpgradePending = false;
             user.UTCUpgrade = !user.UpgradePending ? DateTime.UtcNow : null;
 
             await _userRepository.UpdateUserBillingCredit(user);
