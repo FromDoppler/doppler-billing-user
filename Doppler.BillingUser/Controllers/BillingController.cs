@@ -724,7 +724,6 @@ namespace Doppler.BillingUser.Controllers
                 user.IdCurrentBillingCredit = billingCreditId;
                 user.OriginInbound = agreementInformation.OriginInbound;
                 user.UpgradePending = false;
-                user.UTCUpgrade = DateTime.UtcNow;
 
                 await _userRepository.UpdateUserBillingCredit(user);
 
@@ -777,7 +776,6 @@ namespace Doppler.BillingUser.Controllers
                 user.IdCurrentBillingCredit = billingCreditId;
                 user.OriginInbound = agreementInformation.OriginInbound;
                 user.UpgradePending = false;
-                user.UTCUpgrade = DateTime.UtcNow;
                 user.MaxSubscribers = newPlan.SubscribersQty.Value;
 
                 await _userRepository.UpdateUserBillingCredit(user);
