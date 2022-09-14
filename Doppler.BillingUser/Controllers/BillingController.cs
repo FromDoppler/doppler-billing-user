@@ -30,7 +30,7 @@ using Doppler.BillingUser.Mappers.PaymentStatus;
 
 namespace Doppler.BillingUser.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [ApiController]
     public class BillingController
     {
@@ -133,7 +133,7 @@ namespace Doppler.BillingUser.Controllers
             _paymentAmountService = paymentAmountService;
         }
 
-        //[Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
         [HttpGet("/accounts/{accountName}/billing-information")]
         public async Task<IActionResult> GetBillingInformation(string accountName)
         {
@@ -175,7 +175,7 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult("Successfully");
         }
 
-        //[Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
         [HttpGet("/accounts/{accountname}/billing-information/invoice-recipients")]
         public async Task<IActionResult> GetInvoiceRecipients(string accountname)
         {
