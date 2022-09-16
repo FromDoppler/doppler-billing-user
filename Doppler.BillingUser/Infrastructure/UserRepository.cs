@@ -34,6 +34,7 @@ SELECT
     U.OriginInbound,
     U.CUIT,
     U.IdCurrentBillingCredit,
+    U.UTCUpgrade,
     U.MaxSubscribers
 FROM
     [User] U
