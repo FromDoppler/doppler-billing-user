@@ -33,6 +33,7 @@ SELECT
     U.UTCFirstPayment,
     U.OriginInbound,
     U.CUIT,
+    U.UTCUpgrade,
     U.IdCurrentBillingCredit,
     U.MaxSubscribers
 FROM
