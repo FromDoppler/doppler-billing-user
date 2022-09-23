@@ -629,6 +629,7 @@ INSERT INTO [dbo].[BillingCredits]
     [CCIdentificationNumber],
     [ResponsableIVA],
     [IdPromotion],
+    [PromotionDuration],
     [DiscountPlanFeeAdmin])
 VALUES (
     @date,
@@ -671,6 +672,7 @@ VALUES (
     @ccIdentificationNumber,
     @responsableIVA,
     @idPromotion,
+    @promotionDuration,
     @discountPlanFeeAdmin);
 SELECT CAST(SCOPE_IDENTITY() AS INT)",
             new
@@ -715,6 +717,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
                 @ccIdentificationNumber = buyCreditAgreement.CCIdentificationNumber,
                 @responsableIVA = buyCreditAgreement.ResponsableIVA,
                 @idPromotion = buyCreditAgreement.IdPromotion,
+                @promotionDuration = buyCreditAgreement.PromotionDuration,
                 @discountPlanFeeAdmin = buyCreditAgreement.BillingCredit.DiscountPlanFeeAdmin
             });
 

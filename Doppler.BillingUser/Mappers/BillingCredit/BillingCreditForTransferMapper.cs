@@ -45,7 +45,8 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                 PaymentType = user.PaymentType,
                 BankName = user.BankName,
                 BankAccount = user.BankAccount,
-                IdPromotion = promotion?.IdPromotion
+                IdPromotion = promotion?.IdPromotion,
+                PromotionDuration = promotion?.Duration
             };
 
             DateTime now = DateTime.UtcNow;
