@@ -672,7 +672,7 @@ VALUES (
     @ccIdentificationNumber,
     @responsableIVA,
     @idPromotion,
-    @promotionDuration
+    @promotionDuration,
     @discountPlanFeeAdmin);
 SELECT CAST(SCOPE_IDENTITY() AS INT)",
             new
