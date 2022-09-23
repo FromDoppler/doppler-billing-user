@@ -45,7 +45,8 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                 RazonSocial = currentPaymentMethod.RazonSocial,
                 ResponsableIVA = user.ResponsableIVA,
                 Cuit = currentPaymentMethod.IdentificationNumber,
-                IdPromotion = promotion?.IdPromotion
+                IdPromotion = promotion?.IdPromotion,
+                PromotionDuration = promotion?.Duration
             };
 
             DateTime now = DateTime.UtcNow;

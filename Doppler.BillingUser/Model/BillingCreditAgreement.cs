@@ -30,5 +30,6 @@ namespace Doppler.BillingUser.Model
         public string BankAccount { get; set; }
         public int IdResponsabileBilling { get; set; }
         public int? IdPromotion { get; set; }
+        public int? PromotionDuration { get; set; }
     }
 }
