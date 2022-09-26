@@ -325,7 +325,7 @@ namespace Doppler.BillingUser.Controllers
                         var messageError = $"Failed at creating new agreement for user {accountname}, Invalid selected plan {agreementInformation.PlanId}. Only supports upselling.";
                         _logger.LogError(messageError);
                         await _slackService.SendNotification(messageError);
-                        return new BadRequestObjectResult("Invalid selected plan");
+                        return new BadRequestObjectResult("Invalid selected plan. Only supports upselling.");
                     }
                 }
 
@@ -336,7 +336,7 @@ namespace Doppler.BillingUser.Controllers
                         var messageError = $"Failed at creating new agreement for user {accountname}, Invalid selected plan {agreementInformation.PlanId}. Only supports upselling.";
                         _logger.LogError(messageError);
                         await _slackService.SendNotification(messageError);
-                        return new BadRequestObjectResult("Invalid selected plan");
+                        return new BadRequestObjectResult("Invalid selected plan. Only supports upselling.");
                     }
                 }
 
