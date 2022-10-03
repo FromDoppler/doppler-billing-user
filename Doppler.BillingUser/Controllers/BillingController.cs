@@ -821,7 +821,7 @@ namespace Doppler.BillingUser.Controllers
             }
 
             user.OriginInbound = agreementInformation.OriginInbound;
-            user.UpgradePending = false;
+            user.UpgradePending = isUpgradePending;
 
             await _userRepository.UpdateUserBillingCredit(user);
 
