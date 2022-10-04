@@ -805,29 +805,34 @@ namespace Doppler.BillingUser.Controllers
 
         private async Task<int> BuyCredits(UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, AgreementInformation agreementInformation, Promotion promotion, CreditCardPayment payment)
         {
+            var isPaymentPending = BillingHelper.IsUpgradePending(user, promotion, payment);
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit);
             var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Credit_Buyed_CC : BillingCreditTypeEnum.Credit_Request;
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
             var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, billingCreditType);
             billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
 
+            if (isPaymentPending)
+            {
+                billingCreditAgreement.BillingCredit.PaymentDate = null;
+                billingCreditAgreement.BillingCredit.ActivationDate = null;
+            }
+
             var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
-            var isUpgradePending = BillingHelper.IsUpgradePending(user, promotion, payment);
-
-            if (!isUpgradePending)
+            if (!isPaymentPending)
             {
                 user.IdCurrentBillingCredit = billingCreditId;
             }
 
             user.OriginInbound = agreementInformation.OriginInbound;
-            user.UpgradePending = isUpgradePending;
+            user.UpgradePending = false;
 
             await _userRepository.UpdateUserBillingCredit(user);
 
             var partialBalance = 0;
 
-            if (!user.UpgradePending)
+            if (!isPaymentPending)
             {
                 partialBalance = await _userRepository.GetAvailableCredit(user.IdUser);
                 await _billingRepository.CreateMovementCreditAsync(billingCreditId, partialBalance, user, newPlan);
