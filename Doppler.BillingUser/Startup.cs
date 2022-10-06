@@ -108,6 +108,7 @@ namespace Doppler.BillingUser
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
             services.AddScoped<IPaymentStatusMapper, PaymentStatusMapper>();
             services.AddScoped<IPaymentAmountHelper, PaymentAmounthelper>();
+            services.AddScoped<IUserPaymentHistoryRepository, UserPaymentHistoryRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
