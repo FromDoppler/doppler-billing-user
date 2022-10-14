@@ -148,6 +148,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(paymentGatewayMock.Object);
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(slackSettingsMock.Object);
+                    services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());

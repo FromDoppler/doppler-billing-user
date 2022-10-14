@@ -55,6 +55,8 @@ namespace Doppler.BillingUser.Controllers
         private readonly IMercadoPagoService _mercadoPagoService;
         private readonly IPaymentStatusMapper _paymentStatusMapper;
         private readonly IPaymentAmountHelper _paymentAmountService;
+        private readonly IUserPaymentHistoryRepository _userPaymentHistoryRepository;
+
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
             DateFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'",
@@ -89,6 +91,8 @@ namespace Doppler.BillingUser.Controllers
             UserTypeEnum.INDIVIDUAL
         };
 
+        private const string Source = "Checkout";
+
         public BillingController(
             ILogger<BillingController> logger,
             IBillingRepository billingRepository,
@@ -109,7 +113,8 @@ namespace Doppler.BillingUser.Controllers
             IEmailTemplatesService emailTemplatesService,
             IMercadoPagoService mercadopagoService,
             IPaymentStatusMapper paymentStatusMapper,
-            IPaymentAmountHelper paymentAmountService)
+            IPaymentAmountHelper paymentAmountService,
+            IUserPaymentHistoryRepository userPaymentHistoryRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -131,6 +136,7 @@ namespace Doppler.BillingUser.Controllers
             _mercadoPagoService = mercadopagoService;
             _paymentStatusMapper = paymentStatusMapper;
             _paymentAmountService = paymentAmountService;
+            _userPaymentHistoryRepository = userPaymentHistoryRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -264,6 +270,8 @@ namespace Doppler.BillingUser.Controllers
         [HttpPost("/accounts/{accountname}/agreements")]
         public async Task<IActionResult> CreateAgreement([FromRoute] string accountname, [FromBody] AgreementInformation agreementInformation)
         {
+            var user = await _userRepository.GetUserBillingInformation(accountname);
+
             try
             {
                 var results = await _agreementInformationValidator.ValidateAsync(agreementInformation);
@@ -275,7 +283,6 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult(results.ToString("-"));
                 }
 
-                var user = await _userRepository.GetUserBillingInformation(accountname);
                 if (user == null)
                 {
                     var messageError = $"Failed at creating new agreement for user {accountname}, Invalid user";
@@ -446,6 +453,9 @@ namespace Doppler.BillingUser.Controllers
                     if (promotion != null)
                         await _promotionRepository.IncrementUsedTimes(promotion);
 
+                    var status = !user.UpgradePending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
+                    CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+
                     //Send notifications
                     SendNotifications(accountname, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.UpgradeRequest, currentPlan, null);
                 }
@@ -570,6 +580,8 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (Exception e)
             {
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0);
+
                 var messageError = $"Failed at creating new agreement for user {accountname} with exception {e.Message}";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
@@ -736,6 +748,9 @@ namespace Doppler.BillingUser.Controllers
                 if (promotion != null)
                     await _promotionRepository.IncrementUsedTimes(promotion);
 
+                var status = PaymentStatusEnum.Approved.ToDescription();
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+
                 //Send notifications
                 SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Monthlies, currentPlan, amountDetails);
 
@@ -782,6 +797,9 @@ namespace Doppler.BillingUser.Controllers
 
                 if (promotion != null)
                     await _promotionRepository.IncrementUsedTimes(promotion);
+
+                var status = PaymentStatusEnum.Approved.ToDescription();
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
 
                 //Send notifications
                 SendNotifications(user.Email, newPlan, user, 0, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Subscribers, currentPlan, amountDetails);
@@ -843,11 +861,30 @@ namespace Doppler.BillingUser.Controllers
                 await _promotionRepository.IncrementUsedTimes(promotion);
             }
 
+            var status = !isPaymentPending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
+            await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+
             //Send notifications
             SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, billingCreditType, currentPlan, null);
 
-
             return billingCreditId;
+        }
+
+        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit)
+        {
+            var userPaymentHistory = new UserPaymentHistory
+            {
+                IdUser = idUser,
+                Date = DateTime.Now,
+                ErrorMessage = String.Empty,
+                IdPaymentMethod = idPaymentMethod,
+                IdPlan = idPlan,
+                Source = Source,
+                Status = status,
+                IdBillingCredit = idBillingCredit > 0 ? idBillingCredit : null
+            };
+
+            await _userPaymentHistoryRepository.CreateUserPaymentHistoryAsync(userPaymentHistory);
         }
     }
 }
