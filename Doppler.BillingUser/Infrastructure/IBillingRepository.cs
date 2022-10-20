@@ -41,7 +41,7 @@ namespace Doppler.BillingUser.Infrastructure
 
         Task<AccountingEntry> GetInvoice(int idClient, string authorizationNumber);
 
-        Task UpdateInvoiceStatus(int id, PaymentStatusEnum status);
+        Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail);
 
         Task<int> CreatePaymentEntryAsync(int invoiceId, AccountingEntry paymentEntry);
 
