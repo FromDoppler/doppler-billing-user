@@ -1086,20 +1086,22 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
             return IdAccountingEntry;
         }
 
-        public async Task UpdateInvoiceStatus(int id, PaymentStatusEnum status)
+        public async Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail)
         {
             using var connection = _connectionFactory.GetConnection();
             await connection.ExecuteAsync(@"
 UPDATE
     [dbo].[AccountingEntry]
 SET
-    Status = @Status
+    Status = @Status,
+    ErrorMessage = @StatusDetail
 WHERE
     IdAccountingEntry = @Id;",
             new
             {
                 @Id = id,
                 @Status = status.ToString(),
+                @StatusDetail = status == PaymentStatusEnum.DeclinedPaymentTransaction ? statusDetail : string.Empty
             });
         }
 

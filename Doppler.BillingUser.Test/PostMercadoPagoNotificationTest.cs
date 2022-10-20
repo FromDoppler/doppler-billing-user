@@ -122,7 +122,7 @@ namespace Doppler.BillingUser.Test
             var response = await _client.PostAsJsonAsync($"accounts/test1@example.com/integration/mercadopagonotification", _notification);
 
             // Assert
-            _billingRepository.Verify(br => br.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.DeclinedPaymentTransaction), Times.Once);
+            _billingRepository.Verify(br => br.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.DeclinedPaymentTransaction, It.IsAny<string>()), Times.Once);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
@@ -153,7 +153,7 @@ namespace Doppler.BillingUser.Test
             var response = await _client.PostAsJsonAsync($"accounts/test1@example.com/integration/mercadopagonotification", _notification);
 
             // Assert
-            _billingRepository.Verify(br => br.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved), Times.Once);
+            _billingRepository.Verify(br => br.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, It.IsAny<string>()), Times.Once);
             _billingRepository.Verify(br => br.CreatePaymentEntryAsync(invoice.IdAccountingEntry, It.IsAny<AccountingEntry>()), Times.Once);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
@@ -191,7 +191,7 @@ namespace Doppler.BillingUser.Test
             var response = await _client.PostAsJsonAsync($"accounts/test1@example.com/integration/mercadopagonotification", _notification);
 
             // Assert
-            _billingRepository.Verify(br => br.UpdateInvoiceStatus(It.IsAny<int>(), It.IsAny<PaymentStatusEnum>()), Times.Never);
+            _billingRepository.Verify(br => br.UpdateInvoiceStatus(It.IsAny<int>(), It.IsAny<PaymentStatusEnum>(), It.IsAny<string>()), Times.Never);
             _billingRepository.Verify(br => br.CreatePaymentEntryAsync(It.IsAny<int>(), It.IsAny<AccountingEntry>()), Times.Never);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
@@ -217,7 +217,7 @@ namespace Doppler.BillingUser.Test
             _userRepository.Verify(ur => ur.GetUserInformation(It.IsAny<string>()), Times.Never);
             _billingRepository.Verify(br => br.GetInvoice(It.IsAny<int>(), It.IsAny<string>()), Times.Never);
             _mercadopagoService.Verify(mps => mps.GetPaymentById(It.IsAny<long>(), It.IsAny<string>()), Times.Never);
-            _billingRepository.Verify(br => br.UpdateInvoiceStatus(It.IsAny<int>(), It.IsAny<PaymentStatusEnum>()), Times.Never);
+            _billingRepository.Verify(br => br.UpdateInvoiceStatus(It.IsAny<int>(), It.IsAny<PaymentStatusEnum>(), It.IsAny<string>()), Times.Never);
             _billingRepository.Verify(br => br.CreatePaymentEntryAsync(It.IsAny<int>(), It.IsAny<AccountingEntry>()), Times.Never);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
