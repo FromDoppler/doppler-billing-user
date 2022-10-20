@@ -454,7 +454,7 @@ namespace Doppler.BillingUser.Controllers
                         await _promotionRepository.IncrementUsedTimes(promotion);
 
                     var status = !user.UpgradePending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
-                    CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+                    await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
 
                     //Send notifications
                     SendNotifications(accountname, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.UpgradeRequest, currentPlan, null);
@@ -580,7 +580,7 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (Exception e)
             {
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0);
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message);
 
                 var messageError = $"Failed at creating new agreement for user {accountname} with exception {e.Message}";
                 _logger.LogError(e, messageError);
@@ -749,7 +749,7 @@ namespace Doppler.BillingUser.Controllers
                     await _promotionRepository.IncrementUsedTimes(promotion);
 
                 var status = PaymentStatusEnum.Approved.ToDescription();
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
 
                 //Send notifications
                 SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Monthlies, currentPlan, amountDetails);
@@ -799,7 +799,7 @@ namespace Doppler.BillingUser.Controllers
                     await _promotionRepository.IncrementUsedTimes(promotion);
 
                 var status = PaymentStatusEnum.Approved.ToDescription();
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
 
                 //Send notifications
                 SendNotifications(user.Email, newPlan, user, 0, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Subscribers, currentPlan, amountDetails);
@@ -862,7 +862,7 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var status = !isPaymentPending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
-            await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId);
+            await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
 
             //Send notifications
             SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, billingCreditType, currentPlan, null);
@@ -870,13 +870,13 @@ namespace Doppler.BillingUser.Controllers
             return billingCreditId;
         }
 
-        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit)
+        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit, string errorMessage)
         {
             var userPaymentHistory = new UserPaymentHistory
             {
                 IdUser = idUser,
                 Date = DateTime.Now,
-                ErrorMessage = String.Empty,
+                ErrorMessage = errorMessage,
                 IdPaymentMethod = idPaymentMethod,
                 IdPlan = idPlan,
                 Source = Source,
