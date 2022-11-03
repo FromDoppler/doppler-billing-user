@@ -73,7 +73,7 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                 var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(agreementInformation.DiscountId);
 
                 buyCreditAgreement.BillingCredit.IdDiscountPlan = agreementInformation.DiscountId != 0 ? agreementInformation.DiscountId : null;
-                buyCreditAgreement.BillingCredit.TotalMonthPlan = planDiscountInformation?.MonthPlan;
+                buyCreditAgreement.BillingCredit.TotalMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
                 buyCreditAgreement.BillingCredit.CurrentMonthPlan = currentBillingCredit == null ?
                     (buyCreditAgreement.BillingCredit.TotalMonthPlan.HasValue
                     && buyCreditAgreement.BillingCredit.TotalMonthPlan.Value > 1
