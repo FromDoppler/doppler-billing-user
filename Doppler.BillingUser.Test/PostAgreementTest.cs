@@ -702,6 +702,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(accountServiceMock.Object);
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -769,6 +770,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(accountServiceMock.Object);
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -1303,6 +1305,9 @@ namespace Doppler.BillingUser.Test
             accountServiceMock.Setup(x => x.IsValidTotal(It.IsAny<string>(), It.IsAny<AgreementInformation>()))
                 .ReturnsAsync(true);
 
+            var encryptionServiceMock = new Mock<IEncryptionService>();
+            encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1312,6 +1317,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(accountServiceMock.Object);
                     services.AddSingleton(GetSlackSettingsMock().Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(encryptionServiceMock.Object);
                 });
 
             });

@@ -243,7 +243,8 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (DopplerApplicationException e)
             {
-                var messageError = $"Failed at updating payment method for user {accountname} with exception {e.Message}";
+                var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
+                var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}. Exception {e.Message}.";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
                 return new BadRequestObjectResult(e.Message);
@@ -582,7 +583,15 @@ namespace Doppler.BillingUser.Controllers
             {
                 await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message);
 
-                var messageError = $"Failed at creating new agreement for user {accountname} with exception {e.Message}";
+                var cardNumber = string.Empty;
+                if (user.PaymentMethod == PaymentMethodEnum.CC)
+                {
+                    var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                    cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number)[^4..] : "";
+                }
+
+                var cardNumberDetails = !string.IsNullOrEmpty(cardNumber) ? "with credit card's last 4 digits: " + cardNumber : "";
+                var messageError = $"Failed at creating new agreement for user {accountname} {cardNumberDetails}. Exception {e.Message}";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
                 return new ObjectResult("Failed at creating new agreement")
