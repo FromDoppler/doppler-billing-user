@@ -6,5 +6,6 @@ namespace Doppler.BillingUser.DopplerSecurity
     {
         public bool AllowSuperUser { get; init; }
         public bool AllowOwnResource { get; init; }
+        public bool AllowProvisoryUser { get; init; }
     }
 }

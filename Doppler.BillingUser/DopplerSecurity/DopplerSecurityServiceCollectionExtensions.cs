@@ -12,6 +12,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             services.AddSingleton<IAuthorizationHandler, IsSuperUserAuthorizationHandler>();
             services.AddSingleton<IAuthorizationHandler, IsOwnResourceAuthorizationHandler>();
+            services.AddSingleton<IAuthorizationHandler, IsProvisoryUserAuthorizationHandler>();
 
             services.ConfigureOptions<ConfigureDopplerSecurityOptions>();
 
@@ -32,12 +33,32 @@ namespace Microsoft.Extensions.DependencyInjection
                         .RequireAuthenticatedUser()
                         .Build();
 
+                    var onlyProvisoryUserPolicy = new AuthorizationPolicyBuilder()
+                        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                        .AddRequirements(new DopplerAuthorizationRequirement()
+                        {
+                            AllowProvisoryUser = true
+                        })
+                        .RequireAuthenticatedUser()
+                        .Build();
+
                     var ownResourceOrSuperUserPolicy = new AuthorizationPolicyBuilder()
                         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
                         .AddRequirements(new DopplerAuthorizationRequirement()
                         {
                             AllowSuperUser = true,
                             AllowOwnResource = true
+                        })
+                        .RequireAuthenticatedUser()
+                        .Build();
+
+                    var ownResourceOrSuperUserOrProvisoryUserPolicy = new AuthorizationPolicyBuilder()
+                        .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                        .AddRequirements(new DopplerAuthorizationRequirement()
+                        {
+                            AllowSuperUser = true,
+                            AllowOwnResource = true,
+                            AllowProvisoryUser = true
                         })
                         .RequireAuthenticatedUser()
                         .Build();
@@ -50,6 +71,8 @@ namespace Microsoft.Extensions.DependencyInjection
 
                     o.AddPolicy(Policies.ONLY_SUPERUSER, onlySuperUserPolicy);
                     o.AddPolicy(Policies.OWN_RESOURCE_OR_SUPERUSER, ownResourceOrSuperUserPolicy);
+                    o.AddPolicy(Policies.PROVISORY_USER, onlyProvisoryUserPolicy);
+                    o.AddPolicy(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER, ownResourceOrSuperUserOrProvisoryUserPolicy);
                 });
 
             services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
