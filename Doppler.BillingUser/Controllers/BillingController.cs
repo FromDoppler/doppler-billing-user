@@ -204,7 +204,7 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult("Successfully");
         }
 
-        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpGet("/accounts/{accountname}/payment-methods/current")]
         public async Task<IActionResult> GetCurrentPaymentMethod(string accountname)
         {
@@ -220,7 +220,7 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult(currentPaymentMethod);
         }
 
-        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpPut("/accounts/{accountname}/payment-methods/current")]
         public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromBody] PaymentMethod paymentMethod)
         {
