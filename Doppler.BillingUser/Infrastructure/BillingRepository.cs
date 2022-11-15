@@ -879,7 +879,7 @@ SELECT
 FROM
     [dbo].[AccountingEntry] AE
 WHERE
-    idClient = @idClient AND [Status]==@status",
+    idClient = @idClient AND [Status]=@status",
                 new
                 {
                     @idClient = idClient,
