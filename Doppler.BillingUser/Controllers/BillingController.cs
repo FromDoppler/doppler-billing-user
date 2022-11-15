@@ -771,10 +771,10 @@ namespace Doppler.BillingUser.Controllers
                     var messageError = $"Failed at updating payment method for user {accountname}";
                     _logger.LogError(messageError);
                     await _slackService.SendNotification(messageError);
-                    return new UpdatePaymentResult() { Success = false, Message = "Failed at updating payment" };
+                    return UpdatePaymentResult.Failed("Failed at updating payment");
                 }
 
-                return new UpdatePaymentResult() { Success = true, Message = "Succesfully" };
+                return UpdatePaymentResult.Successful();
             }
             catch (DopplerApplicationException e)
             {
@@ -782,7 +782,7 @@ namespace Doppler.BillingUser.Controllers
                 var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}. Exception {e.Message}.";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
-                return new UpdatePaymentResult() { Success = false, Message = e.Message };
+                return UpdatePaymentResult.Failed(e.Message);
             }
         }
         private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod, bool isFreeUser)
