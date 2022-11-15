@@ -7,6 +7,7 @@ using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Utils;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
@@ -853,6 +854,38 @@ WHERE
                     @authorizationNumber = authorizationNumber
                 });
             return invoice;
+        }
+
+        public async Task<List<AccountingEntry>> GetInvoices(int idClient)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var invoices = (await connection.QueryAsync<AccountingEntry>(@"
+SELECT
+    AE.[IdAccountingEntry],
+    AE.[Date],
+    AE.[Amount],
+    AE.[Status],
+    AE.[Source],
+    AE.[AuthorizationNumber],
+    AE.[InvoiceNumber],
+    AE.[AccountEntryType],
+    AE.[AccountingTypeDescription],
+    AE.[IdClient],
+    AE.[IdAccountType],
+    AE.[IdInvoiceBillingType],
+    AE.[IdCurrencyType],
+    AE.[CurrencyRate],
+    AE.[Taxes]
+FROM
+    [dbo].[AccountingEntry] AE
+WHERE
+    idClient = @idClient AND [Status]==@status",
+                new
+                {
+                    @idClient = idClient,
+                    @status = PaymentStatusEnum.DeclinedPaymentTransaction
+                })).ToList();
+            return invoices;
         }
 
         public async Task<PlanDiscountInformation> GetPlanDiscountInformation(int discountId)

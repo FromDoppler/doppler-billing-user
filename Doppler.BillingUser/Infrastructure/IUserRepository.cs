@@ -6,6 +6,7 @@ namespace Doppler.BillingUser.Infrastructure
 {
     public interface IUserRepository
     {
+        void UnblockAccountNotPayed(string accountname);
         Task<UserBillingInformation> GetUserBillingInformation(string accountName);
         Task<UserTypePlanInformation> GetUserCurrentTypePlan(int idUser);
         Task<CreditCard> GetEncryptedCreditCard(string accountName);
