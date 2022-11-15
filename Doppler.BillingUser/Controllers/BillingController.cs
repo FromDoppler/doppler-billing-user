@@ -30,6 +30,7 @@ using Doppler.BillingUser.Mappers.PaymentStatus;
 using FluentValidator;
 using System.Drawing;
 using System.Text;
+using Tavis.UriTemplates;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -227,23 +228,37 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/payment-methods/current")]
         public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromBody] PaymentMethod paymentMethod)
         {
-            var updatePaymentResult = await UpdatePaymentMethod(accountname, paymentMethod);
-            if (!updatePaymentResult.Success)
+            try
             {
-                return new BadRequestObjectResult(updatePaymentResult.Message);
+                _logger.LogDebug("Update current payment method.");
+
+                User userInformation = await _userRepository.GetUserInformation(accountname);
+                var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
+
+                if (!isSuccess)
+                {
+                    var messageError = $"Failed at updating payment method for user {accountname}";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult("Failed at updating payment");
+                }
+
+                return new OkObjectResult("Successfully");
             }
-            return new ObjectResult(updatePaymentResult.Message);
+            catch (DopplerApplicationException e)
+            {
+                var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
+                var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}. Exception {e.Message}.";
+                _logger.LogError(e, messageError);
+                await _slackService.SendNotification(messageError);
+                return new BadRequestObjectResult(e.Message);
+            }
         }
 
         [Authorize(Policies.PROVISORY_USER)]
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
-        public async Task<IActionResult> UpdateCurrentPaymentMethodAndReprocess(string accountname, [FromBody] PaymentMethod paymentMethod)
+        public async Task<IActionResult> Reprocess(string accountname)
         {
-            var updatePaymentResult = await UpdatePaymentMethod(accountname, paymentMethod);
-            if (!updatePaymentResult.Success)
-            {
-                return new ObjectResult(updatePaymentResult);
-            }
 
             var user = await _userRepository.GetUserInformation(accountname);
 
@@ -254,7 +269,15 @@ namespace Doppler.BillingUser.Controllers
             if (invoices.Count == 0)
             {
                 _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
-                return new NotFoundObjectResult("Invoices not found");
+                var result = ReprocessInvoiceResult.Failed("Invoices not found");
+                return new NotFoundObjectResult(result);
+            }
+
+            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
+            {
+                var result = ReprocessInvoiceResult.Failed("Payment method has to be either Credit Card or Mercado Pago");
+
+                return new BadRequestObjectResult(result);
             }
 
             var invoicesResults = new List<ReprocessInvoicePaymentResultEnum>();
@@ -264,79 +287,68 @@ namespace Doppler.BillingUser.Controllers
                 var reprocessResult = await ReprocessInvoicePayment(invoice, accountname, user, userBillingInfo);
                 invoicesResults.Add(reprocessResult);
             }
-            ReprocessInvoiceResult result;
 
-            if (invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
+            if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
-                _userRepository.UnblockAccountNotPayed(accountname);
-
-                if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
+                var result = ReprocessInvoiceResult.Failed("No invoice was reprocessed succesfully");
+                return new ObjectResult(result)
                 {
-                    result = new ReprocessInvoiceResult()
-                    {
-                        allInvoicesProcessed = true,
-                        Message = "Successful"
-                    };
-
-                    return new ObjectResult(result);
-                    //
-                }
-                result = new ReprocessInvoiceResult()
-                {
-                    allInvoicesProcessed = false,
-                    Message = "At least one of the invoices was succesfully reprocess"
+                    StatusCode = 500
                 };
+            }
+            _userRepository.UnblockAccountNotPayed(accountname);
 
-                return new ObjectResult(result);
+            // Checks whether all the invoices were process succesfully
+            if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
+            {
+                var result = ReprocessInvoiceResult.Success();
+                return new OkObjectResult(result);
             }
             else
             {
-                result = new ReprocessInvoiceResult()
-                {
-                    allInvoicesProcessed = false,
-                    Message = "No invoice was reprocess succesfully"
-                };
-
-                return new ObjectResult(result);
+                var result = ReprocessInvoiceResult.Failed("At least one of the invoices was succesfully reprocess");
+                return new OkObjectResult(result);
             }
         }
 
         private async Task<ReprocessInvoicePaymentResultEnum> ReprocessInvoicePayment(AccountingEntry invoice, string accountname, User user, UserBillingInformation userBillingInfo)
         {
-            CreditCard encryptedCreditCard = null;
-            CreditCardPayment payment = null;
+            CreditCard encryptedCreditCard;
+            CreditCardPayment payment;
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
 
-            if (invoice.Amount > 0 &&
-                (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC || userBillingInfo.PaymentMethod == PaymentMethodEnum.MP))
+            encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+
+            if (encryptedCreditCard == null)
             {
-                encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
-                if (encryptedCreditCard == null)
+                var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+                return ReprocessInvoicePaymentResultEnum.Failed;
+            }
+
+            if (invoice.Amount <= 0)
+            {
+                return ReprocessInvoicePaymentResultEnum.Failed;
+            }
+
+            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null); ;
+
+            if (payment.Status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
+            {
+                return ReprocessInvoicePaymentResultEnum.Successful;
+            }
+
+            if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction && invoice.Status != PaymentStatusEnum.DeclinedPaymentTransaction)
+            {
+                if (invoice.Status == PaymentStatusEnum.Approved)
                 {
-                    var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
-                    _logger.LogError(messageError);
-                    await _slackService.SendNotification(messageError);
-                    return ReprocessInvoicePaymentResultEnum.Failed;
+                    _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetails);
                 }
 
-                payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null); ;
-
-                if (payment.Status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
-                {
-                    return ReprocessInvoicePaymentResultEnum.Successful;
-                }
-
-                if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction && invoice.Status != PaymentStatusEnum.DeclinedPaymentTransaction)
-                {
-                    if (invoice.Status == PaymentStatusEnum.Approved)
-                    {
-                        _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetails);
-                    }
-
-                    await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails);
-                    return ReprocessInvoicePaymentResultEnum.Successful;
-                }
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails);
+                return ReprocessInvoicePaymentResultEnum.Successful;
             }
             return ReprocessInvoicePaymentResultEnum.Failed;
         }
@@ -757,34 +769,6 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private async Task<UpdatePaymentResult> UpdatePaymentMethod(string accountname, PaymentMethod paymentMethod)
-        {
-            try
-            {
-                _logger.LogDebug("Update current payment method.");
-
-                User userInformation = await _userRepository.GetUserInformation(accountname);
-                var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
-
-                if (!isSuccess)
-                {
-                    var messageError = $"Failed at updating payment method for user {accountname}";
-                    _logger.LogError(messageError);
-                    await _slackService.SendNotification(messageError);
-                    return UpdatePaymentResult.Failed("Failed at updating payment");
-                }
-
-                return UpdatePaymentResult.Successful();
-            }
-            catch (DopplerApplicationException e)
-            {
-                var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
-                var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}. Exception {e.Message}.";
-                _logger.LogError(e, messageError);
-                await _slackService.SendNotification(messageError);
-                return UpdatePaymentResult.Failed(e.Message);
-            }
-        }
         private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod, bool isFreeUser)
         {
             var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);

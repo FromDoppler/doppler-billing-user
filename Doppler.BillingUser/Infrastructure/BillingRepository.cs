@@ -883,7 +883,7 @@ WHERE
                 new
                 {
                     @idClient = idClient,
-                    @status = PaymentStatusEnum.DeclinedPaymentTransaction
+                    @status = PaymentStatusEnum.DeclinedPaymentTransaction.ToString()
                 })).ToList();
             return invoices;
         }
