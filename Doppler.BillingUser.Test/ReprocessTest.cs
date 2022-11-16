@@ -91,24 +91,6 @@ namespace Doppler.BillingUser.Test
 
             var userId = 1;
 
-            var creditCard = new CreditCard()
-            {
-                CardType = CardTypeEnum.Visa,
-                ExpirationMonth = 12,
-                ExpirationYear = 23,
-                HolderName = "kBvAJf5f3AIp8+MEVYVTGA==",
-                Number = "Oe9VdYnmPsZGPKnLEogk1hbP7NH3YfZnqxLrUJxnGgc=",
-                Code = "pNw3zrff06X9K972Ro6OwQ=="
-            };
-
-            var currentPaymentMethod = new PaymentMethod
-            {
-                CCExpMonth = "1",
-                CCExpYear = "2022",
-                CCHolderFullName = "Test",
-                CCNumber = "411111111111"
-            };
-
             var authorizatioNumber = "LLLTD222";
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
@@ -126,7 +108,6 @@ namespace Doppler.BillingUser.Test
             {
                 IdUser = 1
             });
-            userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(accountName)).ReturnsAsync(creditCard);
 
             var paymentGatewayMock = new Mock<IPaymentGateway>();
             paymentGatewayMock.Setup(x => x.CreateCreditCardPayment(It.IsAny<decimal>(), It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>())).ReturnsAsync(authorizatioNumber);
