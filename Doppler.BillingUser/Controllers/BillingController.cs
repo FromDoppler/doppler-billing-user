@@ -255,7 +255,7 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        [Authorize(Policies.PROVISORY_USER)]
+        [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
         {
