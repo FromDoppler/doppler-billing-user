@@ -347,9 +347,21 @@ namespace Doppler.BillingUser.Controllers
                     _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetails);
                 }
 
-                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails);
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails, invoice.AuthorizationNumber);
                 return ReprocessInvoicePaymentResultEnum.Successful;
             }
+
+            if (payment.Status == PaymentStatusEnum.Approved && invoice.Status != PaymentStatusEnum.Approved)
+            {
+                invoice.AuthorizationNumber = payment.AuthorizationNumber;
+                var accountingEntryMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
+                var paymentEntry = await accountingEntryMapper.MapToPaymentAccountingEntry(invoice, encryptedCreditCard);
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetails, invoice.AuthorizationNumber);
+                await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
+
+                return ReprocessInvoicePaymentResultEnum.Successful;
+            }
+
             return ReprocessInvoicePaymentResultEnum.Failed;
         }
 

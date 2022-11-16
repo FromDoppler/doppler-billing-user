@@ -1119,7 +1119,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
             return IdAccountingEntry;
         }
 
-        public async Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail)
+        public async Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail, string authorizationNumber)
         {
             using var connection = _connectionFactory.GetConnection();
             await connection.ExecuteAsync(@"
@@ -1127,14 +1127,16 @@ UPDATE
     [dbo].[AccountingEntry]
 SET
     Status = @Status,
-    ErrorMessage = @StatusDetail
+    ErrorMessage = @StatusDetail,
+    AuthorizationNumber = @authorizationNumber
 WHERE
     IdAccountingEntry = @Id;",
             new
             {
                 @Id = id,
                 @Status = status.ToString(),
-                @StatusDetail = status == PaymentStatusEnum.DeclinedPaymentTransaction ? statusDetail : string.Empty
+                @StatusDetail = status == PaymentStatusEnum.DeclinedPaymentTransaction ? statusDetail : string.Empty,
+                @authorizationNumber = authorizationNumber
             });
         }
 
