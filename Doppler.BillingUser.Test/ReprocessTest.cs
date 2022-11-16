@@ -7,6 +7,14 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
+using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Infrastructure;
+using Moq;
+using Doppler.BillingUser.ExternalServices.FirstData;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http.Json;
 
 namespace Doppler.BillingUser.Test
 {
@@ -61,7 +69,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async Task PUT_Current_payment_method_should_return_unauthorized_when_authorization_is_empty()
+        public async Task PUT_Reprocess_method_should_return_unauthorized_when_authorization_is_empty()
         {
             // Arrange
             var client = _factory.CreateClient(new WebApplicationFactoryClientOptions());
@@ -73,6 +81,77 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PUT_Reprocess_should_answer_status_404_if_user_has_no_invoices_declined()
+        {
+            // Arrange
+            var accountName = "test1@example.com";
+
+            var userId = 1;
+
+            var creditCard = new CreditCard()
+            {
+                CardType = CardTypeEnum.Visa,
+                ExpirationMonth = 12,
+                ExpirationYear = 23,
+                HolderName = "kBvAJf5f3AIp8+MEVYVTGA==",
+                Number = "Oe9VdYnmPsZGPKnLEogk1hbP7NH3YfZnqxLrUJxnGgc=",
+                Code = "pNw3zrff06X9K972Ro6OwQ=="
+            };
+
+            var currentPaymentMethod = new PaymentMethod
+            {
+                CCExpMonth = "1",
+                CCExpYear = "2022",
+                CCHolderFullName = "Test",
+                CCNumber = "411111111111"
+            };
+
+            var authorizatioNumber = "LLLTD222";
+
+            var billingRepositoryMock = new Mock<IBillingRepository>();
+            billingRepositoryMock.Setup(x => x.GetInvoices(userId))
+                .ReturnsAsync(new List<AccountingEntry>());
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(accountName))
+                .ReturnsAsync(new UserBillingInformation()
+                {
+                    IdUser = 1,
+                    PaymentMethod = PaymentMethodEnum.CC
+                });
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName)).ReturnsAsync(new User()
+            {
+                IdUser = 1
+            });
+            userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(accountName)).ReturnsAsync(creditCard);
+
+            var paymentGatewayMock = new Mock<IPaymentGateway>();
+            paymentGatewayMock.Setup(x => x.CreateCreditCardPayment(It.IsAny<decimal>(), It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>())).ReturnsAsync(authorizatioNumber);
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(paymentGatewayMock.Object);
+                    services.AddSingleton(billingRepositoryMock.Object);
+                    //services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                });
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+
+            var request = new HttpRequestMessage(HttpMethod.Put, "accounts/test1@example.com/payments/reprocess")
+            {
+                Headers = { { "Authorization", $"Bearer {TOKEN_PROVISORY_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_1983727216}" } }
+            };
+
+            // Act
+            var response = await client.SendAsync(request);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         }
     }
 }
