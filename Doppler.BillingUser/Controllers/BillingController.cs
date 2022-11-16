@@ -259,22 +259,21 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
         {
+            var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
+
+            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
+            {
+                return new BadRequestObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "Payment method has to be either Credit Card or Mercado Pago" });
+            }
 
             var user = await _userRepository.GetUserInformation(accountname);
-
-            var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
 
             var invoices = await _billingRepository.GetInvoices(user.IdUser);
 
             if (invoices.Count == 0)
             {
                 _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
-                return new NotFoundObjectResult(ReprocessInvoiceResult.Failed("Invoices not found"));
-            }
-
-            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
-            {
-                return new BadRequestObjectResult(ReprocessInvoiceResult.Failed("Payment method has to be either Credit Card or Mercado Pago"));
+                return new NotFoundObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "Invoices not found" });
             }
 
             var invoicesResults = new List<ReprocessInvoicePaymentResultEnum>();
@@ -287,7 +286,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
-                return new ObjectResult(ReprocessInvoiceResult.Failed("No invoice was reprocessed succesfully"))
+                return new ObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "No invoice was reprocessed succesfully" })
                 {
                     StatusCode = 500
                 };
@@ -297,22 +296,17 @@ namespace Doppler.BillingUser.Controllers
             // Checks whether all the invoices were process succesfully
             if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
             {
-                return new OkObjectResult(ReprocessInvoiceResult.Success());
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true, Message = "" });
             }
             else
             {
-                return new OkObjectResult(ReprocessInvoiceResult.Failed("At least one of the invoices was succesfully reprocess"));
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "At least one of the invoices was succesfully reprocess" });
             }
         }
 
         private async Task<ReprocessInvoicePaymentResultEnum> ReprocessInvoicePayment(AccountingEntry invoice, string accountname, User user, UserBillingInformation userBillingInfo)
         {
-            CreditCard encryptedCreditCard;
-            CreditCardPayment payment;
-
-            var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
-
-            encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+            var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
 
             if (encryptedCreditCard == null)
             {
@@ -327,7 +321,9 @@ namespace Doppler.BillingUser.Controllers
                 return ReprocessInvoicePaymentResultEnum.Failed;
             }
 
-            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null); ;
+            var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
+
+            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null); ;
 
             if (payment.Status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
             {
