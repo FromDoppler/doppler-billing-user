@@ -269,15 +269,12 @@ namespace Doppler.BillingUser.Controllers
             if (invoices.Count == 0)
             {
                 _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
-                var result = ReprocessInvoiceResult.Failed("Invoices not found");
-                return new NotFoundObjectResult(result);
+                return new NotFoundObjectResult(ReprocessInvoiceResult.Failed("Invoices not found"));
             }
 
             if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
             {
-                var result = ReprocessInvoiceResult.Failed("Payment method has to be either Credit Card or Mercado Pago");
-
-                return new BadRequestObjectResult(result);
+                return new BadRequestObjectResult(ReprocessInvoiceResult.Failed("Payment method has to be either Credit Card or Mercado Pago"));
             }
 
             var invoicesResults = new List<ReprocessInvoicePaymentResultEnum>();
@@ -290,8 +287,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
-                var result = ReprocessInvoiceResult.Failed("No invoice was reprocessed succesfully");
-                return new ObjectResult(result)
+                return new ObjectResult(ReprocessInvoiceResult.Failed("No invoice was reprocessed succesfully"))
                 {
                     StatusCode = 500
                 };
@@ -301,13 +297,11 @@ namespace Doppler.BillingUser.Controllers
             // Checks whether all the invoices were process succesfully
             if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
             {
-                var result = ReprocessInvoiceResult.Success();
-                return new OkObjectResult(result);
+                return new OkObjectResult(ReprocessInvoiceResult.Success());
             }
             else
             {
-                var result = ReprocessInvoiceResult.Failed("At least one of the invoices was succesfully reprocess");
-                return new OkObjectResult(result);
+                return new OkObjectResult(ReprocessInvoiceResult.Failed("At least one of the invoices was succesfully reprocess"));
             }
         }
 
