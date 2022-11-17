@@ -289,7 +289,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
-                return new ObjectResult("No invoice was processed succesfully");
+                return new BadRequestObjectResult("No invoice was processed succesfully");
             }
             _userRepository.UnblockAccountNotPayed(accountname);
 
