@@ -14,6 +14,19 @@ namespace Doppler.BillingUser.Infrastructure
         {
             _connectionFactory = connectionFactory;
         }
+        public async void UnblockAccountNotPayed(string accountname)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryAsync(@"
+UPDATE [User]
+SET [BlockedAccountNotPayed]=0
+WHERE [Email] = @email;
+", new
+            {
+                @email = accountname
+            }
+            );
+        }
 
         public async Task<UserBillingInformation> GetUserBillingInformation(string accountName)
         {

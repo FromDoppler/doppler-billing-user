@@ -1,6 +1,7 @@
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.Model;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Infrastructure
@@ -40,8 +41,9 @@ namespace Doppler.BillingUser.Infrastructure
         Task<PaymentMethod> GetPaymentMethodByUserName(string username);
 
         Task<AccountingEntry> GetInvoice(int idClient, string authorizationNumber);
+        Task<List<AccountingEntry>> GetInvoices(int idClient);
 
-        Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail);
+        Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail, string authorizationNumber);
 
         Task<int> CreatePaymentEntryAsync(int invoiceId, AccountingEntry paymentEntry);
 

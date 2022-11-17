@@ -33,11 +33,12 @@ namespace Microsoft.Extensions.DependencyInjection
                         .RequireAuthenticatedUser()
                         .Build();
 
-                    var onlyProvisoryUserPolicy = new AuthorizationPolicyBuilder()
+                    var provisoryUserAndSuperUser = new AuthorizationPolicyBuilder()
                         .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
                         .AddRequirements(new DopplerAuthorizationRequirement()
                         {
-                            AllowProvisoryUser = true
+                            AllowProvisoryUser = true,
+                            AllowSuperUser = true
                         })
                         .RequireAuthenticatedUser()
                         .Build();
@@ -71,7 +72,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
                     o.AddPolicy(Policies.ONLY_SUPERUSER, onlySuperUserPolicy);
                     o.AddPolicy(Policies.OWN_RESOURCE_OR_SUPERUSER, ownResourceOrSuperUserPolicy);
-                    o.AddPolicy(Policies.PROVISORY_USER, onlyProvisoryUserPolicy);
+                    o.AddPolicy(Policies.PROVISORY_USER_OR_SUPER_USER, provisoryUserAndSuperUser);
                     o.AddPolicy(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER, ownResourceOrSuperUserOrProvisoryUserPolicy);
                 });
 

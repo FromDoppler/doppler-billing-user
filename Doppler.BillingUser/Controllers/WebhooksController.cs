@@ -76,7 +76,7 @@ namespace Doppler.BillingUser.Controllers
                     _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetail);
                 }
 
-                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, status, payment.StatusDetail);
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, status, payment.StatusDetail, invoice.AuthorizationNumber);
                 return new OkObjectResult("Successful");
             }
 
@@ -85,7 +85,7 @@ namespace Doppler.BillingUser.Controllers
                 var accountingEntryMapper = new AccountingEntryForMercadopagoMapper(_paymentAmountService);
                 var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
                 var paymentEntry = await accountingEntryMapper.MapToPaymentAccountingEntry(invoice, encryptedCreditCard);
-                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetail);
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetail, invoice.AuthorizationNumber);
                 await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
 
                 await _emailTemplatesService.SendNotificationForMercadoPagoPaymentApproved(user.IdUser, user.Email);

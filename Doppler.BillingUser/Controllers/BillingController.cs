@@ -27,6 +27,10 @@ using Doppler.BillingUser.Mappers;
 using Doppler.BillingUser.Mappers.BillingCredit;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Mappers.PaymentStatus;
+using FluentValidator;
+using System.Drawing;
+using System.Text;
+using Tavis.UriTemplates;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -249,6 +253,106 @@ namespace Doppler.BillingUser.Controllers
                 await _slackService.SendNotification(messageError);
                 return new BadRequestObjectResult(e.Message);
             }
+        }
+
+        [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
+        [HttpPut("/accounts/{accountname}/payments/reprocess")]
+        public async Task<IActionResult> Reprocess(string accountname)
+        {
+            var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
+
+            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
+            {
+                return new BadRequestObjectResult("Payment method not supported")
+                {
+                    StatusCode = 500
+                };
+            }
+
+            var user = await _userRepository.GetUserInformation(accountname);
+
+            var invoices = await _billingRepository.GetInvoices(user.IdUser);
+
+            if (invoices.Count == 0)
+            {
+                _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
+                return new BadRequestObjectResult("No invoice found with status declined");
+            }
+
+            var invoicesResults = new List<ReprocessInvoicePaymentResultEnum>();
+
+            foreach (var invoice in invoices)
+            {
+                var reprocessResult = await ReprocessInvoicePayment(invoice, accountname, user, userBillingInfo);
+                invoicesResults.Add(reprocessResult);
+            }
+
+            if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
+            {
+                return new ObjectResult("No invoice was processed succesfully");
+            }
+            _userRepository.UnblockAccountNotPayed(accountname);
+
+            // Checks whether all the invoices were process succesfully
+            if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
+            {
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true });
+            }
+            else
+            {
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false });
+            }
+        }
+
+        private async Task<ReprocessInvoicePaymentResultEnum> ReprocessInvoicePayment(AccountingEntry invoice, string accountname, User user, UserBillingInformation userBillingInfo)
+        {
+            var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+
+            if (encryptedCreditCard == null)
+            {
+                var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+                return ReprocessInvoicePaymentResultEnum.Failed;
+            }
+
+            if (invoice.Amount <= 0)
+            {
+                return ReprocessInvoicePaymentResultEnum.Failed;
+            }
+
+            var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
+
+            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null); ;
+
+            if (payment.Status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
+            {
+                return ReprocessInvoicePaymentResultEnum.Successful;
+            }
+
+            if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction && invoice.Status != PaymentStatusEnum.DeclinedPaymentTransaction)
+            {
+                if (invoice.Status == PaymentStatusEnum.Approved)
+                {
+                    _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetails);
+                }
+
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails, invoice.AuthorizationNumber);
+                return ReprocessInvoicePaymentResultEnum.Successful;
+            }
+
+            if (payment.Status == PaymentStatusEnum.Approved && invoice.Status != PaymentStatusEnum.Approved)
+            {
+                invoice.AuthorizationNumber = payment.AuthorizationNumber;
+                var accountingEntryMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
+                var paymentEntry = await accountingEntryMapper.MapToPaymentAccountingEntry(invoice, encryptedCreditCard);
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetails, invoice.AuthorizationNumber);
+                await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
+
+                return ReprocessInvoicePaymentResultEnum.Successful;
+            }
+
+            return ReprocessInvoicePaymentResultEnum.Failed;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
