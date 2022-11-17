@@ -263,7 +263,10 @@ namespace Doppler.BillingUser.Controllers
 
             if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
             {
-                return new BadRequestObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "Payment method has to be either Credit Card or Mercado Pago" });
+                return new BadRequestObjectResult("Payment method not supported")
+                {
+                    StatusCode = 500
+                };
             }
 
             var user = await _userRepository.GetUserInformation(accountname);
@@ -273,7 +276,7 @@ namespace Doppler.BillingUser.Controllers
             if (invoices.Count == 0)
             {
                 _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
-                return new NotFoundObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "Invoices not found" });
+                return new BadRequestObjectResult("No invoice found with status declined");
             }
 
             var invoicesResults = new List<ReprocessInvoicePaymentResultEnum>();
@@ -286,21 +289,18 @@ namespace Doppler.BillingUser.Controllers
 
             if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
-                return new ObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "No invoice was reprocessed succesfully" })
-                {
-                    StatusCode = 500
-                };
+                return new ObjectResult("No invoice was processed succesfully");
             }
             _userRepository.UnblockAccountNotPayed(accountname);
 
             // Checks whether all the invoices were process succesfully
             if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
             {
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true, Message = "" });
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true });
             }
             else
             {
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, Message = "At least one of the invoices was succesfully reprocess" });
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false });
             }
         }
 
