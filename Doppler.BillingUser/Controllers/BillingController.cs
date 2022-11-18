@@ -256,6 +256,43 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
+        [HttpGet("/accounts/{accountname}/declined-invoices")]
+        public async Task<IActionResult> GetDeclinedInvoices(string accountname)
+        {
+            var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
+
+            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
+            {
+                return new BadRequestObjectResult("Payment method not supported")
+                {
+                    StatusCode = 500
+                };
+            }
+
+            var user = await _userRepository.GetUserInformation(accountname);
+
+            var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
+
+            var declinedInvoicesData = new List<DeclinedInvoiceData>();
+            var total = 0.0M;
+            foreach (var invoice in invoices)
+            {
+                total += invoice.Amount;
+                declinedInvoicesData.Add(new DeclinedInvoiceData()
+                {
+                    Date = invoice.Date,
+                    InvoiceNumber = invoice.InvoiceNumber,
+                    Amount = invoice.Amount
+                });
+            }
+
+            return new OkObjectResult(new GetDeclinedInvoicesResult()
+            {
+                TotalPending = total,
+                Invoices = declinedInvoicesData
+            });
+        }
+        [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
         {
