@@ -256,39 +256,24 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
-        [HttpGet("/accounts/{accountname}/declined-invoices")]
+        [HttpGet("/accounts/{accountname}/invoices/declined")]
         public async Task<IActionResult> GetDeclinedInvoices(string accountname)
         {
-            var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
-
-            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
-            {
-                return new BadRequestObjectResult("Payment method not supported")
-                {
-                    StatusCode = 500
-                };
-            }
-
             var user = await _userRepository.GetUserInformation(accountname);
 
             var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
 
-            var declinedInvoicesData = new List<DeclinedInvoiceData>();
-            var total = 0.0M;
-            foreach (var invoice in invoices)
+            var declinedInvoicesData = invoices.Select(invoice => new DeclinedInvoiceData()
             {
-                total += invoice.Amount;
-                declinedInvoicesData.Add(new DeclinedInvoiceData()
-                {
-                    Date = invoice.Date,
-                    InvoiceNumber = invoice.InvoiceNumber,
-                    Amount = invoice.Amount
-                });
-            }
+                Date = invoice.Date,
+                InvoiceNumber = invoice.InvoiceNumber,
+                Amount = invoice.Amount
+            })
+            .ToList();
 
             return new OkObjectResult(new GetDeclinedInvoicesResult()
             {
-                TotalPending = total,
+                TotalPending = declinedInvoicesData.Sum(x => x.Amount),
                 Invoices = declinedInvoicesData
             });
         }
@@ -340,17 +325,12 @@ namespace Doppler.BillingUser.Controllers
             {
                 invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
 
-                var failedInvoices = new List<FailedToReprocessInvoice>();
-
-                foreach (var invoice in invoices)
+                var failedInvoices = invoices.Select(invoice => new FailedToReprocessInvoice()
                 {
-                    failedInvoices.Add(new FailedToReprocessInvoice()
-                    {
-                        Amount = invoice.Amount,
-                        InvoiceNumber = invoice.InvoiceNumber,
-                        Error = "" // Should be invoice.ErrorMesagge?
-                    });
-                }
+                    Amount = invoice.Amount,
+                    InvoiceNumber = invoice.InvoiceNumber,
+                    Error = "" // Should be invoice.ErrorMesagge?
+                }).ToList();
 
                 return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, FailedInvoices = failedInvoices });
             }
