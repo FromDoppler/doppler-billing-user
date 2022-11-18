@@ -292,6 +292,7 @@ namespace Doppler.BillingUser.Controllers
                 Invoices = declinedInvoicesData
             });
         }
+
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
@@ -337,7 +338,21 @@ namespace Doppler.BillingUser.Controllers
             }
             else
             {
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false });
+                invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
+
+                var failedInvoices = new List<FailedToReprocessInvoice>();
+
+                foreach (var invoice in invoices)
+                {
+                    failedInvoices.Add(new FailedToReprocessInvoice()
+                    {
+                        Amount = invoice.Amount,
+                        InvoiceNumber = invoice.InvoiceNumber,
+                        Error = "" // Should be invoice.ErrorMesagge?
+                    });
+                }
+
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, FailedInvoices = failedInvoices });
             }
         }
 
