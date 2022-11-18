@@ -308,7 +308,7 @@ namespace Doppler.BillingUser.Controllers
 
             var user = await _userRepository.GetUserInformation(accountname);
 
-            var invoices = await _billingRepository.GetInvoices(user.IdUser);
+            var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
 
             if (invoices.Count == 0)
             {
