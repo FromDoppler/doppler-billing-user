@@ -261,6 +261,11 @@ namespace Doppler.BillingUser.Controllers
         {
             var user = await _userRepository.GetUserInformation(accountname);
 
+            if (user == null)
+            {
+                return new BadRequestObjectResult("The user does not exist");
+            }
+
             var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
 
             var declinedInvoicesData = invoices.Select(invoice => new DeclinedInvoiceData()
