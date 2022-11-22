@@ -302,14 +302,14 @@ namespace Doppler.BillingUser.Controllers
                 return new BadRequestObjectResult("No invoice found with status declined");
             }
 
-            var invoicesResults = new List<ReprocessInvoicePaymentResultEnum>();
+            var invoicesPaymentResults = new List<ReprocessInvoicePaymentResult>();
 
             foreach (var invoice in invoices)
             {
                 var reprocessResult = await ReprocessInvoicePayment(invoice, accountname, user, userBillingInfo);
-                invoicesResults.Add(reprocessResult);
+                invoicesPaymentResults.Add(reprocessResult);
             }
-
+            var invoicesResults = invoicesPaymentResults.Select(x => x.Result);
             if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
                 return new BadRequestObjectResult("No invoice was processed succesfully");
@@ -323,20 +323,18 @@ namespace Doppler.BillingUser.Controllers
             }
             else
             {
-                invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
-
-                var failedInvoices = invoices.Select(invoice => new FailedToReprocessInvoice()
+                var failedInvoices = invoicesPaymentResults.Where(x => x.Result != ReprocessInvoicePaymentResultEnum.Successful).Select(invoice => new FailedToReprocessInvoice()
                 {
                     Amount = invoice.Amount,
                     InvoiceNumber = invoice.InvoiceNumber,
-                    Error = "" // Should be invoice.ErrorMesagge?
+                    Error = invoice.PaymentError
                 }).ToList();
 
                 return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, FailedInvoices = failedInvoices });
             }
         }
 
-        private async Task<ReprocessInvoicePaymentResultEnum> ReprocessInvoicePayment(AccountingEntry invoice, string accountname, User user, UserBillingInformation userBillingInfo)
+        private async Task<ReprocessInvoicePaymentResult> ReprocessInvoicePayment(AccountingEntry invoice, string accountname, User user, UserBillingInformation userBillingInfo)
         {
             var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
 
@@ -345,12 +343,12 @@ namespace Doppler.BillingUser.Controllers
                 var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
                 _logger.LogError(messageError);
                 await _slackService.SendNotification(messageError);
-                return ReprocessInvoicePaymentResultEnum.Failed;
+                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Failed, PaymentError = "Missing credit card information", InvoiceNumber = invoice.InvoiceNumber, Amount = invoice.Amount };
             }
 
             if (invoice.Amount <= 0)
             {
-                return ReprocessInvoicePaymentResultEnum.Failed;
+                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Failed, PaymentError = "Invoice amount was less or equal than 0", InvoiceNumber = invoice.InvoiceNumber, Amount = invoice.Amount };
             }
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
@@ -359,7 +357,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (payment.Status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
             {
-                return ReprocessInvoicePaymentResultEnum.Successful;
+                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Successful };
             }
 
             if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction && invoice.Status != PaymentStatusEnum.DeclinedPaymentTransaction)
@@ -370,7 +368,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails, invoice.AuthorizationNumber);
-                return ReprocessInvoicePaymentResultEnum.Successful;
+                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Successful };
             }
 
             if (payment.Status == PaymentStatusEnum.Approved && invoice.Status != PaymentStatusEnum.Approved)
@@ -381,10 +379,10 @@ namespace Doppler.BillingUser.Controllers
                 await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetails, invoice.AuthorizationNumber);
                 await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
 
-                return ReprocessInvoicePaymentResultEnum.Successful;
+                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Successful };
             }
 
-            return ReprocessInvoicePaymentResultEnum.Failed;
+            return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Failed, PaymentError = payment.StatusDetails, Amount = invoice.Amount, InvoiceNumber = invoice.InvoiceNumber };
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
