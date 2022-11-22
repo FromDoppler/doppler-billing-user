@@ -41,7 +41,7 @@ namespace Doppler.BillingUser.Infrastructure
         Task<PaymentMethod> GetPaymentMethodByUserName(string username);
 
         Task<AccountingEntry> GetInvoice(int idClient, string authorizationNumber);
-        Task<List<AccountingEntry>> GetInvoices(int idClient);
+        Task<List<AccountingEntry>> GetDeclinedInvoices(int idClient);
 
         Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail, string authorizationNumber);
 

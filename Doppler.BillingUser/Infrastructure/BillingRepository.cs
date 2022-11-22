@@ -856,7 +856,7 @@ WHERE
             return invoice;
         }
 
-        public async Task<List<AccountingEntry>> GetInvoices(int idClient)
+        public async Task<List<AccountingEntry>> GetDeclinedInvoices(int idClient)
         {
             using var connection = _connectionFactory.GetConnection();
             var invoices = (await connection.QueryAsync<AccountingEntry>(@"
