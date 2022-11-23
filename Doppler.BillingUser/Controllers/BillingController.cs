@@ -317,6 +317,7 @@ namespace Doppler.BillingUser.Controllers
             var invoicesResults = invoicesPaymentResults.Select(x => x.Result);
             if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
             {
+                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Fallido", invoices.Sum(x => x.Amount));
                 return new BadRequestObjectResult("No invoice was processed succesfully");
             }
             _userRepository.UnblockAccountNotPayed(accountname);
@@ -324,6 +325,7 @@ namespace Doppler.BillingUser.Controllers
             // Checks whether all the invoices were process succesfully
             if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
             {
+                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Exitoso", 0.0M);
                 return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true });
             }
             else
@@ -335,6 +337,7 @@ namespace Doppler.BillingUser.Controllers
                     Error = invoice.PaymentError
                 }).ToList();
 
+                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Parcialmente exitoso", failedInvoices.Sum(x => x.Amount));
                 return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, FailedInvoices = failedInvoices });
             }
         }
