@@ -330,15 +330,10 @@ namespace Doppler.BillingUser.Controllers
             }
             else
             {
-                var failedInvoices = invoicesPaymentResults.Where(x => x.Result != ReprocessInvoicePaymentResultEnum.Successful).Select(invoice => new FailedToReprocessInvoice()
-                {
-                    Amount = invoice.Amount,
-                    InvoiceNumber = invoice.InvoiceNumber,
-                    Error = invoice.PaymentError
-                }).ToList();
+                var failedInvoicesAmount = invoicesPaymentResults.Where(x => x.Result != ReprocessInvoicePaymentResultEnum.Successful).Sum(x => x.Amount);
 
-                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Parcialmente exitoso", failedInvoices.Sum(x => x.Amount));
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, FailedInvoices = failedInvoices });
+                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Parcialmente exitoso", failedInvoicesAmount);
+                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false });
             }
         }
 
