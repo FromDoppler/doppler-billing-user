@@ -25,5 +25,6 @@ namespace Doppler.BillingUser.Model
         public int IdCurrencyType { get; set; }
         public decimal? CurrencyRate { get; set; }
         public decimal? Taxes { get; set; }
+        public string ErrorMessage { get; set; }
     }
 }

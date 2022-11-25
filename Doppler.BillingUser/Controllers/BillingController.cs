@@ -272,7 +272,8 @@ namespace Doppler.BillingUser.Controllers
             {
                 Date = invoice.Date,
                 InvoiceNumber = invoice.InvoiceNumber,
-                Amount = invoice.Amount
+                Amount = invoice.Amount,
+                Error = invoice.ErrorMessage
             })
             .ToList();
 
