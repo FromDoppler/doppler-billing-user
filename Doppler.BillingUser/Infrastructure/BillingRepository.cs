@@ -875,7 +875,8 @@ SELECT
     AE.[IdInvoiceBillingType],
     AE.[IdCurrencyType],
     AE.[CurrencyRate],
-    AE.[Taxes]
+    AE.[Taxes],
+    AE.[ErrorMessage]
 FROM
     [dbo].[AccountingEntry] AE
 WHERE

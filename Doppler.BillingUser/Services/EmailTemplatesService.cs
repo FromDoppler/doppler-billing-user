@@ -394,6 +394,29 @@ namespace Doppler.BillingUser.Services
             return Task.WhenAll(updatePlanAdminEmail, updatePlanEmail);
         }
 
+        public Task SendReprocessStatusNotification(
+            string accountname,
+            int userId,
+            decimal amount,
+            string reprocessStatus,
+            decimal pendingAmount)
+        {
+            var template = _emailSettings.Value.ReprocessStatusAdminTemplateId;
+            return _emailSender.SafeSendWithTemplateAsync(
+                templateId: template,
+                templateModel: new
+                {
+                    urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                    userId,
+                    userEmail = accountname,
+                    amount,
+                    reprocessStatus,
+                    pendingAmount,
+                    year = DateTime.UtcNow.Year
+                },
+                to: new[] { _emailSettings.Value.BillingEmail },
+                replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+        }
     }
 }
 

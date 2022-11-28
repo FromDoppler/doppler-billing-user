@@ -14,6 +14,6 @@ namespace Doppler.BillingUser.Services
         Task SendNotificationForMercadoPagoPaymentApproved(int userId, string accountname);
         Task SendNotificationForMercadoPagoPaymentInProcess(int userId, string accountname, string errorCode, string errorMessage, bool isFreeUser);
         Task SendNotificationForUpdatePlan(string accountname, User userInformation, UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, PlanAmountDetails amountDetails);
-
+        Task SendReprocessStatusNotification(string accountname, int userId, decimal amount, string reprocessStatus, decimal pendingAmount);
     }
 }
