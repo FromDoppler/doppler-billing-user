@@ -316,22 +316,29 @@ namespace Doppler.BillingUser.Controllers
                 invoicesPaymentResults.Add(reprocessResult);
             }
             var invoicesResults = invoicesPaymentResults.Select(x => x.Result);
-            if (!invoicesResults.Contains(ReprocessInvoicePaymentResultEnum.Successful))
+
+            if (invoicesResults.All(x => x.Equals(PaymentStatusEnum.DeclinedPaymentTransaction)))
             {
                 await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Fallido", invoices.Sum(x => x.Amount));
                 return new BadRequestObjectResult("No invoice was processed succesfully");
             }
             _userRepository.UnblockAccountNotPayed(accountname);
 
-            // Checks whether all the invoices were process succesfully
-            if (invoicesResults.All(x => x.Equals(ReprocessInvoicePaymentResultEnum.Successful)))
+            if (invoicesResults.Any(x => x == PaymentStatusEnum.Pending))
+            {
+                var failedAndPendingInvoicesAmount = invoicesPaymentResults.Where(x => x.Result != PaymentStatusEnum.Approved).Sum(x => x.Amount);
+
+                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Pendiente", failedAndPendingInvoicesAmount);
+            }
+
+            if (invoicesResults.All(x => x.Equals(PaymentStatusEnum.Approved)))
             {
                 await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Exitoso", 0.0M);
                 return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true });
             }
             else
             {
-                var failedInvoicesAmount = invoicesPaymentResults.Where(x => x.Result != ReprocessInvoicePaymentResultEnum.Successful).Sum(x => x.Amount);
+                var failedInvoicesAmount = invoicesPaymentResults.Where(x => x.Result == PaymentStatusEnum.DeclinedPaymentTransaction).Sum(x => x.Amount);
 
                 await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Parcialmente exitoso", failedInvoicesAmount);
                 return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false });
@@ -347,46 +354,40 @@ namespace Doppler.BillingUser.Controllers
                 var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
                 _logger.LogError(messageError);
                 await _slackService.SendNotification(messageError);
-                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Failed, PaymentError = "Missing credit card information", InvoiceNumber = invoice.InvoiceNumber, Amount = invoice.Amount };
+                return new ReprocessInvoicePaymentResult() { Result = PaymentStatusEnum.DeclinedPaymentTransaction, PaymentError = "Missing credit card information", InvoiceNumber = invoice.InvoiceNumber, Amount = invoice.Amount };
             }
 
             if (invoice.Amount <= 0)
             {
-                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Failed, PaymentError = "Invoice amount was less or equal than 0", InvoiceNumber = invoice.InvoiceNumber, Amount = invoice.Amount };
+                return new ReprocessInvoicePaymentResult() { Result = PaymentStatusEnum.DeclinedPaymentTransaction, PaymentError = "Invoice amount was less or equal than 0", InvoiceNumber = invoice.InvoiceNumber, Amount = invoice.Amount };
             }
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
 
-            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null); ;
+            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null);
 
-            if (payment.Status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
+            if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction)
             {
-                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Successful };
-            }
-
-            if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction && invoice.Status != PaymentStatusEnum.DeclinedPaymentTransaction)
-            {
-                if (invoice.Status == PaymentStatusEnum.Approved)
-                {
-                    _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetails);
-                }
-
                 await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails, invoice.AuthorizationNumber);
-                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Successful };
+                return new ReprocessInvoicePaymentResult() { Result = PaymentStatusEnum.DeclinedPaymentTransaction, PaymentError = payment.StatusDetails, Amount = invoice.Amount, InvoiceNumber = invoice.InvoiceNumber };
             }
 
-            if (payment.Status == PaymentStatusEnum.Approved && invoice.Status != PaymentStatusEnum.Approved)
+            if (payment.Status == PaymentStatusEnum.Pending)
             {
-                invoice.AuthorizationNumber = payment.AuthorizationNumber;
+                return new ReprocessInvoicePaymentResult() { Result = payment.Status, Amount = invoice.Amount };
+            }
+
+            if (payment.Status == PaymentStatusEnum.Approved)
+            {
                 var accountingEntryMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
+                invoice.AuthorizationNumber = payment.AuthorizationNumber;
                 var paymentEntry = await accountingEntryMapper.MapToPaymentAccountingEntry(invoice, encryptedCreditCard);
-                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetails, invoice.AuthorizationNumber);
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails, invoice.AuthorizationNumber);
                 await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
 
-                return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Successful };
+                return new ReprocessInvoicePaymentResult() { Result = payment.Status };
             }
-
-            return new ReprocessInvoicePaymentResult() { Result = ReprocessInvoicePaymentResultEnum.Failed, PaymentError = payment.StatusDetails, Amount = invoice.Amount, InvoiceNumber = invoice.InvoiceNumber };
+            return new ReprocessInvoicePaymentResult() { Result = PaymentStatusEnum.DeclinedPaymentTransaction, PaymentError = payment.StatusDetails, Amount = invoice.Amount, InvoiceNumber = invoice.InvoiceNumber };
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
