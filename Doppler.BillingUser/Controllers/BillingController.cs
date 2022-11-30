@@ -257,31 +257,39 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
-        [HttpGet("/accounts/{accountname}/invoices/declined")]
-        public async Task<IActionResult> GetDeclinedInvoices(string accountname)
+        [HttpGet("/accounts/{accountname}/invoices")]
+        public async Task<IActionResult> GetInvoices(string accountname, [FromQuery] PaymentStatusApiEnum[] withStatus)
         {
+            if (withStatus.Length == 0)
+            {
+                withStatus = new PaymentStatusApiEnum[] { PaymentStatusApiEnum.Declined, PaymentStatusApiEnum.Pending, PaymentStatusApiEnum.Approved };
+            }
+
             var user = await _userRepository.GetUserInformation(accountname);
 
             if (user == null)
             {
                 return new BadRequestObjectResult("The user does not exist");
             }
+            var mapper = new PaymentStatusMapper();
+            var mappedStatus = withStatus.Select(x => mapper.MapFromPaymentStatusApiEnumToPaymentStatusEnum(x)).ToArray();
 
-            var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
+            var invoices = await _billingRepository.GetInvoices(user.IdUser, mappedStatus);
 
-            var declinedInvoicesData = invoices.Select(invoice => new DeclinedInvoiceData()
+            var invoicesData = invoices.Select(invoice => new DeclinedInvoiceData()
             {
                 Date = invoice.Date,
                 InvoiceNumber = invoice.InvoiceNumber,
                 Amount = invoice.Amount,
-                Error = invoice.ErrorMessage
+                Error = invoice.ErrorMessage,
+                Status = mapper.MapFromPaymentStatusEnumToPaymentStatusApiEnum(invoice.Status).ToString(),
             })
             .ToList();
-
+            var totalPending = invoices.Where(x => x.Status != PaymentStatusEnum.Approved).Sum(x => x.Amount);
             return new OkObjectResult(new GetDeclinedInvoicesResult()
             {
-                TotalPending = declinedInvoicesData.Sum(x => x.Amount),
-                Invoices = declinedInvoicesData
+                TotalPending = totalPending,
+                Invoices = invoicesData
             });
         }
 
@@ -301,7 +309,7 @@ namespace Doppler.BillingUser.Controllers
 
             var user = await _userRepository.GetUserInformation(accountname);
 
-            var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
+            var invoices = await _billingRepository.GetInvoices(user.IdUser, PaymentStatusEnum.DeclinedPaymentTransaction);
 
             if (invoices.Count == 0)
             {

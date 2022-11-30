@@ -95,7 +95,7 @@ namespace Doppler.BillingUser.Test
             var authorizatioNumber = "LLLTD222";
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
-            billingRepositoryMock.Setup(x => x.GetDeclinedInvoices(userId))
+            billingRepositoryMock.Setup(x => x.GetInvoices(userId, PaymentStatusEnum.DeclinedPaymentTransaction))
                 .ReturnsAsync(new List<AccountingEntry>());
 
             var userRepositoryMock = new Mock<IUserRepository>();
@@ -166,7 +166,7 @@ namespace Doppler.BillingUser.Test
             var billingRepositoryMock = new Mock<IBillingRepository>();
             billingRepositoryMock.Setup(x => x.CreateAccountingEntriesAsync(It.IsAny<AccountingEntry>(), It.IsAny<AccountingEntry>())).ReturnsAsync(1);
             billingRepositoryMock.Setup(x => x.GetPaymentMethodByUserName(It.IsAny<string>())).ReturnsAsync(currentPaymentMethod);
-            billingRepositoryMock.Setup(x => x.GetDeclinedInvoices(userId))
+            billingRepositoryMock.Setup(x => x.GetInvoices(userId, PaymentStatusEnum.DeclinedPaymentTransaction))
                 .ReturnsAsync(new List<AccountingEntry>()
                 {
                     new AccountingEntry() { Amount = 1, Status = PaymentStatusEnum.DeclinedPaymentTransaction }

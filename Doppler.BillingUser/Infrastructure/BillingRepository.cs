@@ -856,7 +856,7 @@ WHERE
             return invoice;
         }
 
-        public async Task<List<AccountingEntry>> GetDeclinedInvoices(int idClient)
+        public async Task<List<AccountingEntry>> GetInvoices(int idClient, params PaymentStatusEnum[] status)
         {
             using var connection = _connectionFactory.GetConnection();
             var invoices = (await connection.QueryAsync<AccountingEntry>(@"
@@ -880,11 +880,11 @@ SELECT
 FROM
     [dbo].[AccountingEntry] AE
 WHERE
-    idClient = @idClient AND [Status]=@status",
+    idClient = @idClient AND [Status] IN @statusCondition",
                 new
                 {
                     @idClient = idClient,
-                    @status = PaymentStatusEnum.DeclinedPaymentTransaction.ToString()
+                    @statusCondition = status.Select(x => x.ToString())
                 })).ToList();
             return invoices;
         }
