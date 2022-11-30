@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Doppler.BillingUser.Model
+namespace Doppler.BillingUser.ApiModels
 {
     public class GetDeclinedInvoicesResult
     {

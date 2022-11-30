@@ -31,6 +31,7 @@ using FluentValidator;
 using System.Drawing;
 using System.Text;
 using Tavis.UriTemplates;
+using Doppler.BillingUser.ApiModels;
 
 namespace Doppler.BillingUser.Controllers
 {
