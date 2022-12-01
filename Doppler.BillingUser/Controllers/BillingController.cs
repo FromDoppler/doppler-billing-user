@@ -231,6 +231,18 @@ namespace Doppler.BillingUser.Controllers
                 _logger.LogDebug("Update current payment method.");
 
                 User userInformation = await _userRepository.GetUserInformation(accountname);
+
+                if (userInformation == null)
+                {
+                    return new BadRequestObjectResult("The user does not exist");
+                }
+
+                if (userInformation.IsCancelated)
+                {
+                    return new BadRequestObjectResult("UserCanceled");
+                }
+
+
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
                 if (!isSuccess)
@@ -261,7 +273,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (user == null)
             {
-                return new BadRequestObjectResult("The user does not exist");
+                return new NotFoundObjectResult("The user does not exist");
             }
             var mappedStatus = withStatus.Select(x => x.MapToPaymentStatusEnum()).ToArray();
 
@@ -429,6 +441,14 @@ namespace Doppler.BillingUser.Controllers
                     _logger.LogError(messageError);
                     await _slackService.SendNotification(messageError);
                     return new NotFoundObjectResult("Invalid user");
+                }
+
+                if (user.IsCancelated)
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Canceled user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult("UserCanceled");
                 }
 
                 if (!AllowedPaymentMethodsForBilling.Any(p => p == user.PaymentMethod))

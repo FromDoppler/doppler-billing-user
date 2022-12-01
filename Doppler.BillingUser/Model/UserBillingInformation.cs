@@ -22,5 +22,6 @@ namespace Doppler.BillingUser.Model
         public bool UpgradePending { get; set; }
         public DateTime? UTCUpgrade { get; set; }
         public int MaxSubscribers { get; set; }
+        public bool IsCancelated { get; set; }
     }
 }

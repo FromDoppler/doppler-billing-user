@@ -1582,6 +1582,54 @@ namespace Doppler.BillingUser.Test
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         }
 
+        [Fact]
+        public async Task POST_agreement_information_should_return_bad_request_when_user_is_cancelated()
+        {
+            // Arrange
+            var user = new UserBillingInformation()
+            {
+                IdUser = 1,
+                PaymentMethod = PaymentMethodEnum.CC,
+                IsCancelated = true
+            };
+
+            var agreement = new
+            {
+                planId = 1,
+                total = 15
+            };
+
+            var accountName = "test1@example.com";
+            var accountPlansServiceMock = new Mock<IAccountPlansService>();
+            accountPlansServiceMock.Setup(x => x.IsValidTotal(accountName, It.IsAny<AgreementInformation>()))
+                .ReturnsAsync(true);
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
+            userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
+            userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
+                    services.AddSingleton(accountPlansServiceMock.Object);
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                });
+
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518);
+
+            // Act
+            var response = await client.PostAsync("accounts/test1@example.com/agreements", JsonContent.Create(agreement));
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
         private static Mock<IOptions<SlackSettings>> GetSlackSettingsMock()
         {
             var slackSettingsMock = new Mock<IOptions<SlackSettings>>();

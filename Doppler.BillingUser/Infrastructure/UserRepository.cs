@@ -48,7 +48,8 @@ SELECT
     U.CUIT,
     U.UTCUpgrade,
     U.IdCurrentBillingCredit,
-    U.MaxSubscribers
+    U.MaxSubscribers,
+    U.IsCancelated
 FROM
     [User] U
     INNER JOIN
@@ -218,7 +219,8 @@ SELECT
     U.RazonSocial,
     U.IdConsumerType,
     U.BillingEmails,
-    BS.IdCountry as IdBillingCountry
+    BS.IdCountry as IdBillingCountry,
+    U.IsCancelated
 FROM
     [User] U
 LEFT JOIN
