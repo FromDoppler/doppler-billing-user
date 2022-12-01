@@ -60,7 +60,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             _logger = logger;
         }
 
-        private async Task<string> PostRequest(Transaction txn, int clientId, bool isFreeUser)
+        private async Task<string> PostRequest(Transaction txn, int clientId, bool isFreeUser, bool isReprocessCall = false)
         {
             PaymentErrorCode errorCode;
             try
@@ -103,7 +103,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
                     _logger.LogError(String.Format("First Data Error: Client Id: {0}, CVDCode: {1}, CVD_Presence_Ind: {2}", clientId, txn.CVDCode, txn.CVD_Presence_Ind));
                     _logger.LogError(String.Format("Response: CVV: {0}, ErrorCode:{1}, ErrorMessage: {2}", apiResponse.CVV2, errorCode, errorMessage));
 
-                    if (txn.Transaction_Type != TransactionTypes.REFUND)
+                    if (txn.Transaction_Type != TransactionTypes.REFUND && !isReprocessCall)
                     {
                         await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, apiResponse.CTR, apiResponse.Bank_Message, PaymentMethodEnum.CC, isFreeUser);
                     }
@@ -164,10 +164,10 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             }
         }
 
-        public async Task<string> CreateCreditCardPayment(decimal chargeTotal, CreditCard creditCard, int clientId, bool isFreeUser)
+        public async Task<string> CreateCreditCardPayment(decimal chargeTotal, CreditCard creditCard, int clientId, bool isFreeUser, bool isReprocessCall)
         {
             var paymentRequest = CreateDirectPaymentRequest(TransactionTypes.PURCHASE, chargeTotal, creditCard, clientId);
-            return await PostRequest(paymentRequest, clientId, isFreeUser);
+            return await PostRequest(paymentRequest, clientId, isFreeUser, isReprocessCall);
         }
     }
 }

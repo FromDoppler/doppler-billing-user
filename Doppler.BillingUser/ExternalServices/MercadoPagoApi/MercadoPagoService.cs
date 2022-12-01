@@ -61,7 +61,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
             }
         }
 
-        public async Task<MercadoPagoPayment> CreatePayment(string accountname, int clientId, decimal total, CreditCard creditCard, bool isFreeUser)
+        public async Task<MercadoPagoPayment> CreatePayment(string accountname, int clientId, decimal total, CreditCard creditCard, bool isFreeUser, bool isReprocessCall)
         {
             try
             {
@@ -77,8 +77,10 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
                     var errorMessage = payment.StatusDetail;
 
                     _logger.LogError(String.Format("Mercadopago payment Declined with Accountname:{0}, ErrorCode:{1}, ErrorMessage: {2}", accountname, errorCode, errorMessage));
-
-                    await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, string.Empty, String.Empty, PaymentMethodEnum.MP, isFreeUser);
+                    if (!isReprocessCall)
+                    {
+                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, string.Empty, String.Empty, PaymentMethodEnum.MP, isFreeUser);
+                    }
 
                     throw new DopplerApplicationException(errorCode, errorMessage);
                 }
