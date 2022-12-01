@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ApiModels;
 
 namespace Doppler.BillingUser.Test
 {
@@ -128,6 +129,58 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task Get_Invoices_should_return_a_valid_GetInvoicesResultObject()
+        {
+            // Arrange
+            var accountName = "test1@example.com";
+
+            var userId = 1;
+
+
+            var billingRepositoryMock = new Mock<IBillingRepository>();
+            billingRepositoryMock.Setup(x => x.GetInvoices(userId, new PaymentStatusEnum[] { PaymentStatusEnum.DeclinedPaymentTransaction }))
+                .ReturnsAsync(new List<AccountingEntry>()
+                {
+                    new AccountingEntry() { Amount = 10.0M, Status = PaymentStatusEnum.DeclinedPaymentTransaction },
+                    new AccountingEntry() { Amount = 10.0M, Status = PaymentStatusEnum.Approved }
+                });
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName)).ReturnsAsync(new User()
+            {
+                IdUser = 1
+            });
+
+            var paymentGatewayMock = new Mock<IPaymentGateway>();
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(paymentGatewayMock.Object);
+                    services.AddSingleton(billingRepositoryMock.Object);
+                });
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "accounts/test1@example.com/invoices?withStatus=declined")
+            {
+                Headers = { { "Authorization", $"Bearer {TOKEN_PROVISORY_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_1983727216}" } }
+            };
+
+            // Act
+            var response = await client.SendAsync(request);
+            var resposeAsString = await response.Content.ReadAsStringAsync();
+            var parsedResponse = JObject.Parse(resposeAsString);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal(parsedResponse["totalPending"], 10.0M);
+            Assert.Equal(parsedResponse["invoices"][0]["status"], "Declined");
+
         }
     }
 }

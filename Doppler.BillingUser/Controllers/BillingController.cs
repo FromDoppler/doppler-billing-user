@@ -267,7 +267,7 @@ namespace Doppler.BillingUser.Controllers
 
             var invoices = await _billingRepository.GetInvoices(user.IdUser, mappedStatus);
 
-            var invoicesData = invoices.Select(invoice => new DeclinedInvoiceData()
+            var invoicesData = invoices.Select(invoice => new InvoiceData()
             {
                 Date = invoice.Date,
                 InvoiceNumber = invoice.InvoiceNumber,
@@ -277,7 +277,7 @@ namespace Doppler.BillingUser.Controllers
             })
             .ToList();
             var totalPending = invoices.Where(x => x.Status != PaymentStatusEnum.Approved).Sum(x => x.Amount);
-            return new OkObjectResult(new GetDeclinedInvoicesResult()
+            return new OkObjectResult(new GetInvoicesResult()
             {
                 Invoices = invoicesData
             });
