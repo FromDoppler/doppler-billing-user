@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 
-namespace Doppler.BillingUser.Model
+namespace Doppler.BillingUser.ApiModels
 {
     public class DeclinedInvoiceData
     {

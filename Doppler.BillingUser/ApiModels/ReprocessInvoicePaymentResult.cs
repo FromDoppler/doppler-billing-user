@@ -1,6 +1,6 @@
 using Doppler.BillingUser.Enums;
 
-namespace Doppler.BillingUser.Model
+namespace Doppler.BillingUser.ApiModels
 {
     public class ReprocessInvoicePaymentResult
     {
