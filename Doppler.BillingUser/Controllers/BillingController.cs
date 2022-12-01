@@ -273,7 +273,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (user == null)
             {
-                return new BadRequestObjectResult("The user does not exist");
+                return new NotFoundObjectResult("The user does not exist");
             }
             var mappedStatus = withStatus.Select(x => x.MapToPaymentStatusEnum()).ToArray();
 
