@@ -260,19 +260,13 @@ namespace Doppler.BillingUser.Controllers
         [HttpGet("/accounts/{accountname}/invoices")]
         public async Task<IActionResult> GetInvoices(string accountname, [FromQuery] PaymentStatusApiEnum[] withStatus)
         {
-            if (withStatus.Length == 0)
-            {
-                withStatus = new PaymentStatusApiEnum[] { PaymentStatusApiEnum.Declined, PaymentStatusApiEnum.Pending, PaymentStatusApiEnum.Approved };
-            }
-
             var user = await _userRepository.GetUserInformation(accountname);
 
             if (user == null)
             {
                 return new BadRequestObjectResult("The user does not exist");
             }
-            var mapper = new PaymentStatusMapper();
-            var mappedStatus = withStatus.Select(x => mapper.MapFromPaymentStatusApiEnumToPaymentStatusEnum(x)).ToArray();
+            var mappedStatus = withStatus.Select(x => _paymentStatusMapper.MapFromPaymentStatusApiEnumToPaymentStatusEnum(x)).ToArray();
 
             var invoices = await _billingRepository.GetInvoices(user.IdUser, mappedStatus);
 
@@ -282,13 +276,12 @@ namespace Doppler.BillingUser.Controllers
                 InvoiceNumber = invoice.InvoiceNumber,
                 Amount = invoice.Amount,
                 Error = invoice.ErrorMessage,
-                Status = mapper.MapFromPaymentStatusEnumToPaymentStatusApiEnum(invoice.Status).ToString(),
+                Status = mapper.MapFromPaymentStatusEnumToPaymentStatusApiEnum(invoice.Status),
             })
             .ToList();
             var totalPending = invoices.Where(x => x.Status != PaymentStatusEnum.Approved).Sum(x => x.Amount);
             return new OkObjectResult(new GetDeclinedInvoicesResult()
             {
-                TotalPending = totalPending,
                 Invoices = invoicesData
             });
         }

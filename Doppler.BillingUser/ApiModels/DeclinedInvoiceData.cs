@@ -9,6 +9,6 @@ namespace Doppler.BillingUser.ApiModels
         public int InvoiceNumber { get; set; }
         public decimal Amount { get; set; }
         public string Error { get; set; }
-        public string Status { get; set; }
+        public PaymentStatusApiEnum Status { get; set; }
     }
 }

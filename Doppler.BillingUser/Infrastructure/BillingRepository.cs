@@ -1,4 +1,5 @@
 using Dapper;
+using Doppler.BillingUser.ApiModels;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.FirstData;
@@ -858,6 +859,10 @@ WHERE
 
         public async Task<List<AccountingEntry>> GetInvoices(int idClient, params PaymentStatusEnum[] status)
         {
+            if (status.Length == 0)
+            {
+                status = new PaymentStatusEnum[] { PaymentStatusEnum.DeclinedPaymentTransaction, PaymentStatusEnum.Pending, PaymentStatusEnum.Approved };
+            }
             using var connection = _connectionFactory.GetConnection();
             var invoices = (await connection.QueryAsync<AccountingEntry>(@"
 SELECT
