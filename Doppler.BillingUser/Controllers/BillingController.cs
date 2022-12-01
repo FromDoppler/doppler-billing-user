@@ -58,7 +58,6 @@ namespace Doppler.BillingUser.Controllers
         private readonly IEmailTemplatesService _emailTemplatesService;
         private readonly ICurrencyRepository _currencyRepository;
         private readonly IMercadoPagoService _mercadoPagoService;
-        private readonly IPaymentStatusMapper _paymentStatusMapper;
         private readonly IPaymentAmountHelper _paymentAmountService;
         private readonly IUserPaymentHistoryRepository _userPaymentHistoryRepository;
 
@@ -117,7 +116,6 @@ namespace Doppler.BillingUser.Controllers
             IZohoService zohoService,
             IEmailTemplatesService emailTemplatesService,
             IMercadoPagoService mercadopagoService,
-            IPaymentStatusMapper paymentStatusMapper,
             IPaymentAmountHelper paymentAmountService,
             IUserPaymentHistoryRepository userPaymentHistoryRepository)
         {
@@ -139,7 +137,6 @@ namespace Doppler.BillingUser.Controllers
             _zohoService = zohoService;
             _emailTemplatesService = emailTemplatesService;
             _mercadoPagoService = mercadopagoService;
-            _paymentStatusMapper = paymentStatusMapper;
             _paymentAmountService = paymentAmountService;
             _userPaymentHistoryRepository = userPaymentHistoryRepository;
         }
@@ -257,8 +254,8 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
-        [HttpGet("/accounts/{accountname}/invoices/declined")]
-        public async Task<IActionResult> GetDeclinedInvoices(string accountname)
+        [HttpGet("/accounts/{accountname}/invoices")]
+        public async Task<IActionResult> GetInvoices(string accountname, [FromQuery] PaymentStatusApiEnum[] withStatus)
         {
             var user = await _userRepository.GetUserInformation(accountname);
 
@@ -266,22 +263,23 @@ namespace Doppler.BillingUser.Controllers
             {
                 return new BadRequestObjectResult("The user does not exist");
             }
+            var mappedStatus = withStatus.Select(x => x.MapToPaymentStatusEnum()).ToArray();
 
-            var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
+            var invoices = await _billingRepository.GetInvoices(user.IdUser, mappedStatus);
 
-            var declinedInvoicesData = invoices.Select(invoice => new DeclinedInvoiceData()
+            var invoicesData = invoices.Select(invoice => new InvoiceData()
             {
                 Date = invoice.Date,
                 InvoiceNumber = invoice.InvoiceNumber,
                 Amount = invoice.Amount,
-                Error = invoice.ErrorMessage
+                Error = invoice.ErrorMessage,
+                Status = invoice.Status.MapToPaymentStatusApiEnum(),
             })
             .ToList();
-
-            return new OkObjectResult(new GetDeclinedInvoicesResult()
+            var totalPending = invoices.Where(x => x.Status != PaymentStatusEnum.Approved).Sum(x => x.Amount);
+            return new OkObjectResult(new GetInvoicesResult()
             {
-                TotalPending = declinedInvoicesData.Sum(x => x.Amount),
-                Invoices = declinedInvoicesData
+                Invoices = invoicesData
             });
         }
 
@@ -301,7 +299,7 @@ namespace Doppler.BillingUser.Controllers
 
             var user = await _userRepository.GetUserInformation(accountname);
 
-            var invoices = await _billingRepository.GetDeclinedInvoices(user.IdUser);
+            var invoices = await _billingRepository.GetInvoices(user.IdUser, PaymentStatusEnum.DeclinedPaymentTransaction);
 
             if (invoices.Count == 0)
             {
@@ -820,7 +818,7 @@ namespace Doppler.BillingUser.Controllers
                 case PaymentMethodEnum.MP:
                     var paymentDetails = await _paymentAmountService.ConvertCurrencyAmount(CurrencyTypeEnum.UsS, CurrencyTypeEnum.sARG, total);
                     var mercadoPagoPayment = await _mercadoPagoService.CreatePayment(accountname, userId, paymentDetails.Total, encryptedCreditCard, isFreeUser);
-                    return new CreditCardPayment { Status = _paymentStatusMapper.MapToPaymentStatus(mercadoPagoPayment.Status), AuthorizationNumber = mercadoPagoPayment.Id.ToString() };
+                    return new CreditCardPayment { Status = mercadoPagoPayment.Status.MapToPaymentStatus(), AuthorizationNumber = mercadoPagoPayment.Id.ToString() };
                 default:
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved };
             }

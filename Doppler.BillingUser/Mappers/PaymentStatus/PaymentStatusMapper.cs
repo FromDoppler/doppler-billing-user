@@ -5,9 +5,9 @@ using System.Collections;
 
 namespace Doppler.BillingUser.Mappers.PaymentStatus
 {
-    public class PaymentStatusMapper : IPaymentStatusMapper
+    public static class PaymentStatusMapper
     {
-        public PaymentStatusEnum MapFromPaymentStatusApiEnumToPaymentStatusEnum(PaymentStatusApiEnum status)
+        public static PaymentStatusEnum MapToPaymentStatusEnum(this PaymentStatusApiEnum status)
         {
             return status switch
             {
@@ -18,7 +18,7 @@ namespace Doppler.BillingUser.Mappers.PaymentStatus
             };
         }
 
-        public PaymentStatusApiEnum MapFromPaymentStatusEnumToPaymentStatusApiEnum(PaymentStatusEnum status)
+        public static PaymentStatusApiEnum MapToPaymentStatusApiEnum(this PaymentStatusEnum status)
         {
             return status switch
             {
@@ -29,7 +29,7 @@ namespace Doppler.BillingUser.Mappers.PaymentStatus
             };
         }
 
-        public PaymentStatusEnum MapToPaymentStatus(MercadoPagoPaymentStatusEnum status)
+        public static PaymentStatusEnum MapToPaymentStatus(this MercadoPagoPaymentStatusEnum status)
         {
             return status switch
             {

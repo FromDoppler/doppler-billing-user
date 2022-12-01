@@ -106,7 +106,6 @@ namespace Doppler.BillingUser
             services.AddScoped<ICurrencyRepository, CurrencyRepository>();
             services.Configure<MercadoPagoSettings>(Configuration.GetSection(nameof(MercadoPagoSettings)));
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
-            services.AddScoped<IPaymentStatusMapper, PaymentStatusMapper>();
             services.AddScoped<IPaymentAmountHelper, PaymentAmounthelper>();
             services.AddScoped<IUserPaymentHistoryRepository, UserPaymentHistoryRepository>();
         }

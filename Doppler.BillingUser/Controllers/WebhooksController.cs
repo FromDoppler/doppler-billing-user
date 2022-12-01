@@ -18,7 +18,6 @@ namespace Doppler.BillingUser.Controllers
         private readonly ILogger<WebhooksController> _logger;
         private readonly IUserRepository _userRepository;
         private readonly IMercadoPagoService _mercadoPagoService;
-        private readonly IPaymentStatusMapper _paymentStatusMapper;
         private readonly IEmailTemplatesService _emailTemplatesService;
         private readonly string PAYMENT_UPDATED = "payment.updated";
 
@@ -28,7 +27,6 @@ namespace Doppler.BillingUser.Controllers
             IBillingRepository billingRepository,
             IUserRepository userRepository,
             IMercadoPagoService mercadoPagoService,
-            IPaymentStatusMapper paymentStatusMapper,
             IEmailTemplatesService emailTemplatesService)
         {
             _billingRepository = billingRepository;
@@ -36,7 +34,6 @@ namespace Doppler.BillingUser.Controllers
             _logger = logger;
             _userRepository = userRepository;
             _mercadoPagoService = mercadoPagoService;
-            _paymentStatusMapper = paymentStatusMapper;
             _emailTemplatesService = emailTemplatesService;
         }
 
@@ -63,7 +60,7 @@ namespace Doppler.BillingUser.Controllers
 
             var payment = await _mercadoPagoService.GetPaymentById(notification.Data.Id, accountname);
 
-            var status = _paymentStatusMapper.MapToPaymentStatus(payment.Status);
+            var status = payment.Status.MapToPaymentStatus();
             if (status == PaymentStatusEnum.Pending && invoice.Status == PaymentStatusEnum.Approved)
             {
                 return new OkObjectResult("Successful");

@@ -16,8 +16,7 @@ namespace Doppler.BillingUser.Test
         [MemberData(nameof(AllPaymentStatusApiEnumValues))]
         public void MapFromPaymentStatusApiEnumToPaymentStatusEnum_should_return_a_valid_value(PaymentStatusApiEnum value)
         {
-            var mapper = new PaymentStatusMapper();
-            var result = mapper.MapFromPaymentStatusApiEnumToPaymentStatusEnum(value);
+            var result = value.MapToPaymentStatusEnum();
 
             Assert.Contains(result, Enum.GetValues<PaymentStatusEnum>());
         }
@@ -28,8 +27,7 @@ namespace Doppler.BillingUser.Test
         [MemberData(nameof(AllPaymentStatusEnumValues))]
         public void MapFromPaymentStatusEnumToPaymentStatusApiEnum_should_return_a_valid_value(PaymentStatusEnum value)
         {
-            var mapper = new PaymentStatusMapper();
-            var result = mapper.MapFromPaymentStatusEnumToPaymentStatusApiEnum(value);
+            var result = value.MapToPaymentStatusApiEnum();
 
             Assert.Contains(result, Enum.GetValues<PaymentStatusApiEnum>());
         }
