@@ -277,7 +277,7 @@ namespace Doppler.BillingUser.Controllers
             }
         }
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
-        [HttpPost("accounts/{accountname}/reprocess-transfer")]
+        [HttpPost("accounts/{accountname}/payments/reprocess/send-contact-information-notification")]
         public async Task<IActionResult> SendContactInformationForTransfer(string accountname, ReprocessByTransferUserData userData)
         {
             var user = await _userRepository.GetUserInformation(accountname);
