@@ -121,6 +121,7 @@ namespace Doppler.BillingUser.Test
                     It.IsAny<decimal>(),
                     It.IsAny<CreditCard>(),
                     It.IsAny<int>(),
+                    It.IsAny<bool>(),
                     It.IsAny<bool>()))
                 .ReturnsAsync(authorizationNumber);
 
