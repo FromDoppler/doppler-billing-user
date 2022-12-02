@@ -418,7 +418,7 @@ namespace Doppler.BillingUser.Services
                 replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
 
-        public Task SendReprocessByTransferStatusNotification(
+        public Task SendContactInformationForTransferNotification(
             string accountname,
             int userId,
             string username,
@@ -426,7 +426,7 @@ namespace Doppler.BillingUser.Services
             string contactemail,
             string contactphonenumber)
         {
-            var template = _emailSettings.Value.ReprocessByTransferStatusAdminTemplateId;
+            var template = _emailSettings.Value.ContactInformationForTransferAdminTemplateId;
             return _emailSender.SafeSendWithTemplateAsync(
                 templateId: template,
                 templateModel: new
