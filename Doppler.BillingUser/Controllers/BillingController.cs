@@ -276,6 +276,20 @@ namespace Doppler.BillingUser.Controllers
                 return new BadRequestObjectResult(e.Message);
             }
         }
+        [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
+        [HttpPost("accounts/{accountname}/reprocess-transfer")]
+        public async Task<IActionResult> SendReprocessEmailForTransfer(string accountname, ReprocessByTransferUserData userData)
+        {
+            var user = await _userRepository.GetUserInformation(accountname);
+
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            await _emailTemplatesService.SendReprocessByTransferStatusNotification(accountname, user.IdUser, userData.UserName, userData.UserLastname, userData.UserEmail, userData.PhoneNumber);
+            return new OkObjectResult("Successfully");
+        }
 
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpGet("/accounts/{accountname}/invoices")]

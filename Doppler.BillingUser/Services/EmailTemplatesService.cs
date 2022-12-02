@@ -417,6 +417,32 @@ namespace Doppler.BillingUser.Services
                 to: new[] { _emailSettings.Value.BillingEmail },
                 replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
+
+        public Task SendReprocessByTransferStatusNotification(
+            string accountname,
+            int userId,
+            string username,
+            string userlastname,
+            string contactemail,
+            string contactphonenumber)
+        {
+            var template = _emailSettings.Value.ReprocessByTransferStatusAdminTemplateId;
+            return _emailSender.SafeSendWithTemplateAsync(
+                templateId: template,
+                templateModel: new
+                {
+                    urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                    userId,
+                    accountName = accountname,
+                    userName = username,
+                    userLastname = userlastname,
+                    userEmail = contactemail,
+                    userPhoneNumber = contactphonenumber,
+                    year = DateTime.UtcNow.Year
+                },
+                to: new[] { _emailSettings.Value.BillingEmail },
+                replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+        }
     }
 }
 
