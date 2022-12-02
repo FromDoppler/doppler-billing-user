@@ -287,7 +287,7 @@ namespace Doppler.BillingUser.Controllers
                 return new NotFoundObjectResult("The user does not exist");
             }
 
-            await _emailTemplatesService.SendContactInformationForTransferNotification(accountname, user.IdUser, userData.UserName, userData.UserLastname, userData.UserEmail, userData.PhoneNumber);
+            await _emailTemplatesService.SendContactInformationForTransferNotification(user.IdUser, userData.UserName, userData.UserLastname, userData.UserEmail, userData.PhoneNumber);
             return new OkObjectResult("Successfully");
         }
 

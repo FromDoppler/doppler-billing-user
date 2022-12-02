@@ -419,7 +419,6 @@ namespace Doppler.BillingUser.Services
         }
 
         public Task SendContactInformationForTransferNotification(
-            string accountname,
             int userId,
             string username,
             string userlastname,
@@ -433,7 +432,6 @@ namespace Doppler.BillingUser.Services
                 {
                     urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
                     userId,
-                    accountName = accountname,
                     userName = username,
                     userLastname = userlastname,
                     userEmail = contactemail,
