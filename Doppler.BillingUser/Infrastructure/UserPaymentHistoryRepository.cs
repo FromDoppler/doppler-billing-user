@@ -1,4 +1,6 @@
 using Dapper;
+using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.Model;
 using System;
 using System.Threading.Tasks;
@@ -47,6 +49,28 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
                 @status = userPaymentHistory.Status,
                 @source = userPaymentHistory.Source,
                 @errorMessage = userPaymentHistory.ErrorMessage
+            });
+
+            return result;
+        }
+
+
+        public async Task<int> GetAttemptsToUpdateAsync(int idUser, DateTime from, DateTime to, string source)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var result = await connection.QueryFirstOrDefaultAsync<int>(@"
+SELECT COUNT(*) FROM [dbo].[UserPaymentHistory]
+WHERE IdUser = @idUser
+AND (Date BETWEEN @from AND @to)
+AND Source = @source
+AND Status = @status",
+            new
+            {
+                @from = from,
+                @to = to,
+                @idUser = idUser,
+                @status = PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(),
+                @source = source,
             });
 
             return result;

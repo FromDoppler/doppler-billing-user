@@ -22,6 +22,7 @@ using Doppler.BillingUser.ExternalServices.Zoho;
 using Doppler.BillingUser.Services;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Mappers.PaymentStatus;
+using Doppler.BillingUser.Settings;
 
 namespace Doppler.BillingUser
 {
@@ -108,6 +109,7 @@ namespace Doppler.BillingUser
             services.AddScoped<IMercadoPagoService, MercadoPagoService>();
             services.AddScoped<IPaymentAmountHelper, PaymentAmounthelper>();
             services.AddScoped<IUserPaymentHistoryRepository, UserPaymentHistoryRepository>();
+            services.Configure<AttemptsToUpdateSettings>(Configuration.GetSection(nameof(AttemptsToUpdateSettings)));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
