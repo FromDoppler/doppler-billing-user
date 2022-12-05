@@ -285,7 +285,7 @@ UPDATE [User]
 SET IsCancelated = 1,
 IdAccountCancellationReason = @idAccountCancelationReason,
 CancelatedDate = @date
-WHERE IdUser = IdUser;", new
+WHERE IdUser = @IdUser;", new
             {
                 @idUser = idUser,
                 @idAccountCancelationReason = idAccountCancelationReason,
