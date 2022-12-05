@@ -4,5 +4,6 @@ namespace Doppler.BillingUser.Settings
     {
         public int Minutes { get; set; }
         public int Attempts { get; set; }
+        public int AccountCancellationReason { get; set; }
     }
 }

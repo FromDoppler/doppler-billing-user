@@ -1073,8 +1073,7 @@ namespace Doppler.BillingUser.Controllers
 
             if (attemptsToUpdate > _attemptsToUpdateSettings.Value.Attempts)
             {
-                var cancellationReason = 24;
-                await _userRepository.CancelUser(idUser, cancellationReason);
+                await _userRepository.CancelUser(idUser, _attemptsToUpdateSettings.Value.AccountCancellationReason);
 
                 var messageError = $"The user  {accountname} was canceled by exceed the attempts to update.";
                 _logger.LogError(messageError);
