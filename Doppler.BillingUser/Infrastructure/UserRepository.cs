@@ -275,5 +275,23 @@ WHERE IdUser = @idUser AND MONTH(GETDATE()) = MONTH(Date) AND YEAR(GETDATE()) = 
 
             return partialBalance;
         }
+
+
+        public async Task CancelUser(int idUser, int idAccountCancelationReason)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryAsync(@"
+UPDATE [User]
+SET IsCancelated = 1,
+IdAccountCancellationReason = @idAccountCancelationReason,
+CancelatedDate = @date
+WHERE IdUser = IdUser;", new
+            {
+                @idUser = idUser,
+                @idAccountCancelationReason = idAccountCancelationReason,
+                @date = DateTime.UtcNow
+            }
+            );
+        }
     }
 }

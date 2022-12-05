@@ -32,6 +32,7 @@ using System.Drawing;
 using System.Text;
 using Tavis.UriTemplates;
 using Doppler.BillingUser.ApiModels;
+using Doppler.BillingUser.Settings;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -60,6 +61,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IMercadoPagoService _mercadoPagoService;
         private readonly IPaymentAmountHelper _paymentAmountService;
         private readonly IUserPaymentHistoryRepository _userPaymentHistoryRepository;
+        private readonly IOptions<AttemptsToUpdateSettings> _attemptsToUpdateSettings;
 
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -117,7 +119,8 @@ namespace Doppler.BillingUser.Controllers
             IEmailTemplatesService emailTemplatesService,
             IMercadoPagoService mercadopagoService,
             IPaymentAmountHelper paymentAmountService,
-            IUserPaymentHistoryRepository userPaymentHistoryRepository)
+            IUserPaymentHistoryRepository userPaymentHistoryRepository,
+            IOptions<AttemptsToUpdateSettings> attemptsToUpdateSettings)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -139,6 +142,7 @@ namespace Doppler.BillingUser.Controllers
             _mercadoPagoService = mercadopagoService;
             _paymentAmountService = paymentAmountService;
             _userPaymentHistoryRepository = userPaymentHistoryRepository;
+            _attemptsToUpdateSettings = attemptsToUpdateSettings;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -226,12 +230,12 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/payment-methods/current")]
         public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromBody] PaymentMethod paymentMethod)
         {
+            _logger.LogDebug("Update current payment method.");
+
+            User userInformation = await _userRepository.GetUserInformation(accountname);
+
             try
             {
-                _logger.LogDebug("Update current payment method.");
-
-                User userInformation = await _userRepository.GetUserInformation(accountname);
-
                 if (userInformation == null)
                 {
                     return new BadRequestObjectResult("The user does not exist");
@@ -247,9 +251,12 @@ namespace Doppler.BillingUser.Controllers
 
                 if (!isSuccess)
                 {
-                    var messageError = $"Failed at updating payment method for user {accountname}";
+                    var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
+                    var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}.";
+
                     _logger.LogError(messageError);
                     await _slackService.SendNotification(messageError);
+
                     return new BadRequestObjectResult("Failed at updating payment");
                 }
 
@@ -257,10 +264,15 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (DopplerApplicationException e)
             {
+                await CreateUserPaymentHistory(userInformation.IdUser, (int)Enum.Parse<PaymentMethodEnum>(paymentMethod.PaymentMethodName), 0, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, "PaymentMethod");
+
                 var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
                 var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}. Exception {e.Message}.";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
+
+                await CheckattemptsToCancelUser(userInformation.IdUser, userInformation.PaymentMethod, accountname);
+
                 return new BadRequestObjectResult(e.Message);
             }
         }
@@ -614,7 +626,7 @@ namespace Doppler.BillingUser.Controllers
                         await _promotionRepository.IncrementUsedTimes(promotion);
 
                     var status = !user.UpgradePending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
-                    await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
+                    await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
                     //Send notifications
                     SendNotifications(accountname, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.UpgradeRequest, currentPlan, null);
@@ -740,7 +752,7 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (Exception e)
             {
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message);
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, Source);
 
                 var cardNumber = string.Empty;
                 if (user.PaymentMethod == PaymentMethodEnum.CC)
@@ -917,7 +929,7 @@ namespace Doppler.BillingUser.Controllers
                     await _promotionRepository.IncrementUsedTimes(promotion);
 
                 var status = PaymentStatusEnum.Approved.ToDescription();
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
                 //Send notifications
                 SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Monthlies, currentPlan, amountDetails);
@@ -967,7 +979,7 @@ namespace Doppler.BillingUser.Controllers
                     await _promotionRepository.IncrementUsedTimes(promotion);
 
                 var status = PaymentStatusEnum.Approved.ToDescription();
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
+                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
                 //Send notifications
                 SendNotifications(user.Email, newPlan, user, 0, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Subscribers, currentPlan, amountDetails);
@@ -1030,7 +1042,7 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var status = !isPaymentPending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
-            await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty);
+            await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
             //Send notifications
             SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, billingCreditType, currentPlan, null);
@@ -1038,7 +1050,7 @@ namespace Doppler.BillingUser.Controllers
             return billingCreditId;
         }
 
-        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit, string errorMessage)
+        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit, string errorMessage, string source)
         {
             var userPaymentHistory = new UserPaymentHistory
             {
@@ -1047,12 +1059,28 @@ namespace Doppler.BillingUser.Controllers
                 ErrorMessage = errorMessage,
                 IdPaymentMethod = idPaymentMethod,
                 IdPlan = idPlan,
-                Source = Source,
+                Source = source,
                 Status = status,
                 IdBillingCredit = idBillingCredit > 0 ? idBillingCredit : null
             };
 
             await _userPaymentHistoryRepository.CreateUserPaymentHistoryAsync(userPaymentHistory);
         }
+
+        private async Task CheckattemptsToCancelUser(int idUser, int paymentMethod, string accountname)
+        {
+            var attemptsToUpdate = await _userPaymentHistoryRepository.GetAttemptsToUpdateAsync(idUser, DateTime.UtcNow.AddMinutes(-_attemptsToUpdateSettings.Value.Minutes), DateTime.UtcNow, "PaymentMethod");
+
+            if (attemptsToUpdate > _attemptsToUpdateSettings.Value.Attempts)
+            {
+                var cancellationReason = 24;
+                await _userRepository.CancelUser(idUser, cancellationReason);
+
+                var messageError = $"The user  {accountname} was canceled by exceed the attempts to update.";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+            }
+        }
+
     }
 }
