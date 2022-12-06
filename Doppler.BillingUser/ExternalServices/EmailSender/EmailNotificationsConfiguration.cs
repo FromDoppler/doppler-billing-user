@@ -29,5 +29,6 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public Dictionary<string, string> UpdatePlanTemplateId { get; set; }
         public string UpdatePlanAdminTemplateId { get; set; }
         public string ReprocessStatusAdminTemplateId { get; set; }
+        public string ContactInformationForTransferAdminTemplateId { get; set; }
     }
 }
