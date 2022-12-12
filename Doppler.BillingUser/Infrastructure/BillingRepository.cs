@@ -586,6 +586,28 @@ WHERE
             return result;
         }
 
+        public async Task UpdateBillingCreditAsync(int billingCreditId, BillingCreditPaymentInfo billingCreditPaymentInfo)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryFirstOrDefaultAsync("""
+UPDATE [dbo].[BillingCredits]
+SET CCNumber = @CCNumber,
+    CCExpMonth = @CCExpMonth,
+    CCExpYear = @CCExpYear,
+    CCVerification = @CCVerification
+WHERE
+    IdBillingCredit = @billingCreditId
+""",
+                new
+                {
+                    @billingCreditId = billingCreditId,
+                    @CCNumber = billingCreditPaymentInfo.CCNumber,
+                    @CCExpMonth = billingCreditPaymentInfo.CCExpMonth,
+                    @CCExpYear = billingCreditPaymentInfo.CCExpYear,
+                    @CCVerification = billingCreditPaymentInfo.CCVerification
+                });
+        }
+
         public async Task<int> CreateBillingCreditAsync(BillingCreditAgreement buyCreditAgreement)
         {
             using var connection = _connectionFactory.GetConnection();
