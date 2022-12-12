@@ -325,7 +325,7 @@ namespace Doppler.BillingUser.Controllers
                 Date = invoice.Date,
                 InvoiceNumber = invoice.InvoiceNumber,
                 Amount = invoice.Amount,
-                Error = invoice.ErrorMessage,
+                Error = (invoice.Status == PaymentStatusEnum.Pending) ? "Pending" : invoice.ErrorMessage,
                 Status = invoice.Status.MapToPaymentStatusApiEnum(),
             })
             .ToList();
