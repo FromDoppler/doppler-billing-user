@@ -260,6 +260,21 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("Failed at updating payment");
                 }
 
+                var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
+
+                if (userBillingInfo.IdCurrentBillingCredit != 0)
+                {
+                    var billingCreditPaymentInfo = new BillingCreditPaymentInfo()
+                    {
+                        CCNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                        CCExpMonth = int.Parse(paymentMethod.CCExpMonth),
+                        CCExpYear = int.Parse(paymentMethod.CCExpYear),
+                        CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification)
+                    };
+
+                    await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit, billingCreditPaymentInfo);
+                }
+
                 return new OkObjectResult("Successfully");
             }
             catch (DopplerApplicationException e)

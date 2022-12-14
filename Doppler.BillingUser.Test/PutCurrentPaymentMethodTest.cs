@@ -30,7 +30,6 @@ namespace Doppler.BillingUser.Test
         private const string TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20010908 = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOjEyMywidW5pcXVlX25hbWUiOiJ0ZXN0MUBleGFtcGxlLmNvbSIsInJvbGUiOiJVU0VSIiwiZXhwIjoxMDAwMDAwMDAwfQ.Ite0xcvR2yLyFuVSBpoXeyJiwW44rYGJPGSX6VH_mCHImovvHMlcqJZkJLFy7A7jdUWJRZy23E_7tBR_rSEz9DBisiVksPeNqjuM3auUSZkPrRIYz16RZzLahhVNF-101j4Hg0Q7ZJB4zcT2a9qgB00CtSejUKrLoVljGj6mUz-ejVY7mNvUs0EE6e3pq4sylz9HHw0wZMBkv29xj_iE_3jBGwAwifh2UMQuBP_TAo6IiMaCMxmbPdITNEmQfXXIG3yPw6KwRjDw_EWR_R6yWFhbXuLONsZQF6b9mfokW9PxQ5MNCgvXihWCYaAibJ62R3N0pyUuvpjOJfifwFFaRA";
         private const string TOKEN_PROVISORY_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_1983727216 = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm92aXNvcnlfdW5pcXVlX25hbWUiOiJ0ZXN0MUBleGFtcGxlLmNvbSIsImlhdCI6MTY2ODEwODAxNiwiZXhwIjoxOTgzNzI3MjE2fQ.ej2ZvwjVks1B2CEwPGalEWBxIj995-W4CXNYpAuBS4_USJ2WKJX2tFG6BS7CkAznMYvIom1Unym6vFSaKdQTlP38VwvEohr9FZA5MiLolB1Owddl5Qbu7VXOAChyO14055LvMeJD3aj1HturtndhU_Qv6z9Q29L7Qk2cUN5SjeQgnn9lAxf0nHVG4y-3Q-9tX75EBT4Y5HVHfncvGat4b1K-K8bOC9eXFcdAALIHHsDwWxhOsx_0HMlfBJLc0ThaIiJ0zr2Z-h6jbbfsE6eUHloIZ85ptHl7inLW4j0Wi9jDsYHVjOdgEDwzKhf-U-Uc-3G2rvp9tvhSS0vbDdt0xw";
         private readonly WebApplicationFactory<Startup> _factory;
-
         public PutCurrentPaymentMethodTest(WebApplicationFactory<Startup> factory)
         {
             _factory = factory;
@@ -158,6 +157,10 @@ namespace Doppler.BillingUser.Test
                     PaymentMethod = 1,
                     IsCancelated = false
                 });
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation()
+            {
+                IdCurrentBillingCredit = 1
+            });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -233,6 +236,7 @@ namespace Doppler.BillingUser.Test
                                 PaymentMethod = 1,
                                 IsCancelated = false
                             });
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation() { IdCurrentBillingCredit = 0 });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -306,6 +310,7 @@ namespace Doppler.BillingUser.Test
                                 PaymentMethod = 1,
                                 IsCancelated = false
                             });
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation() { IdCurrentBillingCredit = 0 });
 
             var factory = _factory.WithWebHostBuilder(builder =>
             {
@@ -435,6 +440,7 @@ namespace Doppler.BillingUser.Test
                                 PaymentMethod = 1,
                                 IsCancelated = false
                             });
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation() { IdCurrentBillingCredit = 0 });
 
             var factory = _factory.WithWebHostBuilder(builder =>
             {
