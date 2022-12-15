@@ -279,14 +279,16 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (DopplerApplicationException e)
             {
-                await CreateUserPaymentHistory(userInformation.IdUser, (int)Enum.Parse<PaymentMethodEnum>(paymentMethod.PaymentMethodName), 0, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, "PaymentMethod");
+                var creditCardNumber = paymentMethod.CCNumber.Replace(" ", "");
+                var lasFourDigits = !string.IsNullOrEmpty(creditCardNumber) ? creditCardNumber[^4..] : string.Empty;
+                await CreateUserPaymentHistory(userInformation.IdUser, (int)Enum.Parse<PaymentMethodEnum>(paymentMethod.PaymentMethodName), 0, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, "PaymentMethod", lasFourDigits);
 
                 var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
                 var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}. Exception {e.Message}.";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
 
-                await CheckattemptsToCancelUser(userInformation.IdUser, userInformation.PaymentMethod, accountname);
+                await CheckattemptsToCancelUser(userInformation.IdUser, accountname);
 
                 return new BadRequestObjectResult(e.Message);
             }
@@ -1079,7 +1081,7 @@ namespace Doppler.BillingUser.Controllers
             return billingCreditId;
         }
 
-        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit, string errorMessage, string source)
+        private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit, string errorMessage, string source, string creditCardLastFourDigits = null)
         {
             var userPaymentHistory = new UserPaymentHistory
             {
@@ -1090,16 +1092,16 @@ namespace Doppler.BillingUser.Controllers
                 IdPlan = idPlan,
                 Source = source,
                 Status = status,
-                IdBillingCredit = idBillingCredit > 0 ? idBillingCredit : null
+                IdBillingCredit = idBillingCredit > 0 ? idBillingCredit : null,
+                CreditCardLastFourDigits = creditCardLastFourDigits
             };
 
             await _userPaymentHistoryRepository.CreateUserPaymentHistoryAsync(userPaymentHistory);
         }
 
-        private async Task CheckattemptsToCancelUser(int idUser, int paymentMethod, string accountname)
+        private async Task CheckattemptsToCancelUser(int idUser, string accountname)
         {
             var attemptsToUpdate = await _userPaymentHistoryRepository.GetAttemptsToUpdateAsync(idUser, DateTime.UtcNow.AddMinutes(-_attemptsToUpdateSettings.Value.Minutes), DateTime.UtcNow, "PaymentMethod");
-
             if (attemptsToUpdate > _attemptsToUpdateSettings.Value.Attempts)
             {
                 await _userRepository.CancelUser(idUser, _attemptsToUpdateSettings.Value.AccountCancellationReason);
