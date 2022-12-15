@@ -62,7 +62,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
         {
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.QueryFirstOrDefaultAsync<int>(@"
-SELECT COUNT(*) FROM [dbo].[UserPaymentHistory]
+SELECT COUNT(DISTINCT CreditCardLastFourDigits) FROM [dbo].[UserPaymentHistory]
 WHERE IdUser = @idUser
 AND (Date BETWEEN @from AND @to)
 AND Source = @source

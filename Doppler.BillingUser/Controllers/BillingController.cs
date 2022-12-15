@@ -98,6 +98,7 @@ namespace Doppler.BillingUser.Controllers
         };
 
         private const string Source = "Checkout";
+        private const string CancelatedObservation = "Phishing User. AyC";
 
         public BillingController(
             ILogger<BillingController> logger,
@@ -279,7 +280,7 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (DopplerApplicationException e)
             {
-                var creditCardNumber = paymentMethod.CCNumber.Replace(" ", "");
+                var creditCardNumber = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? paymentMethod.CCNumber.Replace(" ", "") : string.Empty;
                 var lasFourDigits = !string.IsNullOrEmpty(creditCardNumber) ? creditCardNumber[^4..] : string.Empty;
                 await CreateUserPaymentHistory(userInformation.IdUser, (int)Enum.Parse<PaymentMethodEnum>(paymentMethod.PaymentMethodName), 0, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, "PaymentMethod", lasFourDigits);
 
@@ -1104,7 +1105,7 @@ namespace Doppler.BillingUser.Controllers
             var attemptsToUpdate = await _userPaymentHistoryRepository.GetAttemptsToUpdateAsync(idUser, DateTime.UtcNow.AddMinutes(-_attemptsToUpdateSettings.Value.Minutes), DateTime.UtcNow, "PaymentMethod");
             if (attemptsToUpdate > _attemptsToUpdateSettings.Value.Attempts)
             {
-                await _userRepository.CancelUser(idUser, _attemptsToUpdateSettings.Value.AccountCancellationReason);
+                await _userRepository.CancelUser(idUser, _attemptsToUpdateSettings.Value.AccountCancellationReason, CancelatedObservation);
 
                 var messageError = $"The user  {accountname} was canceled by exceed the attempts to update.";
                 _logger.LogError(messageError);
