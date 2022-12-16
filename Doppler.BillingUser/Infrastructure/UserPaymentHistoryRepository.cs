@@ -28,7 +28,8 @@ INSERT INTO [dbo].[UserPaymentHistory]
     [Status],
     [Source],
     [ErrorMessage],
-    [Date])
+    [Date],
+    [CreditCardLastFourDigits])
 VALUES (
     @idUser,
     @idPaymentMethod,
@@ -37,7 +38,8 @@ VALUES (
     @status,
     @source,
     @errorMessage,
-    @date);
+    @date,
+    @creditCardLastFourDigits);
 SELECT CAST(SCOPE_IDENTITY() AS INT)",
             new
             {
@@ -48,7 +50,8 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
                 @idBillingCredit = userPaymentHistory.IdBillingCredit,
                 @status = userPaymentHistory.Status,
                 @source = userPaymentHistory.Source,
-                @errorMessage = userPaymentHistory.ErrorMessage
+                @errorMessage = userPaymentHistory.ErrorMessage,
+                @creditCardLastFourDigits = userPaymentHistory.CreditCardLastFourDigits
             });
 
             return result;
@@ -59,7 +62,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
         {
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.QueryFirstOrDefaultAsync<int>(@"
-SELECT COUNT(*) FROM [dbo].[UserPaymentHistory]
+SELECT COUNT(DISTINCT CreditCardLastFourDigits) FROM [dbo].[UserPaymentHistory]
 WHERE IdUser = @idUser
 AND (Date BETWEEN @from AND @to)
 AND Source = @source

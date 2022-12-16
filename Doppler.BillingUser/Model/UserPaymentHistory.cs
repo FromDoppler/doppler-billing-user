@@ -13,5 +13,6 @@ namespace Doppler.BillingUser.Model
         public string Source { get; set; }
         public string ErrorMessage { get; set; }
         public DateTime Date { get; set; }
+        public string? CreditCardLastFourDigits { get; set; }
     }
 }

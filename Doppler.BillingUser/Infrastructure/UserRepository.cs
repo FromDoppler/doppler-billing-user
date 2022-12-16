@@ -277,19 +277,21 @@ WHERE IdUser = @idUser AND MONTH(GETDATE()) = MONTH(Date) AND YEAR(GETDATE()) = 
         }
 
 
-        public async Task CancelUser(int idUser, int idAccountCancelationReason)
+        public async Task CancelUser(int idUser, int idAccountCancelationReason, string cancelatedObservation)
         {
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryAsync(@"
 UPDATE [User]
 SET IsCancelated = 1,
 IdAccountCancellationReason = @idAccountCancelationReason,
+CancelatedObservation = @cancelatedObservation,
 CancelatedDate = @date
 WHERE IdUser = @IdUser;", new
             {
                 @idUser = idUser,
                 @idAccountCancelationReason = idAccountCancelationReason,
-                @date = DateTime.UtcNow
+                @date = DateTime.UtcNow,
+                @cancelatedObservation = cancelatedObservation
             }
             );
         }
