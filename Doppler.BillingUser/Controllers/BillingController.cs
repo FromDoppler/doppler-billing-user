@@ -263,7 +263,7 @@ namespace Doppler.BillingUser.Controllers
 
                 var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
 
-                if (userBillingInfo.IdCurrentBillingCredit != 0)
+                if (userBillingInfo.IdCurrentBillingCredit != 0 && userBillingInfo.PaymentMethod != PaymentMethodEnum.TRANSF)
                 {
                     var billingCreditPaymentInfo = new BillingCreditPaymentInfo()
                     {
