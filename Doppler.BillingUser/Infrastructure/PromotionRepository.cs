@@ -27,6 +27,20 @@ WHERE [IdPromotion] = @promocodeId", new
             });
         }
 
+        public async Task DecrementUsedTimesAsync(Promotion promocode)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            await connection.ExecuteAsync(@"
+UPDATE
+    [Promotions]
+SET
+    [TimesUsed] = [TimesUsed] - 1
+WHERE [IdPromotion] = @promocodeId", new
+            {
+                @promocodeId = promocode.IdPromotion
+            });
+        }
+
         public async Task<Promotion> GetById(int promocodeId)
         {
             using var connection = _connectionFactory.GetConnection();

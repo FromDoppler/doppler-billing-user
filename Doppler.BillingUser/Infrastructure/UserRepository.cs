@@ -49,7 +49,8 @@ SELECT
     U.UTCUpgrade,
     U.IdCurrentBillingCredit,
     U.MaxSubscribers,
-    U.IsCancelated
+    U.IsCancelated,
+    U.UpgradePending
 FROM
     [User] U
     INNER JOIN

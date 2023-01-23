@@ -6,6 +6,7 @@ namespace Doppler.BillingUser.Enums
         Credit_Request = 2,
         Credit_Buyed_CC = 3,
         Upgrade_Between_Monthlies = 13,
-        Upgrade_Between_Subscribers = 14
+        Upgrade_Between_Subscribers = 14,
+        Canceled = 17
     }
 }

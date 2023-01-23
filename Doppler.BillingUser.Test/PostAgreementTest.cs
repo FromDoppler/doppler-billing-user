@@ -2092,6 +2092,7 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation
                 {
                     IdUser = 1,
+                    IdCurrentBillingCredit = 1,
                     PaymentMethod = PaymentMethodEnum.CC
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
