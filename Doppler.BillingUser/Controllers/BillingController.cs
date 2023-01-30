@@ -708,6 +708,11 @@ namespace Doppler.BillingUser.Controllers
                                 agreementInformation.Total),
                             accountname);
                     }
+                    else
+                    {
+                        var slackMessage = $"Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                        await _slackService.SendNotification(slackMessage);
+                    }
                 }
 
                 var userType = currentPlan == null ? "Free user" : "Update plan";
