@@ -8,6 +8,7 @@ namespace Doppler.BillingUser.ApiModels
     {
         Approved,
         Pending,
-        Declined
+        Declined,
+        Failed
     }
 }

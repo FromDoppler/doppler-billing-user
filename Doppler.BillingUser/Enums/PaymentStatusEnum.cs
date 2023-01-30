@@ -9,6 +9,8 @@ namespace Doppler.BillingUser.Enums
         [Description("Pending")]
         Pending,
         [Description("Declined")]
-        DeclinedPaymentTransaction
+        DeclinedPaymentTransaction,
+        [Description("FailedPaymentTransaction")]
+        FailedPaymentTransaction
     }
 }
