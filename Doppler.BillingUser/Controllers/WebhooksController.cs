@@ -362,6 +362,10 @@ namespace Doppler.BillingUser.Controllers
                         await _userRepository.UpdateUserBillingCredit(user);
                         await _billingRepository.CancelBillingCreditAsync(pendingBillingCredit);
                     }
+
+                    var message = $"Successful at canceling the payment for: User: {accountname} - Billing Credit: {pendingBillingCredit.IdBillingCredit}";
+                    _logger.LogInformation(message);
+                    await _slackService.SendNotification(message);
                 }
             }
         }
