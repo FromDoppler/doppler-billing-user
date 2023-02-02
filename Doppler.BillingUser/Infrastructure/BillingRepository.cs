@@ -1338,14 +1338,16 @@ ORDER BY BC.[ActivationDate] DESC;",
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryFirstOrDefaultAsync(@"
 UPDATE [dbo].[BillingCredits]
-SET IdBillingCreditType = @idIdBillingCreditType
+SET IdBillingCreditType = @idIdBillingCreditType,
+    IdPaymentMethod = @idPaymentMethod
 WHERE
     IdBillingCredit = @billingCreditId
 ",
                 new
                 {
                     @billingCreditId = billingCredit.IdBillingCredit,
-                    @idIdBillingCreditType = (int)BillingCreditTypeEnum.Canceled
+                    @idIdBillingCreditType = (int)BillingCreditTypeEnum.Canceled,
+                    @idPaymentMethod = (int)PaymentMethodEnum.NONE
                 });
         }
 

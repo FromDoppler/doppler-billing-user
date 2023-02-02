@@ -362,6 +362,7 @@ namespace Doppler.BillingUser.Controllers
 
                         await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, pendingBillingCredit.IdUserTypePlan, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), pendingBillingCredit.IdBillingCredit, string.Empty, Source);
 
+                        user.PaymentMethod = PaymentMethodEnum.NONE;
                         await _userRepository.UpdateUserBillingCredit(user);
                         await _billingRepository.CancelBillingCreditAsync(pendingBillingCredit);
                     }
@@ -402,7 +403,7 @@ namespace Doppler.BillingUser.Controllers
                 case BillingCreditTypeEnum.UpgradeRequest:
                     if (billingCredit.IdUserType == (int)UserTypeEnum.INDIVIDUAL)
                     {
-                        await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, userTypePlanInformation, user, partialBalance, promotion, promotionCode, false);
+                        await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, userTypePlanInformation, user, partialBalance, promotion, promotionCode, false, false);
                     }
                     else
                     {
@@ -411,12 +412,12 @@ namespace Doppler.BillingUser.Controllers
                             await _emailTemplatesService.SendNotificationForSuscribersPlan(accountname, userInformation, userTypePlanInformation);
                         }
 
-                        await _emailTemplatesService.SendNotificationForUpgradePlan(accountname, userInformation, userTypePlanInformation, user, promotion, promotionCode, discountId, planDiscountInformation, false);
+                        await _emailTemplatesService.SendNotificationForUpgradePlan(accountname, userInformation, userTypePlanInformation, user, promotion, promotionCode, discountId, planDiscountInformation, false, false);
                     }
 
                     return;
                 case BillingCreditTypeEnum.Credit_Request:
-                    await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, userTypePlanInformation, user, partialBalance, promotion, promotionCode, false);
+                    await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, userTypePlanInformation, user, partialBalance, promotion, promotionCode, false, true);
                     return;
                 default:
                     return;

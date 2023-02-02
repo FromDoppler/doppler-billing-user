@@ -849,7 +849,7 @@ namespace Doppler.BillingUser.Controllers
 
                     if (newPlan.IdUserType == UserTypeEnum.INDIVIDUAL)
                     {
-                        await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved);
+                        await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved, true);
                     }
                     else
                     {
@@ -858,7 +858,7 @@ namespace Doppler.BillingUser.Controllers
                             await _emailTemplatesService.SendNotificationForSuscribersPlan(accountname, userInformation, newPlan);
                         }
 
-                        await _emailTemplatesService.SendNotificationForUpgradePlan(accountname, userInformation, newPlan, user, promotion, promocode, discountId, planDiscountInformation, !isUpgradeApproved);
+                        await _emailTemplatesService.SendNotificationForUpgradePlan(accountname, userInformation, newPlan, user, promotion, promocode, discountId, planDiscountInformation, !isUpgradeApproved, true);
                     }
 
                     return;
@@ -869,7 +869,7 @@ namespace Doppler.BillingUser.Controllers
                 case BillingCreditTypeEnum.Credit_Buyed_CC:
                 case BillingCreditTypeEnum.Credit_Request:
                     isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, promotion, payment));
-                    await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved);
+                    await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved, true);
                     return;
                 default:
                     return;

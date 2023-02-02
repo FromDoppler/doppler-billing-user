@@ -159,7 +159,8 @@ SET
     OriginInbound = @originInbound,
     UpgradePending = @upgradePending,
     UTCUpgrade = @utcUpgrade,
-    MaxSubscribers = @maxSubscribers
+    MaxSubscribers = @maxSubscribers,
+    PaymentMethod = @paymentMethod
 WHERE
     IdUser = @idUser;",
             new
@@ -171,7 +172,8 @@ WHERE
                 @originInbound = user.OriginInbound,
                 @upgradePending = user.UpgradePending,
                 @utcUpgrade = user.UTCUpgrade,
-                @maxSubscribers = user.MaxSubscribers
+                @maxSubscribers = user.MaxSubscribers,
+                @paymentMethod = user.PaymentMethod
             });
 
             return result;
