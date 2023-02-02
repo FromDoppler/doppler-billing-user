@@ -441,6 +441,42 @@ namespace Doppler.BillingUser.Services
                 to: new[] { _emailSettings.Value.BillingEmail },
                 replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
+
+
+        public Task SendNotificationForRejectedMercadoPagoPayment(string accountname, User user, bool isUpgradePending, string paymentStatusDetails)
+        {
+            var template = isUpgradePending ?
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpgradeTemplateId[user.Language ?? "en"] :
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpsellingTemplateId[user.Language ?? "en"];
+
+            var creditsEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = user.FirstName,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { accountname });
+
+            var templateAdmin = !isUpgradePending ?
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpgradeAdminTemplateId :
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpsellingAdminTemplateId;
+
+            var adminEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        userId = user.IdUser,
+                        motivoError = paymentStatusDetails,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { _emailSettings.Value.BillingEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return Task.WhenAll(creditsEmail, adminEmail);
+        }
     }
 }
 

@@ -265,7 +265,7 @@ WHERE
         {
             using var connection = _connectionFactory.GetConnection();
             var partialBalance = await connection.QueryFirstOrDefaultAsync<int>(@"
-SELECT SUM(CreditsQty)
+SELECT ISNULL(SUM(CreditsQty), 0)
 FROM MovementsCredits
 WHERE IdUser = @idUser AND MONTH(GETDATE()) = MONTH(Date) AND YEAR(GETDATE()) = YEAR(Date) AND
     CreditsQty > 0 AND IdUserType = 2 AND IdBillingCredit IS NOT NULL",

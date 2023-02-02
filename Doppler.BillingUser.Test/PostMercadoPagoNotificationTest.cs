@@ -238,12 +238,8 @@ namespace Doppler.BillingUser.Test
 
         [Theory]
         [InlineData(MercadoPagoPaymentStatusEnum.Rejected, PaymentStatusEnum.Pending)]
-        [InlineData(MercadoPagoPaymentStatusEnum.Rejected, PaymentStatusEnum.Approved)]
-        [InlineData(MercadoPagoPaymentStatusEnum.Refunded, PaymentStatusEnum.Approved)]
         [InlineData(MercadoPagoPaymentStatusEnum.Refunded, PaymentStatusEnum.Pending)]
-        [InlineData(MercadoPagoPaymentStatusEnum.Charged_Back, PaymentStatusEnum.Approved)]
         [InlineData(MercadoPagoPaymentStatusEnum.Charged_Back, PaymentStatusEnum.Pending)]
-        [InlineData(MercadoPagoPaymentStatusEnum.Cancelled, PaymentStatusEnum.Approved)]
         [InlineData(MercadoPagoPaymentStatusEnum.Cancelled, PaymentStatusEnum.Pending)]
         public async Task Update_mercadopago_payment_status_should_update_invoice_status_once_and_cancel_billing_credits_when_mp_payment_is_not_successful(MercadoPagoPaymentStatusEnum mpStatus, PaymentStatusEnum invoiceStatus)
         {
@@ -267,6 +263,8 @@ namespace Doppler.BillingUser.Test
 
             _userRepositoryMock.Setup(ur => ur.GetUserBillingInformation(It.IsAny<string>()))
                 .ReturnsAsync(new Model.UserBillingInformation());
+            _userRepositoryMock.Setup(ur => ur.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new Model.User { IdUser = 5, Language = "es" });
 
             _billingRepositoryMock.Setup(br => br.GetInvoice(It.IsAny<int>(), It.IsAny<string>()))
                 .ReturnsAsync(invoice);

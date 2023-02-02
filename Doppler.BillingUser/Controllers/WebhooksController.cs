@@ -306,31 +306,34 @@ namespace Doppler.BillingUser.Controllers
             if (invoice.Status == PaymentStatusEnum.Approved)
             {
                 _logger.LogError("The payment associated to the invoiceId {invoiceId} was rejected. Reason: {reason}", invoice.IdAccountingEntry, payment.StatusDetail);
+                return;
             }
 
-            await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, status, payment.StatusDetail, invoice.AuthorizationNumber);
+            var billingCredits = await _billingRepository.GetPendingBillingCreditsAsync(user.IdUser, PaymentMethodEnum.MP);
 
-            if (payment.StatusDetail == "cc_rejected_high_risk" && (!user.UpgradePending.HasValue || (user.UpgradePending.HasValue && user.UpgradePending.Value)))
+            if (billingCredits.Count == 0)
             {
-                /* Send notification of rejected payment */
+                var messageError = $"The billing credits does not exist for the user {accountname}. You must be manually update.";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+                return;
+            }
 
-                var billingCredits = await _billingRepository.GetPendingBillingCreditsAsync(user.IdUser, PaymentMethodEnum.MP);
+            if (billingCredits.Count > 1)
+            {
+                var messageError = $"Can not update the billing credit because the user {accountname} has more one pending billing credits. You must be manually update.";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+                return;
+            }
 
-                if (billingCredits.Count == 0)
-                {
-                    var messageError = $"The billing credits does not exist for the user {accountname}. You must be manually update.";
-                    _logger.LogError(messageError);
-                    await _slackService.SendNotification(messageError);
-                }
+            if (billingCredits.Count == 1)
+            {
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, status, payment.StatusDetail, invoice.AuthorizationNumber);
 
-                if (billingCredits.Count > 1)
-                {
-                    var messageError = $"Can not update the billing credit because the user {accountname} has more one pending billing credits. You must be manually update.";
-                    _logger.LogError(messageError);
-                    await _slackService.SendNotification(messageError);
-                }
+                var upgradePending = !user.UpgradePending.HasValue || (user.UpgradePending.HasValue && user.UpgradePending.Value);
 
-                if (billingCredits.Count == 1)
+                if (payment.StatusDetail == "cc_rejected_high_risk" && upgradePending)
                 {
                     var pendingBillingCredit = billingCredits.FirstOrDefault();
                     if (pendingBillingCredit != null)
@@ -367,6 +370,9 @@ namespace Doppler.BillingUser.Controllers
                     _logger.LogInformation(message);
                     await _slackService.SendNotification(message);
                 }
+
+                /* Send notification of rejected payment */
+                await SendNotificationForRejectedMercadoPagoPayment(accountname, upgradePending, payment.StatusDetail);
             }
         }
 
@@ -415,6 +421,12 @@ namespace Doppler.BillingUser.Controllers
                 default:
                     return;
             }
+        }
+
+        private async Task SendNotificationForRejectedMercadoPagoPayment(string accountname, bool upgradePending, string paymentStatus)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            await _emailTemplatesService.SendNotificationForRejectedMercadoPagoPayment(accountname, user, upgradePending, paymentStatus);
         }
 
         private async Task CreateUserPaymentHistory(int idUser, int idPaymentMethod, int idPlan, string status, int idBillingCredit, string errorMessage, string source, string creditCardLastFourDigits = null)
