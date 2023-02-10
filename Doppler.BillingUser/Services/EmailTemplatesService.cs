@@ -52,7 +52,7 @@ namespace Doppler.BillingUser.Services
                     to: new[] { sendTo });
         }
 
-        public Task SendNotificationForUpgradePlan(string accountname, User userInformation, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, bool isUpgradePending)
+        public Task SendNotificationForUpgradePlan(string accountname, User userInformation, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, bool isUpgradePending, bool needSendToBilling)
         {
             var template = !isUpgradePending ?
                 _emailSettings.Value.UpgradeAccountTemplateId[userInformation.Language ?? "en"] :
@@ -132,13 +132,13 @@ namespace Doppler.BillingUser.Services
                         discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
+                    to: needSendToBilling ? new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail } : new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(adminEmail, upgradeEmail);
         }
 
-        public Task SendNotificationForCredits(string accountname, User userInformation, UserTypePlanInformation newPlan, UserBillingInformation user, int partialBalance, Promotion promotion, string promocode, bool isUpgradePending)
+        public Task SendNotificationForCredits(string accountname, User userInformation, UserTypePlanInformation newPlan, UserBillingInformation user, int partialBalance, Promotion promotion, string promocode, bool isUpgradePending, bool needSendToBilling)
         {
             var template = !isUpgradePending ?
                 _emailSettings.Value.CreditsApprovedTemplateId[userInformation.Language ?? "en"] :
@@ -214,7 +214,7 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
+                    to: needSendToBilling ? new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail } : new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(creditsEmail, adminEmail);
@@ -277,7 +277,7 @@ namespace Doppler.BillingUser.Services
                         errorMessage,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.CommercialEmail, _emailSettings.Value.BillingEmail },
+                    to: new[] { _emailSettings.Value.CommercialEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
         }
 
@@ -388,7 +388,7 @@ namespace Doppler.BillingUser.Services
                         total = amountDetails != null ? amountDetails.Total : 0,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
+                    to: new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(updatePlanAdminEmail, updatePlanEmail);
@@ -440,6 +440,42 @@ namespace Doppler.BillingUser.Services
                 },
                 to: new[] { _emailSettings.Value.BillingEmail },
                 replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+        }
+
+
+        public Task SendNotificationForRejectedMercadoPagoPayment(string accountname, User user, bool isUpgradePending, string paymentStatusDetails)
+        {
+            var template = isUpgradePending ?
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpgradeTemplateId[user.Language ?? "en"] :
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpsellingTemplateId[user.Language ?? "en"];
+
+            var creditsEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = user.FirstName,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { accountname });
+
+            var templateAdmin = isUpgradePending ?
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpgradeAdminTemplateId :
+                _emailSettings.Value.DecliendPaymentMercadoPagoUpsellingAdminTemplateId;
+
+            var adminEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        userId = user.IdUser,
+                        motivoError = paymentStatusDetails,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { _emailSettings.Value.BillingEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return Task.WhenAll(creditsEmail, adminEmail);
         }
     }
 }

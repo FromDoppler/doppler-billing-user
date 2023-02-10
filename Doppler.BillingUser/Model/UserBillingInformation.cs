@@ -15,11 +15,11 @@ namespace Doppler.BillingUser.Model
         public string CFDIUse { get; set; }
         public string BankName { get; set; }
         public string BankAccount { get; set; }
-        public int IdCurrentBillingCredit { get; set; }
+        public int? IdCurrentBillingCredit { get; set; }
         public DateTime? UTCFirstPayment { get; set; }
         public string Cuit { get; set; }
         public string OriginInbound { get; set; }
-        public bool UpgradePending { get; set; }
+        public bool? UpgradePending { get; set; }
         public DateTime? UTCUpgrade { get; set; }
         public int MaxSubscribers { get; set; }
         public bool IsCancelated { get; set; }

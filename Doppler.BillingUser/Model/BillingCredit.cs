@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 
 namespace Doppler.BillingUser.Model
 {
@@ -26,5 +27,10 @@ namespace Doppler.BillingUser.Model
         public int? IdDiscountPlan { get; set; }
         public int? CurrentMonthPlan { get; set; }
         public int IdPaymentMethod { get; set; }
+        public int IdBillingCreditType { get; set; }
+        public int? ExtraCreditsPromotion { get; set; }
+        public int IdUserType { get; set; }
+        public string CCNumber { get; set; }
+        public string CCHolderName { get; set; }
     }
 }

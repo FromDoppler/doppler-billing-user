@@ -1228,6 +1228,129 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
             return result.FirstOrDefault();
         }
 
+        public async Task<List<BillingCredit>> GetPendingBillingCreditsAsync(int userId, PaymentMethodEnum paymentMethod)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var billingCredits = await connection.QueryAsync<BillingCredit>(@"
+SELECT BC.[IdBillingCredit],
+    BC.[Date],
+    BC.[IdUser],
+    BC.[PlanFee],
+    BC.[CreditsQty],
+    BC.[ActivationDate],
+    BC.[TotalCreditsQty],
+    BC.[IdUserTypePlan],
+    BC.[IdResponsabileBilling],
+    BC.[CCIdentificationType],
+    BC.TotalMonthPlan,
+    BC.CUIT As Cuit,
+    BC.DiscountPlanFeeAdmin,
+    BC.DiscountPlanFeePromotion,
+    BC.IdPromotion,
+    BC.[SubscribersQty],
+    BC.[PaymentDate],
+    BC.[IdDiscountPlan],
+    BC.[TotalMonthPlan],
+    BC.[CurrentMonthPlan],
+    BC.[IdBillingCreditType],
+    BC.[ExtraCreditsPromotion],
+    P.[IdUserType],
+    BC.[CCNumber],
+    BC.[CCHolderFullName] AS CCHolderName
+FROM [BillingCredits] BC
+INNER JOIN [UserTypesPlans] P ON P.IdUserTypePlan = BC.IdUserTypePlan
+WHERE IdPaymentMethod = @idPaymentMethod AND
+    PaymentDate IS NULL AND
+    IdBillingCreditType IN (1, 2, 13, 14) AND
+    BC.IdUser = @userId
+ORDER BY Date DESC;",
+            new
+            {
+                userId,
+                @idPaymentMethod = (int)paymentMethod
+            });
+
+            return billingCredits.ToList();
+        }
+
+        public async Task ApproveBillingCreditAsync(BillingCredit billingCredit)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryFirstOrDefaultAsync(@"
+UPDATE [dbo].[BillingCredits]
+SET ActivationDate = @ActivationDate,
+    PaymentDate = @PaymentDate
+WHERE
+    IdBillingCredit = @billingCreditId
+",
+                new
+                {
+                    @billingCreditId = billingCredit.IdBillingCredit,
+                    @ActivationDate = billingCredit.ActivationDate,
+                    @PaymentDate = billingCredit.PaymentDate
+                });
+        }
+
+        public async Task<BillingCredit> GetPreviousBillingCreditNotCancelledByIdUserAsync(int idUser, int currentBillingCredit)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var billingCredits = await connection.QueryAsync<BillingCredit>(@"
+SELECT BC.[IdBillingCredit],
+    BC.[Date],
+    BC.[IdUser],
+    BC.[PlanFee],
+    BC.[CreditsQty],
+    BC.[ActivationDate],
+    BC.[TotalCreditsQty],
+    BC.[IdUserTypePlan],
+    BC.[IdResponsabileBilling],
+    BC.[CCIdentificationType],
+    BC.TotalMonthPlan,
+    BC.CUIT As Cuit,
+    BC.DiscountPlanFeeAdmin,
+    BC.DiscountPlanFeePromotion,
+    BC.IdPromotion,
+    BC.[SubscribersQty],
+    BC.[PaymentDate],
+    BC.[IdDiscountPlan],
+    BC.[TotalMonthPlan],
+    BC.[CurrentMonthPlan],
+    BC.[IdBillingCreditType],
+    BC.[ExtraCreditsPromotion],
+    P.[IdUserType],
+    BC.[CCNumber],
+    BC.[CCHolderFullName] AS CCHolderName
+FROM [BillingCredits] BC
+INNER JOIN [UserTypesPlans] P ON P.IdUserTypePlan = BC.IdUserTypePlan
+WHERE IdBillingCreditType NOT IN (17, 22, 20, 21) AND BC.IdUser = @idUser AND BC.[IdBillingCredit] !=  @currentBillingCredit
+ORDER BY BC.[ActivationDate] DESC;",
+            new
+            {
+                idUser,
+                currentBillingCredit
+            });
+
+            return billingCredits.FirstOrDefault();
+        }
+
+        public async Task CancelBillingCreditAsync(BillingCredit billingCredit)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryFirstOrDefaultAsync(@"
+UPDATE [dbo].[BillingCredits]
+SET IdBillingCreditType = @idIdBillingCreditType,
+    IdPaymentMethod = @idPaymentMethod
+WHERE
+    IdBillingCredit = @billingCreditId
+",
+                new
+                {
+                    @billingCreditId = billingCredit.IdBillingCredit,
+                    @idIdBillingCreditType = (int)BillingCreditTypeEnum.Canceled,
+                    @idPaymentMethod = (int)PaymentMethodEnum.NONE
+                });
+        }
+
         private int CalculateBillingSystemByTransfer(int idBillingCountry)
         {
             return idBillingCountry switch

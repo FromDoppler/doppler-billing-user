@@ -49,7 +49,8 @@ SELECT
     U.UTCUpgrade,
     U.IdCurrentBillingCredit,
     U.MaxSubscribers,
-    U.IsCancelated
+    U.IsCancelated,
+    U.UpgradePending
 FROM
     [User] U
     INNER JOIN
@@ -158,7 +159,8 @@ SET
     OriginInbound = @originInbound,
     UpgradePending = @upgradePending,
     UTCUpgrade = @utcUpgrade,
-    MaxSubscribers = @maxSubscribers
+    MaxSubscribers = @maxSubscribers,
+    PaymentMethod = @paymentMethod
 WHERE
     IdUser = @idUser;",
             new
@@ -170,7 +172,8 @@ WHERE
                 @originInbound = user.OriginInbound,
                 @upgradePending = user.UpgradePending,
                 @utcUpgrade = user.UTCUpgrade,
-                @maxSubscribers = user.MaxSubscribers
+                @maxSubscribers = user.MaxSubscribers,
+                @paymentMethod = user.PaymentMethod
             });
 
             return result;
@@ -264,7 +267,7 @@ WHERE
         {
             using var connection = _connectionFactory.GetConnection();
             var partialBalance = await connection.QueryFirstOrDefaultAsync<int>(@"
-SELECT SUM(CreditsQty)
+SELECT ISNULL(SUM(CreditsQty), 0)
 FROM MovementsCredits
 WHERE IdUser = @idUser AND MONTH(GETDATE()) = MONTH(Date) AND YEAR(GETDATE()) = YEAR(Date) AND
     CreditsQty > 0 AND IdUserType = 2 AND IdBillingCredit IS NOT NULL",

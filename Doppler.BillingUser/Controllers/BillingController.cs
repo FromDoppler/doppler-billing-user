@@ -263,7 +263,8 @@ namespace Doppler.BillingUser.Controllers
 
                 var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
 
-                if (userBillingInfo.IdCurrentBillingCredit != 0 && userBillingInfo.PaymentMethod != PaymentMethodEnum.TRANSF)
+                if (userBillingInfo.IdCurrentBillingCredit.HasValue && userBillingInfo.IdCurrentBillingCredit.Value != 0 &&
+                    userBillingInfo.PaymentMethod != PaymentMethodEnum.TRANSF)
                 {
                     var billingCreditPaymentInfo = new BillingCreditPaymentInfo()
                     {
@@ -273,7 +274,7 @@ namespace Doppler.BillingUser.Controllers
                         CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification)
                     };
 
-                    await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit, billingCreditPaymentInfo);
+                    await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit.Value, billingCreditPaymentInfo);
                 }
 
                 return new OkObjectResult("Successfully");
@@ -622,10 +623,10 @@ namespace Doppler.BillingUser.Controllers
                     user.IdCurrentBillingCredit = billingCreditId;
                     user.OriginInbound = agreementInformation.OriginInbound;
                     user.UpgradePending = BillingHelper.IsUpgradePending(user, promotion, payment);
-                    user.UTCFirstPayment = !user.UpgradePending ? DateTime.UtcNow : null;
+                    user.UTCFirstPayment = user.UpgradePending.HasValue && !user.UpgradePending.Value ? DateTime.UtcNow : null;
                     user.UTCUpgrade = user.UTCFirstPayment;
 
-                    if (newPlan.IdUserType == UserTypeEnum.SUBSCRIBERS && newPlan.SubscribersQty.HasValue && !user.UpgradePending)
+                    if (newPlan.IdUserType == UserTypeEnum.SUBSCRIBERS && newPlan.SubscribersQty.HasValue && user.UpgradePending.HasValue && !user.UpgradePending.Value)
                     {
                         user.MaxSubscribers = newPlan.SubscribersQty.Value;
                     }
@@ -634,7 +635,7 @@ namespace Doppler.BillingUser.Controllers
 
                     partialBalance = await _userRepository.GetAvailableCredit(user.IdUser);
 
-                    if (!user.UpgradePending)
+                    if (user.UpgradePending.HasValue && !user.UpgradePending.Value)
                     {
                         if (newPlan.IdUserType != UserTypeEnum.SUBSCRIBERS)
                         {
@@ -657,7 +658,7 @@ namespace Doppler.BillingUser.Controllers
                     if (promotion != null)
                         await _promotionRepository.IncrementUsedTimes(promotion);
 
-                    var status = !user.UpgradePending ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
+                    var status = user.UpgradePending.HasValue && !user.UpgradePending.Value ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
                     await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
                     //Send notifications
@@ -731,7 +732,7 @@ namespace Doppler.BillingUser.Controllers
                             OriginInbound = agreementInformation.OriginInbound
                         };
 
-                        if (!user.UpgradePending)
+                        if (user.UpgradePending.HasValue && !user.UpgradePending.Value)
                         {
                             zohoDto.UpgradeDate = DateTime.UtcNow;
                             zohoDto.FirstPaymentDate = DateTime.UtcNow;
@@ -848,7 +849,7 @@ namespace Doppler.BillingUser.Controllers
 
                     if (newPlan.IdUserType == UserTypeEnum.INDIVIDUAL)
                     {
-                        await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved);
+                        await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved, true);
                     }
                     else
                     {
@@ -857,7 +858,7 @@ namespace Doppler.BillingUser.Controllers
                             await _emailTemplatesService.SendNotificationForSuscribersPlan(accountname, userInformation, newPlan);
                         }
 
-                        await _emailTemplatesService.SendNotificationForUpgradePlan(accountname, userInformation, newPlan, user, promotion, promocode, discountId, planDiscountInformation, !isUpgradeApproved);
+                        await _emailTemplatesService.SendNotificationForUpgradePlan(accountname, userInformation, newPlan, user, promotion, promocode, discountId, planDiscountInformation, !isUpgradeApproved, true);
                     }
 
                     return;
@@ -868,7 +869,7 @@ namespace Doppler.BillingUser.Controllers
                 case BillingCreditTypeEnum.Credit_Buyed_CC:
                 case BillingCreditTypeEnum.Credit_Request:
                     isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, promotion, payment));
-                    await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved);
+                    await _emailTemplatesService.SendNotificationForCredits(accountname, userInformation, newPlan, user, partialBalance, promotion, promocode, !isUpgradeApproved, true);
                     return;
                 default:
                     return;
@@ -929,7 +930,7 @@ namespace Doppler.BillingUser.Controllers
             {
                 var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
 
-                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit);
+                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
                 if (currentBillingCredit != null)
                 {
                     promotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
@@ -981,7 +982,7 @@ namespace Doppler.BillingUser.Controllers
         {
             if (currentPlan.SubscribersQty < newPlan.SubscribersQty)
             {
-                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit);
+                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
                 var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
 
                 if (currentBillingCredit != null)
@@ -1041,7 +1042,7 @@ namespace Doppler.BillingUser.Controllers
         private async Task<int> BuyCredits(UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, AgreementInformation agreementInformation, Promotion promotion, CreditCardPayment payment)
         {
             var isPaymentPending = BillingHelper.IsUpgradePending(user, promotion, payment);
-            var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit);
+            var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
             var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Credit_Buyed_CC : BillingCreditTypeEnum.Credit_Request;
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
             var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, billingCreditType);

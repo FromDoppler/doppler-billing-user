@@ -30,5 +30,9 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public string UpdatePlanAdminTemplateId { get; set; }
         public string ReprocessStatusAdminTemplateId { get; set; }
         public string ContactInformationForTransferAdminTemplateId { get; set; }
+        public Dictionary<string, string> DecliendPaymentMercadoPagoUpgradeTemplateId { get; set; }
+        public string DecliendPaymentMercadoPagoUpgradeAdminTemplateId { get; set; }
+        public Dictionary<string, string> DecliendPaymentMercadoPagoUpsellingTemplateId { get; set; }
+        public string DecliendPaymentMercadoPagoUpsellingAdminTemplateId { get; set; }
     }
 }
