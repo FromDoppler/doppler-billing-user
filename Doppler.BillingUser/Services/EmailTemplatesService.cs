@@ -472,7 +472,7 @@ namespace Doppler.BillingUser.Services
                         motivoError = paymentStatusDetails,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.BillingEmail },
+                    to: new[] { _emailSettings.Value.CommercialEmail, _emailSettings.Value.BillingEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(creditsEmail, adminEmail);
