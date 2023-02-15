@@ -469,6 +469,7 @@ namespace Doppler.BillingUser.Services
                     {
                         urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
                         userId = user.IdUser,
+                        userEmail = accountname,
                         motivoError = paymentStatusDetails,
                         year = DateTime.UtcNow.Year
                     },
