@@ -7,5 +7,6 @@ namespace Doppler.BillingUser.ExternalServices.Sap
     {
         Task SendUserDataToSap(SapBusinessPartner sapBusinessPartner, string resultMessage = null);
         Task SendBillingToSap(SapBillingDto sapBilling, string email);
+        Task SendCreditNoteToSapAsync(string accountName, SapCreditNoteDto sapCreditNoteDto);
     }
 }

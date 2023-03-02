@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using System.Collections.Generic;
+using Newtonsoft.Json;
+using System.Net.Http;
+using System.Text;
 
 namespace Doppler.BillingUser.ExternalServices.Sap
 {
@@ -61,6 +64,25 @@ namespace Doppler.BillingUser.ExternalServices.Sap
                 catch (Exception e)
                 {
                     _logger.LogError(e, "Unexpected error sending invoice data to Sap");
+                }
+            }
+        }
+
+        public async Task SendCreditNoteToSapAsync(string accountName, SapCreditNoteDto sapCreditNoteDto)
+        {
+            if (!SapHelper.IsMakingSenseAccount(accountName))
+            {
+                try
+                {
+                    await _flurlClient.Request(_options.Value.SapBaseUrl + _options.Value.SapCreateCreditNoteEndpoint)
+                        .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
+                        .PostJsonAsync(sapCreditNoteDto);
+
+                    _logger.LogInformation($"Credit Note succesfully sent to DopplerSap. CreditNoteId: {sapCreditNoteDto.CreditNoteId}");
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "Unexpected error sending credit note data to Sap");
                 }
             }
         }

@@ -48,6 +48,8 @@ namespace Doppler.BillingUser.Infrastructure
 
         Task<int> CreatePaymentEntryAsync(int invoiceId, AccountingEntry paymentEntry);
 
+        Task<int> CreateCreditNoteEntryAsync(AccountingEntry creditNoteEntry);
+
         Task<int> CreateMovementBalanceAdjustmentAsync(int userId, int creditsQty, UserTypeEnum currentUserType, UserTypeEnum newUserType);
 
         Task<List<BillingCredit>> GetPendingBillingCreditsAsync(int userId, PaymentMethodEnum paymentMethod);

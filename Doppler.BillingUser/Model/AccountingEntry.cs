@@ -6,6 +6,7 @@ namespace Doppler.BillingUser.Model
     public class AccountingEntry
     {
         public int IdAccountingEntry { get; set; }
+        public int IdInvoice { get; set; }
         public int IdClient { get; set; }
         public decimal Amount { get; set; }
         public DateTime Date { get; set; }
@@ -15,6 +16,7 @@ namespace Doppler.BillingUser.Model
         public int InvoiceNumber { get; set; }
         public int IdAccountType { get; set; }
         public int IdInvoiceBillingType { get; set; }
+        public int? IdBillingSource { get; set; }
         public string AuthorizationNumber { get; set; }
         public string AccountEntryType { get; set; }
         public string CcCNumber { get; set; }
