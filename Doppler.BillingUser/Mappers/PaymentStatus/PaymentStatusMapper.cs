@@ -27,6 +27,7 @@ namespace Doppler.BillingUser.Mappers.PaymentStatus
                 PaymentStatusEnum.Pending => PaymentStatusApiEnum.Pending,
                 PaymentStatusEnum.DeclinedPaymentTransaction => PaymentStatusApiEnum.Declined,
                 PaymentStatusEnum.FailedPaymentTransaction => PaymentStatusApiEnum.Failed,
+                PaymentStatusEnum.CreditNoteGenerated => PaymentStatusApiEnum.Approved,
                 _ => throw new Exception()
             };
         }

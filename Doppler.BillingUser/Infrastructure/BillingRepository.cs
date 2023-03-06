@@ -853,6 +853,7 @@ WHERE
             var invoice = await connection.QueryFirstOrDefaultAsync<AccountingEntry>(@"
 SELECT
     AE.[IdAccountingEntry],
+    AE.[IdInvoice],
     AE.[Date],
     AE.[Amount],
     AE.[Status],
@@ -1142,6 +1143,62 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
                 @idCurrencyType = paymentEntry.IdCurrencyType,
                 @currencyRate = paymentEntry.CurrencyRate,
                 @taxes = paymentEntry.Taxes
+            });
+
+            return IdAccountingEntry;
+        }
+
+        public async Task<int> CreateCreditNoteEntryAsync(AccountingEntry creditNoteEntry)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var IdAccountingEntry = await connection.QueryFirstOrDefaultAsync<int>(@"
+INSERT INTO [dbo].[AccountingEntry]
+    ([IdClient],
+    [IdInvoice],
+    [Amount],
+    [Date],
+    [Source],
+    [AccountingTypeDescription],
+    [IdAccountType],
+    [IdBillingSource],
+    [IdInvoiceBillingType],
+    [IdCurrencyType],
+    [CurrencyRate],
+    [Taxes],
+    [AccountEntryType],
+    [PaymentEntryType])
+VALUES
+    (@idClient,
+    @idInvoice,
+    @amount,
+    @date,
+    @source,
+    @accountingTypeDescription,
+    @idAccountType,
+    @idBillingSource,
+    @idInvoiceBillingType,
+    @idCurrencyType,
+    @currencyRate,
+    @taxes,
+    @accountEntryType,
+    @paymentEntryType);
+SELECT CAST(SCOPE_IDENTITY() AS INT)",
+            new
+            {
+                @idClient = creditNoteEntry.IdClient,
+                @idInvoice = creditNoteEntry.IdInvoice,
+                @amount = creditNoteEntry.Amount,
+                @date = creditNoteEntry.Date,
+                @source = creditNoteEntry.Source,
+                @accountingTypeDescription = creditNoteEntry.AccountingTypeDescription,
+                @idAccountType = creditNoteEntry.IdAccountType,
+                @idBillingSource = creditNoteEntry.IdBillingSource,
+                @idInvoiceBillingType = creditNoteEntry.IdInvoiceBillingType,
+                @idCurrencyType = creditNoteEntry.IdCurrencyType,
+                @currencyRate = creditNoteEntry.CurrencyRate,
+                @taxes = creditNoteEntry.Taxes,
+                @accountEntryType = creditNoteEntry.AccountEntryType,
+                @paymentEntryType = creditNoteEntry.PaymentEntryType
             });
 
             return IdAccountingEntry;

@@ -23,6 +23,8 @@ using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using System.Drawing;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.Sap;
+using System.Security.AccessControl;
+using System.ServiceModel.Channels;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -44,6 +46,8 @@ namespace Doppler.BillingUser.Controllers
         private readonly IEncryptionService _encryptionService;
         private readonly IOptions<SapSettings> _sapSettings;
 
+        private const string CreditNote = "Credit Note";
+        private const string CancellationReasonSap = "credits purchase cancellation";
         private const string Source = "Webhooks";
         private readonly string PAYMENT_UPDATED = "payment.updated";
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -210,7 +214,7 @@ namespace Doppler.BillingUser.Controllers
                                 ZohoDTO zohoDto = new ZohoDTO()
                                 {
                                     Email = user.Email,
-                                    Doppler = ((UserTypeEnum)pendingBillingCredit.IdUserTypePlan).ToDescription(),
+                                    Doppler = ((UserTypeEnum)pendingBillingCredit.IdUserType).ToDescription(),
                                     BillingSystem = user.PaymentMethod.ToString(),
                                     OriginInbound = user.OriginInbound,
                                     UpgradeDate = DateTime.UtcNow,
@@ -365,6 +369,7 @@ namespace Doppler.BillingUser.Controllers
                         user.PaymentMethod = PaymentMethodEnum.NONE;
                         await _userRepository.UpdateUserBillingCredit(user);
                         await _billingRepository.CancelBillingCreditAsync(pendingBillingCredit);
+                        await GenerateMercadoPagoCreditNoteAsync(accountname, invoice);
                     }
 
                     var message = $"Successful at canceling the payment for: User: {accountname} - Billing Credit: {pendingBillingCredit.IdBillingCredit}";
@@ -374,6 +379,45 @@ namespace Doppler.BillingUser.Controllers
 
                 /* Send notification of rejected payment */
                 await SendNotificationForRejectedMercadoPagoPayment(accountname, upgradePending, payment.StatusDetail);
+            }
+        }
+
+        private async Task GenerateMercadoPagoCreditNoteAsync(string accountName, AccountingEntry invoice)
+        {
+            try
+            {
+                var creditNoteEntry = new AccountingEntry
+                {
+                    AccountingTypeDescription = CreditNote,
+                    Amount = invoice.Amount,
+                    Date = DateTime.Now,
+                    IdInvoice = invoice.IdAccountingEntry,
+                    IdClient = invoice.IdClient,
+                    Source = invoice.Source,
+                    IdAccountType = invoice.IdAccountType,
+                    IdCurrencyType = invoice.IdCurrencyType,
+                    Taxes = invoice.Taxes,
+                    CurrencyRate = invoice.CurrencyRate,
+                    IdInvoiceBillingType = invoice.IdInvoiceBillingType,
+                    AccountEntryType = "P",
+                    PaymentEntryType = "N"
+                };
+
+                /* Create the Credit Note */
+                var creditNoteEntryId = await _billingRepository.CreateCreditNoteEntryAsync(creditNoteEntry);
+                creditNoteEntry.IdAccountingEntry = creditNoteEntryId;
+
+                /* Update status of the current invoice */
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.CreditNoteGenerated, string.Empty, invoice.AuthorizationNumber);
+
+                /* Send the credit note to sap */
+                await SendCreditNoteToSapAsync(accountName, creditNoteEntry, CancellationReasonSap, (int)ResponsabileBillingEnum.Mercadopago);
+            }
+            catch (Exception e)
+            {
+                var errorMessage = string.Format("Error generating credit note for AccountingEntry {0} -- {1}", invoice.IdInvoice, e);
+                _logger.LogError(errorMessage);
+                await _slackService.SendNotification(errorMessage);
             }
         }
 
@@ -422,6 +466,24 @@ namespace Doppler.BillingUser.Controllers
                 default:
                     return;
             }
+        }
+
+        private async Task<bool> SendCreditNoteToSapAsync(string accountName, AccountingEntry invoice, string reason, int billingSystemId)
+        {
+            var dtoSapCreditNote = new SapCreditNoteDto()
+            {
+                CreditNoteId = (int)invoice.IdAccountingEntry,
+                InvoiceId = (int)invoice.IdInvoice,
+                Amount = Decimal.ToDouble(invoice.Amount),
+                ClientId = (int)invoice.IdClient,
+                BillingSystemId = billingSystemId,
+                Type = 1,
+                Reason = reason
+            };
+
+            await _sapService.SendCreditNoteToSapAsync(accountName, dtoSapCreditNote);
+
+            return true;
         }
 
         private async Task SendNotificationForRejectedMercadoPagoPayment(string accountname, bool upgradePending, string paymentStatus)
