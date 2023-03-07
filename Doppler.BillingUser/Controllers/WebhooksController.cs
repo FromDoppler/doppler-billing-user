@@ -335,11 +335,13 @@ namespace Doppler.BillingUser.Controllers
             {
                 await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, status, payment.StatusDetail, invoice.AuthorizationNumber);
 
-                var upgradePending = !user.UpgradePending.HasValue || (user.UpgradePending.HasValue && user.UpgradePending.Value);
+                var pendingBillingCredit = billingCredits.FirstOrDefault();
 
-                if (payment.StatusDetail == "cc_rejected_high_risk" && upgradePending)
+                var upgradePending = !user.UpgradePending.HasValue || (user.UpgradePending.HasValue && user.UpgradePending.Value);
+                var creditRequest = (pendingBillingCredit.IdBillingCreditType == (int)BillingCreditTypeEnum.Credit_Request);
+
+                if (payment.StatusDetail == "cc_rejected_high_risk" && (upgradePending || creditRequest))
                 {
-                    var pendingBillingCredit = billingCredits.FirstOrDefault();
                     if (pendingBillingCredit != null)
                     {
                         var previousBillingCredit = await _billingRepository.GetPreviousBillingCreditNotCancelledByIdUserAsync(user.IdUser, pendingBillingCredit.IdBillingCredit);
