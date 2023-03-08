@@ -380,7 +380,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 /* Send notification of rejected payment */
-                await SendNotificationForRejectedMercadoPagoPayment(accountname, upgradePending, payment.StatusDetail);
+                await SendNotificationForRejectedMercadoPagoPayment(accountname, (upgradePending || creditRequest), payment.StatusDetail);
             }
         }
 
