@@ -59,5 +59,7 @@ namespace Doppler.BillingUser.Infrastructure
         Task<BillingCredit> GetPreviousBillingCreditNotCancelledByIdUserAsync(int idUser, int currentBillingCredit);
 
         Task CancelBillingCreditAsync(BillingCredit billingCredit);
+
+        Task CreateMovementCreditsLeftAsync(int idUser, int creditsQty, int partialBalance);
     }
 }

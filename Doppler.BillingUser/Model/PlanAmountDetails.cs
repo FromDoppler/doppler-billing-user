@@ -9,5 +9,6 @@ namespace Doppler.BillingUser.Model
         public DiscountPromocode DiscountPromocode { get; set; }
         public DiscountPlanFeeAdmin DiscountPlanFeeAdmin { get; set; }
         public decimal NextMonthTotal { get; set; }
+        public decimal PositiveBalance { get; set; }
     }
 }

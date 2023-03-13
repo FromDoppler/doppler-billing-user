@@ -72,7 +72,7 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                     && buyCreditAgreement.BillingCredit.TotalMonthPlan.Value > 1
                     && buyCreditAgreement.BillingCredit.Date.Day > 20)
                     ? 0 : 1 :
-                    currentBillingCredit.CurrentMonthPlan;
+                    currentBillingCredit.CurrentMonthPlan ?? 1;
                 buyCreditAgreement.BillingCredit.SubscribersQty = newUserTypePlan.SubscribersQty;
             }
 
