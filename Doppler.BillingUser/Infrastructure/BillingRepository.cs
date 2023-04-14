@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1283,6 +1284,42 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
             });
 
             return result.FirstOrDefault();
+        }
+
+        public async Task CreateMovementCreditsLeftAsync(int idUser, int creditsQty, int partialBalance)
+        {
+            string conceptEnglish = "Not Spent Credits";
+            string conceptSpanish = "Creditos No Gastados";
+
+            using var connection = _connectionFactory.GetConnection();
+            var result = await connection.QueryAsync<int>(@"
+INSERT INTO [dbo].[MovementsCredits]
+    ([IdUser],
+    [Date],
+    [CreditsQty],
+    [ConceptEnglish],
+    [ConceptSpanish],
+    [IdUserType],
+    [Visible])
+VALUES
+    (@idUser,
+    @date,
+    @creditsQty,
+    @conceptEnglish,
+    @conceptSpanish,
+    @idUserType,
+    @visible);
+SELECT CAST(SCOPE_IDENTITY() AS INT)",
+            new
+            {
+                @idUser = idUser,
+                @date = DateTime.UtcNow,
+                @idUserType = (int)UserTypeEnum.MONTHLY,
+                @creditsQty = creditsQty + partialBalance,
+                @conceptEnglish = conceptEnglish,
+                @conceptSpanish = conceptSpanish,
+                @visible = false
+            });
         }
 
         public async Task<List<BillingCredit>> GetPendingBillingCreditsAsync(int userId, PaymentMethodEnum paymentMethod)

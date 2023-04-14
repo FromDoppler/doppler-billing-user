@@ -57,7 +57,7 @@ namespace Doppler.BillingUser.Utils
                 InvoiceDate = billingCredit.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
                 BillingSystemId = billingCredit.IdResponsabileBilling,
                 FiscalID = billingCredit.Cuit,
-                IsUpSelling = currentUserPlan != null && currentUserPlan.IdUserType != UserTypeEnum.INDIVIDUAL,
+                IsUpSelling = (currentUserPlan != null && newUserPlan.IdUserType != UserTypeEnum.INDIVIDUAL)
             };
 
             if (currentUserPlan != null)
