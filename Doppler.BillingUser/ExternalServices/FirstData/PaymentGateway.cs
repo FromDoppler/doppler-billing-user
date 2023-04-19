@@ -2,37 +2,36 @@ using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.E4;
 using Doppler.BillingUser.Services;
+using Flurl.Http;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
-using System.ServiceModel;
-using System.ServiceModel.Channels;
-using System.ServiceModel.Description;
-using System.ServiceModel.Dispatcher;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml;
 
 namespace Doppler.BillingUser.ExternalServices.FirstData
 {
     public class PaymentGateway : IPaymentGateway
     {
-        private readonly ServiceSoapClient _orderService;
+        private const string Type = "application/xml";
+        private const string Uri = "/transaction/v29";
+
         private readonly string _gatewayId;
         private readonly string _password;
         private readonly string _hmac;
         private readonly string _keyId;
         private readonly bool _isDemo;
         private readonly int _amountToValidateCreditCard;
-
+        private readonly string _endpoint;
         private readonly HashSet<string> _doNotHonorCodes = new HashSet<string>(new[] { "530", "606", "303" });
-
         private readonly IEncryptionService _encryptionService;
         private readonly ILogger _logger;
         private readonly IEmailTemplatesService _emailTemplatesService;
+        private readonly IFlurlClient _flurlClient = new FlurlClient();
 
         public PaymentGateway(IEncryptionService encryptionService,
             IFirstDataService config,
@@ -52,13 +51,29 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             _keyId = config.GetKeyId();
             _isDemo = config.GetIsDemo();
             _amountToValidateCreditCard = config.GetAmountToValidate();
-            _orderService = new ServiceSoapClient();
-            _orderService.Endpoint.Name = _isDemo ? "ServiceSoapDemo" : "ServiceSoap";
-            _orderService.Endpoint.Address = _isDemo ? new EndpointAddress(config.GetFirstDataServiceSoapDemo()) : new EndpointAddress(config.GetFirstDataServiceSoap());
-            _orderService.ChannelFactory.Endpoint.EndpointBehaviors.Add(new HmacHeaderBehavior(_hmac, _keyId));
+            _endpoint = _isDemo ? config.GetFirstDataServiceSoapDemo() : config.GetFirstDataServiceSoap();
             _emailTemplatesService = emailTemplatesService;
             _logger = logger;
         }
+
+        private string GetHmacSignature(string hashedContent, string timeString)
+        {
+            var hashData = $"POST\n{Type}\n{hashedContent}\n{timeString}\n{Uri}";
+
+            var hmac_sha1 = new HMACSHA1(Encoding.ASCII.GetBytes(_hmac));
+            var hmac_data = hmac_sha1.ComputeHash(Encoding.ASCII.GetBytes(hashData));
+
+            return Convert.ToBase64String(hmac_data);
+        }
+
+        private string GetHashedContent(string payload)
+        {
+            var payloadBytes = Encoding.ASCII.GetBytes(payload);
+            var sha1_crypto = new SHA1CryptoServiceProvider();
+            var hash = BitConverter.ToString(sha1_crypto.ComputeHash(payloadBytes)).Replace("-", "");
+            return hash.ToLower();
+        }
+
 
         private async Task<string> PostRequest(Transaction txn, int clientId, bool isFreeUser, bool isReprocessCall = false)
         {
@@ -68,9 +83,26 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
                 txn.ExactID = _gatewayId;
                 txn.Password = _password;
 
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-                SendAndCommitResponse response = await _orderService.SendAndCommitAsync(txn);
-                TransactionResult apiResponse = response.SendAndCommitResult;
+                var xmlContent = Utils.XmlSerializer.ToXmlString(txn);
+                var timeString = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+                var contentDigest = GetHashedContent(xmlContent);
+
+                var content = new StringContent(xmlContent, Encoding.ASCII);
+                content.Headers.ContentType = MediaTypeHeaderValue.Parse(Type);
+                content.Headers.ContentLength = xmlContent.Length;
+
+                var base64HmacSignature = GetHmacSignature(contentDigest, timeString);
+                var xmlResponse = await _flurlClient
+                    .Request(_endpoint)
+                    .WithHeader("Accept", "*/*")
+                    .WithHeader("x-gge4-date", timeString)
+                    .WithHeader("x-gge4-content-sha1", contentDigest)
+                    .WithHeader("Authorization", $"GGE4_API {_keyId}:{base64HmacSignature}")
+                    .PostAsync(content)
+                    .ReceiveString();
+
+                var apiResponse = Utils.XmlSerializer.FromXmlString<TransactionResult>(xmlResponse);
+
                 string authNumber = apiResponse.Authorization_Num;
                 if (!apiResponse.Transaction_Approved)
                 {
