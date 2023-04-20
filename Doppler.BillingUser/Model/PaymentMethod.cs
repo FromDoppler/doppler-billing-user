@@ -22,5 +22,6 @@ namespace Doppler.BillingUser.Model
         public string PaymentWay { get; set; }
         public string BankName { get; set; }
         public string BankAccount { get; set; }
+        public int TaxRegime { get; set; }
     }
 }

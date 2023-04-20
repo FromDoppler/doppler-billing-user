@@ -368,7 +368,8 @@ SET
     PaymentType = @paymentType,
     PaymentWay = @paymentWay,
     BankAccount = @bankAccount,
-    BankName = @bankName
+    BankName = @bankName,
+    TaxRegime = @taxRegime,
 WHERE
     IdUser = @IdUser;",
                 new
@@ -385,6 +386,7 @@ WHERE
                     @paymentWay = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentWay.ToString() : null,
                     @bankAccount = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankAccount : null,
                     @bankName = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankName : null,
+                    @taxRegime = paymentMethod.TaxRegime,
                 });
         }
 
