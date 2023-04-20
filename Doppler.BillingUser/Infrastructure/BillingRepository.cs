@@ -125,7 +125,8 @@ SELECT
     U.PaymentType,
     U.PaymentWay,
     U.BankAccount,
-    U.BankName
+    U.BankName,
+    U.TaxRegime
 FROM
     [User] U
 LEFT JOIN
