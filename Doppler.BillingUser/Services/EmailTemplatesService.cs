@@ -119,6 +119,7 @@ namespace Doppler.BillingUser.Services
                         isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
                         bankName = user.BankName,
                         bankAccount = user.BankAccount,
+                        taxRegime = user.TaxRegime == 0 ? null : user.TaxRegime,
                         billingEmails = userInformation.BillingEmails,
                         isIndividualPlan = newPlan.IdUserType == UserTypeEnum.INDIVIDUAL,
                         isMonthlyPlan = newPlan.IdUserType == UserTypeEnum.MONTHLY,
@@ -201,6 +202,7 @@ namespace Doppler.BillingUser.Services
                         isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
                         bankName = user.BankName,
                         bankAccount = user.BankAccount,
+                        taxRegime = user.TaxRegime == 0 ? null : user.TaxRegime,
                         billingEmails = userInformation.BillingEmails,
                         //userMessage = user.ExclusiveMessage, //TODO: set when the property is set in BilligCredit
                         isIndividualPlan = newPlan.IdUserType == UserTypeEnum.INDIVIDUAL,
@@ -354,6 +356,7 @@ namespace Doppler.BillingUser.Services
                         isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
                         bankName = user.BankName,
                         bankAccount = user.BankAccount,
+                        taxRegime = user.TaxRegime == 0 ? null : user.TaxRegime,
                         billingEmails = userInformation.BillingEmails,
                         isIndividualPlan = newPlan.IdUserType == UserTypeEnum.INDIVIDUAL,
                         isMonthlyPlan = newPlan.IdUserType == UserTypeEnum.MONTHLY,

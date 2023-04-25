@@ -50,7 +50,8 @@ SELECT
     U.IdCurrentBillingCredit,
     U.MaxSubscribers,
     U.IsCancelated,
-    U.UpgradePending
+    U.UpgradePending,
+    U.TaxRegime
 FROM
     [User] U
     INNER JOIN
