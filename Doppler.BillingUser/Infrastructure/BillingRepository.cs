@@ -355,6 +355,8 @@ WHERE
         {
             using var connection = _connectionFactory.GetConnection();
 
+            var test = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.TaxRegime : 0;
+
             await connection.ExecuteAsync(@"
 UPDATE
     [USER]
@@ -387,7 +389,7 @@ WHERE
                     @paymentWay = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentWay.ToString() : null,
                     @bankAccount = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankAccount : null,
                     @bankName = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankName : null,
-                    @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.TaxRegime : 0
+                    @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.TaxRegime : 0
                 });
         }
 
