@@ -1106,6 +1106,7 @@ namespace Doppler.BillingUser.Controllers
             user.IdCurrentBillingCredit = billingCreditId;
             user.OriginInbound = agreementInformation.OriginInbound;
             user.UpgradePending = false;
+            user.MaxSubscribers = newPlan.SubscribersQty.Value;
 
             await _userRepository.UpdateUserBillingCredit(user);
 
