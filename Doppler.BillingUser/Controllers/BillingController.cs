@@ -1001,8 +1001,8 @@ namespace Doppler.BillingUser.Controllers
         {
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
             var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
-
             var creditsLeft = await _userRepository.GetAvailableCredit(user.IdUser);
+
             await _billingRepository.CreateMovementBalanceAdjustmentAsync(user.IdUser, creditsLeft, UserTypeEnum.INDIVIDUAL, UserTypeEnum.MONTHLY);
 
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
@@ -1095,9 +1095,9 @@ namespace Doppler.BillingUser.Controllers
         {
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
             var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
-
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
             var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Subscribers);
+
             billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
 
             var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
@@ -1106,6 +1106,7 @@ namespace Doppler.BillingUser.Controllers
             user.IdCurrentBillingCredit = billingCreditId;
             user.OriginInbound = agreementInformation.OriginInbound;
             user.UpgradePending = false;
+            user.MaxSubscribers = newPlan.SubscribersQty.Value;
 
             await _userRepository.UpdateUserBillingCredit(user);
 

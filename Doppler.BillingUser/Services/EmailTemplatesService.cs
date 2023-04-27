@@ -590,7 +590,7 @@ namespace Doppler.BillingUser.Services
                         total = amountDetails != null ? amountDetails.Total : 0,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { _emailSettings.Value.AdminEmail },
+                    to: new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(updatePlanAdminEmail, updatePlanEmail);
