@@ -5,7 +5,7 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
 {
     public class GetTaxRegimesResult
     {
-        public bool isSuccesful { get; set; }
+        public bool IsSuccessful { get; set; }
         public List<TaxRegime> TaxRegimes { get; set; }
     }
 }

@@ -23,7 +23,7 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
             _options = options;
         }
 
-        public async Task<GetTaxRegimesResult> GetTaxRegimesAsync()
+        public async Task<GetTaxRegimesResult> GetAllTaxRegimesAsync()
         {
             HttpClient staticDataHttpClient = new HttpClient()
             {
@@ -47,7 +47,7 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
                         result.Add(new TaxRegime() { Id = Int32.Parse(item.Key), Description = (string)item.Value });
                     }
 
-                    return new GetTaxRegimesResult() { isSuccesful = true, TaxRegimes = result };
+                    return new GetTaxRegimesResult() { IsSuccessful = true, TaxRegimes = result };
                 }
                 else
                 {
@@ -59,7 +59,7 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
                 _logger.LogError(string.Format("Unexpected error getting data from SitesApi, Exception:{0}", e));
             }
 
-            return new GetTaxRegimesResult() { isSuccesful = false };
+            return new GetTaxRegimesResult() { IsSuccessful = false };
         }
     }
 }

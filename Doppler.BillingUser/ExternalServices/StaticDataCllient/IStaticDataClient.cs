@@ -6,6 +6,6 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
 {
     public interface IStaticDataClient
     {
-        public Task<GetTaxRegimesResult> GetTaxRegimesAsync();
+        public Task<GetTaxRegimesResult> GetAllTaxRegimesAsync();
     }
 }
