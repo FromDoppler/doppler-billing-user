@@ -23,6 +23,7 @@ namespace Doppler.BillingUser.Model
         public DateTime? UTCUpgrade { get; set; }
         public int MaxSubscribers { get; set; }
         public bool IsCancelated { get; set; }
-        public int? TaxRegime { get; set; }
+        public int TaxRegime { get; set; }
+        public string TaxRegimeDescription { get; set; }
     }
 }

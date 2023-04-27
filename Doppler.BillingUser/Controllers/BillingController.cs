@@ -33,6 +33,7 @@ using System.Text;
 using Tavis.UriTemplates;
 using Doppler.BillingUser.ApiModels;
 using Doppler.BillingUser.Settings;
+using Doppler.BillingUser.ExternalServices.StaticDataCllient;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -62,6 +63,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IPaymentAmountHelper _paymentAmountService;
         private readonly IUserPaymentHistoryRepository _userPaymentHistoryRepository;
         private readonly IOptions<AttemptsToUpdateSettings> _attemptsToUpdateSettings;
+        private readonly IStaticDataClient _staticDataClient;
 
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -121,7 +123,8 @@ namespace Doppler.BillingUser.Controllers
             IMercadoPagoService mercadopagoService,
             IPaymentAmountHelper paymentAmountService,
             IUserPaymentHistoryRepository userPaymentHistoryRepository,
-            IOptions<AttemptsToUpdateSettings> attemptsToUpdateSettings)
+            IOptions<AttemptsToUpdateSettings> attemptsToUpdateSettings,
+            IStaticDataClient staticDataClient)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -144,6 +147,7 @@ namespace Doppler.BillingUser.Controllers
             _paymentAmountService = paymentAmountService;
             _userPaymentHistoryRepository = userPaymentHistoryRepository;
             _attemptsToUpdateSettings = attemptsToUpdateSettings;
+            _staticDataClient = staticDataClient;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -855,6 +859,7 @@ namespace Doppler.BillingUser.Controllers
         {
             User userInformation = await _userRepository.GetUserInformation(accountname);
             var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(discountId);
+            user.TaxRegimeDescription = await GetTaxRegimeDescription(user.TaxRegime);
             bool isUpgradeApproved;
 
             switch (billingCreditType)
@@ -1199,5 +1204,27 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
+        private async Task<string> GetTaxRegimeDescription(int taxRegimeId)
+        {
+            if (taxRegimeId == 0)
+            {
+                return string.Empty;
+            }
+
+            var getTaxRegimesResult = await _staticDataClient.GetAllTaxRegimesAsync();
+
+            if (getTaxRegimesResult.IsSuccessful)
+            {
+                var userTaxRegime = getTaxRegimesResult.TaxRegimes.Where(x => x.Id == taxRegimeId).FirstOrDefault();
+
+                if (userTaxRegime != null)
+                {
+                    return string.Format("{0} - {1}", taxRegimeId, userTaxRegime.Description);
+                }
+            }
+
+            //In case the static api client is down or something went wrong, in the email the tax regime will only show its Id
+            return taxRegimeId.ToString();
+        }
     }
 }
