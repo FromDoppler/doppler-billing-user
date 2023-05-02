@@ -1016,6 +1016,8 @@ namespace Doppler.BillingUser.Controllers
 
             var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
+            await _billingRepository.CreateMovementCreditAsync(billingCreditId, 0, user, newPlan, null);
+
             if (creditsLeft != 0)
                 await _billingRepository.CreateMovementCreditsLeftAsync(user.IdUser, creditsLeft, await _userRepository.GetAvailableCredit(user.IdUser));
 
