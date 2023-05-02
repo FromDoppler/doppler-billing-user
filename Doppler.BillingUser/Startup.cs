@@ -23,6 +23,7 @@ using Doppler.BillingUser.Services;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Settings;
+using Doppler.BillingUser.ExternalServices.StaticDataCllient;
 
 namespace Doppler.BillingUser
 {
@@ -110,6 +111,8 @@ namespace Doppler.BillingUser
             services.AddScoped<IPaymentAmountHelper, PaymentAmounthelper>();
             services.AddScoped<IUserPaymentHistoryRepository, UserPaymentHistoryRepository>();
             services.Configure<AttemptsToUpdateSettings>(Configuration.GetSection(nameof(AttemptsToUpdateSettings)));
+            services.Configure<StaticDataClientSettings>(Configuration.GetSection(nameof(StaticDataClient)));
+            services.AddScoped<IStaticDataClient, StaticDataClient>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
