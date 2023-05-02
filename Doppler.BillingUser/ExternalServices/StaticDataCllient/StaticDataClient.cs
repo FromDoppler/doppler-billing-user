@@ -1,12 +1,9 @@
-using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Model;
-using Flurl.Util;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -40,11 +37,11 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
                 {
                     var content = response.Content.ReadAsStringAsync().Result;
 
-                    JToken contentParsed = JToken.Parse(content);
+                    var contentParsed = JObject.Parse(content);
 
-                    foreach (var item in contentParsed.ToKeyValuePairs())
+                    foreach (var item in contentParsed.Properties())
                     {
-                        result.Add(new TaxRegime() { Id = Int32.Parse(item.Key), Description = (string)item.Value });
+                        result.Add(new TaxRegime() { Id = Int32.Parse(item.Name), Description = item.Value.ToString() });
                     }
 
                     return new GetTaxRegimesResult() { IsSuccessful = true, TaxRegimes = result };
