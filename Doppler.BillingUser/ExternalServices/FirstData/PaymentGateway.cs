@@ -107,21 +107,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
                 if (!apiResponse.Transaction_Approved)
                 {
                     string errorMessage = "";
-                    string approvalCode = apiResponse.EXact_Resp_Code;
-                    if (approvalCode != ResponseTypes.NORMAL_TRANSACTION)
-                    {
-                        errorMessage = apiResponse.EXact_Message;
-                        switch (approvalCode)
-                        {
-                            case ResponseTypes.DUPLICATE:
-                                errorCode = PaymentErrorCode.DuplicatedPaymentTransaction;
-                                break;
-                            default:
-                                errorCode = PaymentErrorCode.DeclinedPaymentTransaction;
-                                break;
-                        }
-                    }
-                    else if (apiResponse.Bank_Resp_Code != null && _doNotHonorCodes.Contains(apiResponse.Bank_Resp_Code))
+                    if (apiResponse.Bank_Resp_Code != null && _doNotHonorCodes.Contains(apiResponse.Bank_Resp_Code))
                     {
                         errorMessage = apiResponse.Bank_Message + " [Bank]";
                         errorCode = PaymentErrorCode.DoNotHonorPaymentResponse;
@@ -143,6 +129,13 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
                     throw new DopplerApplicationException(errorCode, errorMessage);
                 }
                 return authNumber;
+            }
+            catch (FlurlHttpException ex)
+            {
+                string errorReponseBody = await ex.GetResponseStringAsync();
+
+                _logger.LogError(ex, "Unexpected error: " + errorReponseBody);
+                throw new DopplerApplicationException(PaymentErrorCode.ClientPaymentTransactionError, errorReponseBody, ex);
             }
             catch (Exception ex) when (ex is not DopplerApplicationException)
             {
