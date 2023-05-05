@@ -356,7 +356,7 @@ namespace Doppler.BillingUser.Services
                         isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
                         bankName = user.BankName,
                         bankAccount = user.BankAccount,
-                        taxRegime = user.TaxRegime,
+                        taxRegime = user.TaxRegimeDescription,
                         billingEmails = userInformation.BillingEmails,
                         isIndividualPlan = newPlan.IdUserType == UserTypeEnum.INDIVIDUAL,
                         isMonthlyPlan = newPlan.IdUserType == UserTypeEnum.MONTHLY,
