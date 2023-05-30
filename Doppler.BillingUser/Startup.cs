@@ -24,6 +24,7 @@ using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.ExternalServices.StaticDataCllient;
+using Doppler.BillingUser.ExternalServices.Aws;
 
 namespace Doppler.BillingUser
 {
@@ -113,6 +114,7 @@ namespace Doppler.BillingUser
             services.Configure<AttemptsToUpdateSettings>(Configuration.GetSection(nameof(AttemptsToUpdateSettings)));
             services.Configure<StaticDataClientSettings>(Configuration.GetSection(nameof(StaticDataClient)));
             services.AddScoped<IStaticDataClient, StaticDataClient>();
+            services.AddS3Client(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
