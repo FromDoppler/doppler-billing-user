@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using System.Threading.Tasks;
 
-namespace Doppler.BillingUser.Services
+namespace Doppler.BillingUser.ExternalServices.Aws
 {
     public interface IFileStorage
     {

@@ -1,4 +1,4 @@
-namespace Doppler.BillingUser.Services.Aws
+namespace Doppler.BillingUser.ExternalServices.Aws
 {
     public class DopplerAwsSettings
     {

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Doppler.BillingUser.Services.Aws
+namespace Doppler.BillingUser.ExternalServices.Aws
 {
     public static class AwsServiceCollectionExtensions
     {

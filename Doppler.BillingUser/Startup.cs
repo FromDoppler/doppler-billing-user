@@ -24,7 +24,7 @@ using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.ExternalServices.StaticDataCllient;
-using Doppler.BillingUser.Services.Aws;
+using Doppler.BillingUser.ExternalServices.Aws;
 
 namespace Doppler.BillingUser
 {

@@ -8,17 +8,19 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace Doppler.BillingUser.Services.Aws
+namespace Doppler.BillingUser.ExternalServices.Aws
 {
     public class AwsS3Service : IFileStorage
     {
         private readonly IOptions<DopplerAwsSettings> _awsSettings;
         private readonly ILogger<AwsS3Service> _logger;
+        private readonly IAmazonS3 _client;
 
         public AwsS3Service(IOptions<DopplerAwsSettings> awsSettings, ILogger<AwsS3Service> logger)
         {
             _awsSettings = awsSettings;
             _logger = logger;
+            _client = CreateS3Client();
         }
 
         private IAmazonS3 CreateS3Client()
@@ -30,7 +32,6 @@ namespace Doppler.BillingUser.Services.Aws
 
         public async Task<string> SaveFile(byte[] data, string extension, string contentType)
         {
-            var client = CreateS3Client();
 
             var fileName = $"{Guid.NewGuid()}{extension}";
 
@@ -46,7 +47,7 @@ namespace Doppler.BillingUser.Services.Aws
                 memoryStream.Write(data, 0, data.Length);
                 putRequest.InputStream = memoryStream;
 
-                await client.PutObjectAsync(putRequest);
+                await _client.PutObjectAsync(putRequest);
 
                 memoryStream.Close();
             }
@@ -65,14 +66,13 @@ namespace Doppler.BillingUser.Services.Aws
         {
             try
             {
-                var client = CreateS3Client();
                 var deleteObjectRequest = new DeleteObjectRequest
                 {
                     BucketName = _awsSettings.Value.BucketName,
                     Key = fileName,
                 };
 
-                await client.DeleteObjectAsync(deleteObjectRequest);
+                await _client.DeleteObjectAsync(deleteObjectRequest);
             }
             catch (Exception ex)
             {
