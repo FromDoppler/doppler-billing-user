@@ -13,6 +13,8 @@ namespace Doppler.BillingUser.Enums
         [Description("FailedPaymentTransaction")]
         FailedPaymentTransaction,
         [Description("Credit Note Generated")]
-        CreditNoteGenerated
+        CreditNoteGenerated,
+        [Description("ClientPaymentTransactionError")]
+        ClientPaymentTransactionError
     }
 }

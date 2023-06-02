@@ -9,6 +9,7 @@ namespace Doppler.BillingUser.ApiModels
         Approved,
         Pending,
         Declined,
-        Failed
+        Failed,
+        ClientFailed
     }
 }
