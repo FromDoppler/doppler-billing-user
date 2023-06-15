@@ -31,6 +31,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Doppler.BillingUser.ExternalServices.StaticDataCllient;
+using Amazon.S3;
+using Amazon.Internal;
+using Amazon;
+using Amazon.S3.Model;
+using Microsoft.AspNetCore.Http;
+using System.IO;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Doppler.BillingUser.ExternalServices.Aws;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -64,6 +73,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IOptions<CloverSettings> _cloverSettings;
         private readonly ICloverService _cloverService;
 
+        private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
             DateFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'",
@@ -125,7 +135,8 @@ namespace Doppler.BillingUser.Controllers
             IOptions<AttemptsToUpdateSettings> attemptsToUpdateSettings,
             IStaticDataClient staticDataClient,
             IOptions<CloverSettings> cloverSettings,
-            ICloverService cloverService)
+            ICloverService cloverService,
+            IFileStorage fileStorage)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -151,6 +162,7 @@ namespace Doppler.BillingUser.Controllers
             _staticDataClient = staticDataClient;
             _cloverSettings = cloverSettings;
             _cloverService = cloverService;
+            _fileStorage = fileStorage;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -236,7 +248,7 @@ namespace Doppler.BillingUser.Controllers
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpPut("/accounts/{accountname}/payment-methods/current")]
-        public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromBody] PaymentMethod paymentMethod)
+        public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromForm] PaymentMethod paymentMethod)
         {
             _logger.LogDebug("Update current payment method.");
 
@@ -252,6 +264,13 @@ namespace Doppler.BillingUser.Controllers
                 if (userInformation.IsCancelated)
                 {
                     return new BadRequestObjectResult("UserCanceled");
+                }
+
+                if (paymentMethod.TaxCertificate != null)
+                {
+                    var extension = Path.GetExtension(paymentMethod.TaxCertificate.FileName);
+                    var taxCertificateUrl = await _fileStorage.SaveFile(paymentMethod.TaxCertificate.OpenReadStream(), extension, paymentMethod.TaxCertificate.ContentType);
+                    paymentMethod.TaxCertificateUrl = taxCertificateUrl;
                 }
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);

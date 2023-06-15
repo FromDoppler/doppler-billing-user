@@ -131,7 +131,8 @@ SELECT
     U.PaymentWay,
     U.BankAccount,
     U.BankName,
-    U.TaxRegime
+    U.TaxRegime,
+    U.TaxCertificateUrl
 FROM
     [User] U
 LEFT JOIN
@@ -380,7 +381,8 @@ SET
     PaymentWay = @paymentWay,
     BankAccount = @bankAccount,
     BankName = @bankName,
-    TaxRegime = @taxRegime
+    TaxRegime = @taxRegime,
+    TaxCertificateUrl = @taxCertificateUrl
 WHERE
     IdUser = @IdUser;",
                 new
@@ -397,7 +399,8 @@ WHERE
                     @paymentWay = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentWay.ToString() : null,
                     @bankAccount = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankAccount : null,
                     @bankName = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankName : null,
-                    @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.TaxRegime : 0
+                    @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.TaxRegime : 0,
+                    @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
                 });
         }
 

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace Doppler.BillingUser.Model
 {
     public class PaymentMethod
@@ -23,5 +25,7 @@ namespace Doppler.BillingUser.Model
         public string BankName { get; set; }
         public string BankAccount { get; set; }
         public int TaxRegime { get; set; }
+        public IFormFile TaxCertificate { get; set; }
+        public string TaxCertificateUrl { get; set; }
     }
 }
