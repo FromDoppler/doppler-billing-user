@@ -269,12 +269,7 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("UserCanceled");
                 }
 
-                if (paymentMethod.TaxCertificate != null)
-                {
-                    var extension = Path.GetExtension(paymentMethod.TaxCertificate.FileName);
-                    var taxCertificateUrl = await _fileStorage.SaveFile(paymentMethod.TaxCertificate.OpenReadStream(), extension, paymentMethod.TaxCertificate.ContentType);
-                    paymentMethod.TaxCertificateUrl = taxCertificateUrl;
-                }
+                paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
@@ -1282,6 +1277,31 @@ namespace Doppler.BillingUser.Controllers
 
             //In case the static api client is down or something went wrong, in the email the tax regime will only show its Id
             return taxRegimeId.ToString();
+        }
+
+        private async Task<string> PutTaxCertificateUrl(PaymentMethod paymentMethod, string accountname)
+        {
+            if (paymentMethod == null || paymentMethod.TaxCertificate == null)
+            {
+                return null;
+            }
+
+            var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
+            var extension = Path.GetExtension(paymentMethod.TaxCertificate.FileName);
+            string taxCertificateUrl;
+
+            // User does not have any tax certificate uploaded
+            if (currentPaymentMethod == null || currentPaymentMethod.TaxCertificateUrl == null)
+            {
+                taxCertificateUrl = await _fileStorage.SaveFile(paymentMethod.TaxCertificate.OpenReadStream(), extension, paymentMethod.TaxCertificate.ContentType);
+            }
+            else // User already has a tax certificate uploaded
+            {
+                var currentPaymentMethodTaxCerfiticateFileName = Path.GetFileName(currentPaymentMethod.TaxCertificateUrl);
+                taxCertificateUrl = await _fileStorage.EditFile(paymentMethod.TaxCertificate.OpenReadStream(), extension, currentPaymentMethodTaxCerfiticateFileName, paymentMethod.TaxCertificate.ContentType);
+            }
+
+            return taxCertificateUrl;
         }
     }
 }
