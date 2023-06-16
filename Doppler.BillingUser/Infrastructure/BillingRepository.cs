@@ -364,8 +364,6 @@ WHERE
         {
             using var connection = _connectionFactory.GetConnection();
 
-            var test = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.TaxRegime : 0;
-
             await connection.ExecuteAsync(@"
 UPDATE
     [USER]
