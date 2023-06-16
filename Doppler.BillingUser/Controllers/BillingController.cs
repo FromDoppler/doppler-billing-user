@@ -269,7 +269,10 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("UserCanceled");
                 }
 
-                paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
+                if (userInformation.PaymentMethod == (int)PaymentMethodEnum.TRANSF && userInformation.IdBillingCountry == (int)CountryEnum.Mexico)
+                {
+                    paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
+                }
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
