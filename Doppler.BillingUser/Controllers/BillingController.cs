@@ -40,6 +40,7 @@ using Microsoft.AspNetCore.Http;
 using System.IO;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Doppler.BillingUser.ExternalServices.Aws;
+using Doppler.BillingUser.Mappers.PaymentMethod;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -243,7 +244,9 @@ namespace Doppler.BillingUser.Controllers
                 return new NotFoundResult();
             }
 
-            return new OkObjectResult(currentPaymentMethod);
+            var getCurrentPaymentMethod = currentPaymentMethod.MapFromPaymentMethodToGetPaymentMethodResult();
+
+            return new OkObjectResult(getCurrentPaymentMethod);
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
