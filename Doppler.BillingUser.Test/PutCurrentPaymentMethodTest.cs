@@ -118,16 +118,17 @@ namespace Doppler.BillingUser.Test
         public async Task PUT_Current_payment_CC_method_should_update_right_value_based_on_body_information()
         {
             // Arrange
-            var currentPaymentMethod = new PaymentMethod
+
+            var currentPaymentMethod = new MultipartFormDataContent()
             {
-                CCHolderFullName = "Test Holder Name",
-                CCNumber = "5555 5555 5555 5555",
-                CCVerification = "222",
-                CCExpMonth = "12",
-                CCExpYear = "25",
-                CCType = "Mastercard",
-                PaymentMethodName = "CC",
-                IdSelectedPlan = 13
+                { new StringContent("Test Holder Name"), "CCHolderFullName" },
+                { new StringContent("5555 5555 5555 5555"), "CCNumber" },
+                { new StringContent("222"), "CCVerification" },
+                { new StringContent("12"), "CCExpMonth" },
+                { new StringContent("25"), "CCExpYear" },
+                { new StringContent("Mastercard"), "CCType" },
+                { new StringContent(PaymentMethodEnum.CC.ToString()), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" }
             };
 
             var user = new User
@@ -174,20 +175,10 @@ namespace Doppler.BillingUser.Test
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
-
-            var request = new HttpRequestMessage(HttpMethod.Put, "accounts/test1@example.com/payment-methods/current")
-            {
-                Headers =
-                {
-                    {
-                        "Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}"
-                    }
-                },
-                Content = requestContent
-            };
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
 
             // Act
-            var response = await client.SendAsync(request);
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -200,13 +191,14 @@ namespace Doppler.BillingUser.Test
             const int userId = 1;
             const int expectedRows = 1;
 
-            var currentPaymentMethod = new PaymentMethod
+            var currentPaymentMethod = new MultipartFormDataContent()
             {
-                PaymentMethodName = "TRANSF",
-                IdSelectedPlan = 13,
-                RazonSocial = "test",
-                IdConsumerType = "RI",
-                IdentificationNumber = "2334345566"
+                { new StringContent("TRANSF"), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" },
+                { new StringContent("test"), "RazonSocial" },
+                { new StringContent("RI"), "IdConsumerType" },
+                { new StringContent("2334345566"), "IdentificationNumber" },
+
             };
 
             var user = new User
@@ -249,20 +241,10 @@ namespace Doppler.BillingUser.Test
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
-
-            var request = new HttpRequestMessage(HttpMethod.Put, "accounts/test1@example.com/payment-methods/current")
-            {
-                Headers =
-                {
-                    {
-                        "Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}"
-                    }
-                },
-                Content = requestContent
-            };
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
 
             // Act
-            var response = await client.SendAsync(request);
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -275,13 +257,13 @@ namespace Doppler.BillingUser.Test
             const int userId = 1;
             const int expectedRows = 1;
 
-            var currentPaymentMethod = new
+            var currentPaymentMethod = new MultipartFormDataContent()
             {
-                PaymentMethodName = "TRANSF",
-                IdSelectedPlan = 13,
-                RazonSocial = "test",
-                IdConsumerType = "RI",
-                IdentificationNumber = "2334345566"
+                { new StringContent("TRANSF"), "PaymentMethodName"},
+                { new StringContent("13"), "IdSelectedPlan"},
+                { new StringContent("test"), "RazonSocial"},
+                { new StringContent("RI"), "IdConsumerType"},
+                { new StringContent("2334345566"), "IdentificationNumber"}
             };
 
             var user = new User
@@ -330,7 +312,7 @@ namespace Doppler.BillingUser.Test
             const string url = "https://localhost:5000/businesspartner/createorupdatebusinesspartner";
 
             // Act
-            var response = await client.PutAsJsonAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -343,19 +325,17 @@ namespace Doppler.BillingUser.Test
             // Arrange
             const int userId = 1;
 
-            var currentPaymentMethod = new PaymentMethod
+            var currentPaymentMethod = new MultipartFormDataContent()
             {
-                CCHolderFullName = "Test Holder Name",
-                CCNumber = "5555 5555 5555 5555",
-                CCVerification = "222",
-                CCExpMonth = "12",
-                CCExpYear = "25",
-                CCType = "Mastercard",
-                PaymentMethodName = "CC",
-                IdSelectedPlan = 13
+                { new StringContent("Test Holder Name"), "CCHolderFullName" },
+                { new StringContent("5555 5555 5555 5555"), "CCNumber" },
+                { new StringContent("222"), "CCVerification" },
+                { new StringContent("12"), "CCExpMonth" },
+                { new StringContent("25"), "CCExpYear" },
+                { new StringContent("Mastercard"), "CCType" },
+                { new StringContent(PaymentMethodEnum.CC.ToString()), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" }
             };
-
-            var requestContent = new StringContent(JsonConvert.SerializeObject(currentPaymentMethod), Encoding.UTF8, "application/json");
 
             var mockConnection = new Mock<DbConnection>();
 
@@ -381,19 +361,10 @@ namespace Doppler.BillingUser.Test
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
 
-            var request = new HttpRequestMessage(HttpMethod.Put, "accounts/test1@example.com/payment-methods/current")
-            {
-                Headers =
-                {
-                    {
-                        "Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}"
-                    }
-                },
-                Content = requestContent
-            };
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
 
             // Act
-            var response = await client.SendAsync(request);
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -403,17 +374,17 @@ namespace Doppler.BillingUser.Test
         public async Task PUT_Current_payment_Mercadopago_method_should_update_right_value_based_on_body_information()
         {
             // Arrange
-            var currentPaymentMethod = new
+            var currentPaymentMethod = new MultipartFormDataContent()
             {
-                CCHolderFullName = "Test Holder Name",
-                CCNumber = "5555 5555 5555 5555",
-                CCVerification = "222",
-                CCExpMonth = "12",
-                CCExpYear = "25",
-                CCType = "Mastercard",
-                PaymentMethodName = PaymentMethodEnum.MP.ToString(),
-                IdSelectedPlan = 13,
-                IdentificationNumber = "2334345566"
+                { new StringContent("Test Holder Name"), "CCHolderFullName" },
+                { new StringContent("5555 5555 5555 5555"), "CCNumber" },
+                { new StringContent("222"), "CCVerification" },
+                { new StringContent("12"), "CCExpMonth" },
+                { new StringContent("25"), "CCExpYear" },
+                { new StringContent("Mastercard"), "CCType" },
+                { new StringContent(PaymentMethodEnum.MP.ToString()), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" },
+                { new StringContent("2334345566"), "IdentificationNumber" }
             };
 
             var user = new User
@@ -460,7 +431,7 @@ namespace Doppler.BillingUser.Test
             const string url = "https://localhost:5000/businesspartner/createorupdatebusinesspartner";
 
             // Act
-            var response = await client.PutAsJsonAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -473,19 +444,18 @@ namespace Doppler.BillingUser.Test
             // Arrange
             const int userId = 1;
 
-            var currentPaymentMethod = new PaymentMethod
+            var currentPaymentMethod = new MultipartFormDataContent()
             {
-                CCHolderFullName = "Test Holder Name",
-                CCNumber = "5555 5555 5555 5555",
-                CCVerification = "222",
-                CCExpMonth = "12",
-                CCExpYear = "25",
-                CCType = "Mastercard",
-                PaymentMethodName = "CC",
-                IdSelectedPlan = 13
+                { new StringContent("Test Holder Name"), "CCHolderFullName" },
+                { new StringContent("5555 5555 5555 5555"), "CCNumber" },
+                { new StringContent("222"), "CCVerification" },
+                { new StringContent("12"), "CCExpMonth" },
+                { new StringContent("25"), "CCExpYear" },
+                { new StringContent("Mastercard"), "CCType" },
+                { new StringContent(PaymentMethodEnum.CC.ToString()), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" },
+                { new StringContent("2334345566"), "IdentificationNumber" }
             };
-
-            var requestContent = new StringContent(JsonConvert.SerializeObject(currentPaymentMethod), Encoding.UTF8, "application/json");
 
             var mockConnection = new Mock<DbConnection>();
 
@@ -514,19 +484,10 @@ namespace Doppler.BillingUser.Test
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
 
-            var request = new HttpRequestMessage(HttpMethod.Put, "accounts/test1@example.com/payment-methods/current")
-            {
-                Headers =
-                {
-                    {
-                        "Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}"
-                    }
-                },
-                Content = requestContent
-            };
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
 
             // Act
-            var response = await client.SendAsync(request);
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
 
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
