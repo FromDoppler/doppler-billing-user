@@ -1,18 +1,17 @@
 using Dapper;
-using Doppler.BillingUser.ApiModels;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Utils;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +24,8 @@ namespace Doppler.BillingUser.Infrastructure
         private readonly IEncryptionService _encryptionService;
         private readonly IPaymentGateway _paymentGateway;
         private readonly ISapService _sapService;
+        private readonly IOptions<CloverSettings> _cloverSettings;
+        private readonly ICloverService _cloverService;
 
         private const int InvoiceBillingTypeQBL = 1;
         private const int UserAccountType = 1;
@@ -43,12 +44,16 @@ namespace Doppler.BillingUser.Infrastructure
         public BillingRepository(IDatabaseConnectionFactory connectionFactory,
             IEncryptionService encryptionService,
             IPaymentGateway paymentGateway,
-            ISapService sapService)
+            ISapService sapService,
+            IOptions<CloverSettings> cloverSettings,
+            ICloverService cloverService)
         {
             _connectionFactory = connectionFactory;
             _encryptionService = encryptionService;
             _paymentGateway = paymentGateway;
             _sapService = sapService;
+            _cloverSettings = cloverSettings;
+            _cloverService = cloverService;
         }
         public async Task<BillingInformation> GetBillingInformation(string email)
         {
@@ -246,7 +251,8 @@ WHERE
                     HolderName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
                     ExpirationMonth = int.Parse(paymentMethod.CCExpMonth),
                     ExpirationYear = int.Parse(paymentMethod.CCExpYear),
-                    Code = _encryptionService.EncryptAES256(paymentMethod.CCVerification)
+                    Code = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                    CardType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true)
                 };
 
                 var cultureInfo = Thread.CurrentThread.CurrentCulture;
@@ -255,7 +261,9 @@ WHERE
                 paymentMethod.CCType = textInfo.ToTitleCase(paymentMethod.CCType);
 
                 //Validate CC
-                var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await _paymentGateway.IsValidCreditCard(creditCard, user.IdUser, true);
+                var validCc = _cloverSettings.Value.UseCloverApi ? await _cloverService.IsValidCreditCard(user.Email, creditCard, user.IdUser, true) : await _paymentGateway.IsValidCreditCard(creditCard, user.IdUser, true);
+
+                //var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await ;
                 if (!validCc)
                 {
                     return false;

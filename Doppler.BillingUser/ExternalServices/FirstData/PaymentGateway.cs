@@ -1,5 +1,6 @@
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.ExternalServices.Clover.Entities;
 using Doppler.BillingUser.ExternalServices.E4;
 using Doppler.BillingUser.Services;
 using Flurl.Http;
@@ -123,7 +124,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
 
                     if (txn.Transaction_Type != TransactionTypes.REFUND && !isReprocessCall)
                     {
-                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, apiResponse.CTR, apiResponse.Bank_Message, PaymentMethodEnum.CC, isFreeUser);
+                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, apiResponse.CTR, apiResponse.Bank_Message, PaymentMethodEnum.CC, isFreeUser, txn.CardHoldersName, txn.Card_Number[^4..]);
                     }
 
                     throw new DopplerApplicationException(errorCode, errorMessage);

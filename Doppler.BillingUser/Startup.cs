@@ -25,6 +25,7 @@ using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.ExternalServices.StaticDataCllient;
 using Doppler.BillingUser.ExternalServices.Aws;
+using Doppler.BillingUser.ExternalServices.Clover;
 
 namespace Doppler.BillingUser
 {
@@ -114,6 +115,8 @@ namespace Doppler.BillingUser
             services.Configure<AttemptsToUpdateSettings>(Configuration.GetSection(nameof(AttemptsToUpdateSettings)));
             services.Configure<StaticDataClientSettings>(Configuration.GetSection(nameof(StaticDataClient)));
             services.AddScoped<IStaticDataClient, StaticDataClient>();
+            services.Configure<CloverSettings>(Configuration.GetSection(nameof(CloverSettings)));
+            services.AddScoped<ICloverService, CloverService>();
             services.AddS3Client(Configuration);
         }
 
