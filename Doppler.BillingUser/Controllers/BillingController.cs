@@ -269,10 +269,8 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("UserCanceled");
                 }
 
-                if (userInformation.PaymentMethod == (int)PaymentMethodEnum.TRANSF && userInformation.IdBillingCountry == (int)CountryEnum.Mexico)
-                {
-                    paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
-                }
+                paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
+
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
@@ -1284,12 +1282,13 @@ namespace Doppler.BillingUser.Controllers
 
         private async Task<string> PutTaxCertificateUrl(PaymentMethod paymentMethod, string accountname)
         {
+            var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
+
             if (paymentMethod == null || paymentMethod.TaxCertificate == null)
             {
-                return null;
+                return currentPaymentMethod.TaxCertificateUrl;
             }
 
-            var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
             var extension = Path.GetExtension(paymentMethod.TaxCertificate.FileName);
             string taxCertificateUrl;
 
