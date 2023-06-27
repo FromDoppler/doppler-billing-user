@@ -4,6 +4,7 @@ using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
+using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
@@ -16,6 +17,7 @@ using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Mappers;
 using Doppler.BillingUser.Mappers.BillingCredit;
+using Doppler.BillingUser.Mappers.PaymentMethod;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Services;
@@ -29,18 +31,9 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Doppler.BillingUser.ExternalServices.StaticDataCllient;
-using Amazon.S3;
-using Amazon.Internal;
-using Amazon;
-using Amazon.S3.Model;
-using Microsoft.AspNetCore.Http;
-using System.IO;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Doppler.BillingUser.ExternalServices.Aws;
-using Doppler.BillingUser.Mappers.PaymentMethod;
 
 namespace Doppler.BillingUser.Controllers
 {
