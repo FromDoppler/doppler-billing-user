@@ -79,7 +79,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
                     _logger.LogError(String.Format("Mercadopago payment Declined with Accountname:{0}, ErrorCode:{1}, ErrorMessage: {2}", accountname, errorCode, errorMessage));
                     if (!isReprocessCall)
                     {
-                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, string.Empty, String.Empty, PaymentMethodEnum.MP, isFreeUser);
+                        await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(clientId, errorCode.ToString(), errorMessage, string.Empty, String.Empty, PaymentMethodEnum.MP, isFreeUser, creditCard.HolderName, creditCard.Number[^4..]);
                     }
 
                     throw new DopplerApplicationException(errorCode, errorMessage);

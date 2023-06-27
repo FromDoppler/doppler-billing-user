@@ -1,39 +1,36 @@
-using System;
+using Doppler.BillingUser.ApiModels;
 using Doppler.BillingUser.DopplerSecurity;
-using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Encryption;
+using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Extensions;
+using Doppler.BillingUser.ExternalServices.AccountPlansApi;
+using Doppler.BillingUser.ExternalServices.Clover;
+using Doppler.BillingUser.ExternalServices.EmailSender;
+using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
+using Doppler.BillingUser.ExternalServices.Sap;
+using Doppler.BillingUser.ExternalServices.Slack;
+using Doppler.BillingUser.ExternalServices.StaticDataCllient;
+using Doppler.BillingUser.ExternalServices.Zoho;
+using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.Infrastructure;
+using Doppler.BillingUser.Mappers;
+using Doppler.BillingUser.Mappers.BillingCredit;
+using Doppler.BillingUser.Mappers.PaymentStatus;
+using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Services;
+using Doppler.BillingUser.Settings;
+using Doppler.BillingUser.Utils;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
-using Doppler.BillingUser.ExternalServices.AccountPlansApi;
-using FluentValidation;
-using Doppler.BillingUser.Enums;
-using Doppler.BillingUser.ExternalServices.FirstData;
-using Doppler.BillingUser.ExternalServices.Sap;
-using Doppler.BillingUser.Encryption;
-using System.Linq;
-using Doppler.BillingUser.ExternalServices.Slack;
 using Microsoft.Extensions.Options;
-using Doppler.BillingUser.ExternalServices.EmailSender;
-using Doppler.BillingUser.Utils;
-using Doppler.BillingUser.ExternalServices.Zoho;
-using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
-using Doppler.BillingUser.Services;
-using Doppler.BillingUser.Extensions;
-using Doppler.BillingUser.Mappers;
-using Doppler.BillingUser.Mappers.BillingCredit;
-using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
-using Doppler.BillingUser.Mappers.PaymentStatus;
-using FluentValidator;
-using System.Drawing;
-using System.Text;
-using Tavis.UriTemplates;
-using Doppler.BillingUser.ApiModels;
-using Doppler.BillingUser.Settings;
-using Doppler.BillingUser.ExternalServices.StaticDataCllient;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -64,6 +61,8 @@ namespace Doppler.BillingUser.Controllers
         private readonly IUserPaymentHistoryRepository _userPaymentHistoryRepository;
         private readonly IOptions<AttemptsToUpdateSettings> _attemptsToUpdateSettings;
         private readonly IStaticDataClient _staticDataClient;
+        private readonly IOptions<CloverSettings> _cloverSettings;
+        private readonly ICloverService _cloverService;
 
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -124,7 +123,9 @@ namespace Doppler.BillingUser.Controllers
             IPaymentAmountHelper paymentAmountService,
             IUserPaymentHistoryRepository userPaymentHistoryRepository,
             IOptions<AttemptsToUpdateSettings> attemptsToUpdateSettings,
-            IStaticDataClient staticDataClient)
+            IStaticDataClient staticDataClient,
+            IOptions<CloverSettings> cloverSettings,
+            ICloverService cloverService)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -148,6 +149,8 @@ namespace Doppler.BillingUser.Controllers
             _userPaymentHistoryRepository = userPaymentHistoryRepository;
             _attemptsToUpdateSettings = attemptsToUpdateSettings;
             _staticDataClient = staticDataClient;
+            _cloverSettings = cloverSettings;
+            _cloverService = cloverService;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -251,7 +254,6 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("UserCanceled");
                 }
 
-
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
                 if (!isSuccess)
@@ -263,6 +265,37 @@ namespace Doppler.BillingUser.Controllers
                     await _slackService.SendNotification(messageError);
 
                     return new BadRequestObjectResult("Failed at updating payment");
+                }
+
+                /* Create or update the customer in clover if it not exists or change the credit card */
+                if (_cloverSettings.Value.UseCloverApi)
+                {
+                    if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
+                    {
+                        var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                        var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await _cloverService.IsValidCreditCard(accountname, encryptedCreditCard, userInformation.IdUser, true);
+                        if (validCc)
+                        {
+                            var customer = await _cloverService.GetCustomerAsync(accountname);
+                            if (customer == null)
+                            {
+                                await _cloverService.CreateCustomerAsync(accountname, _encryptionService.DecryptAES256(encryptedCreditCard.HolderName), encryptedCreditCard);
+                            }
+                            else
+                            {
+                                var creditCardNumber = _encryptionService.DecryptAES256(encryptedCreditCard.Number);
+                                var first6 = creditCardNumber[0..6];
+                                var last4 = creditCardNumber[^4..];
+
+                                var currentCreditCard = customer.Cards.Elements.FirstOrDefault();
+
+                                if (currentCreditCard.First6 != first6 || currentCreditCard.Last4 != last4)
+                                {
+                                    await _cloverService.UpdateCustomerAsync(accountname, _encryptionService.DecryptAES256(encryptedCreditCard.HolderName), encryptedCreditCard, customer.Id);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
@@ -907,7 +940,7 @@ namespace Doppler.BillingUser.Controllers
             switch (paymentMethod)
             {
                 case PaymentMethodEnum.CC:
-                    var authorizationNumber = await _paymentGateway.CreateCreditCardPayment(total, encryptedCreditCard, userId, isFreeUser, isReprocessCall);
+                    var authorizationNumber = _cloverSettings.Value.UseCloverApi ? await _cloverService.CreateCreditCardPayment(accountname, total, encryptedCreditCard, userId, isFreeUser, isReprocessCall) : await _paymentGateway.CreateCreditCardPayment(total, encryptedCreditCard, userId, isFreeUser, isReprocessCall);
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved, AuthorizationNumber = authorizationNumber };
                 case PaymentMethodEnum.MP:
                     var paymentDetails = await _paymentAmountService.ConvertCurrencyAmount(CurrencyTypeEnum.UsS, CurrencyTypeEnum.sARG, total);
