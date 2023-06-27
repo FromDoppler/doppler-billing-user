@@ -99,7 +99,7 @@ namespace Doppler.BillingUser.Test.ExternalServices
 
             // Assert
             var exception = await Assert.ThrowsAsync<DopplerApplicationException>(act);
-            Assert.Equal($"ClientPaymentTransactionError - {apiError.Message}", exception.Message);
+            Assert.Equal($"DeclinedPaymentTransaction - {apiError.Message}", exception.Message);
         }
 
         private static Mock<IOptions<CloverSettings>> GetCloverSettingsMock()
