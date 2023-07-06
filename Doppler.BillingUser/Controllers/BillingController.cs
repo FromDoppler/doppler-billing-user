@@ -4,6 +4,7 @@ using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
+using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
@@ -16,6 +17,7 @@ using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Mappers;
 using Doppler.BillingUser.Mappers.BillingCredit;
+using Doppler.BillingUser.Mappers.PaymentMethod;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Services;
@@ -29,6 +31,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -64,6 +67,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IOptions<CloverSettings> _cloverSettings;
         private readonly ICloverService _cloverService;
 
+        private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
             DateFormatString = "yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'",
@@ -125,7 +129,8 @@ namespace Doppler.BillingUser.Controllers
             IOptions<AttemptsToUpdateSettings> attemptsToUpdateSettings,
             IStaticDataClient staticDataClient,
             IOptions<CloverSettings> cloverSettings,
-            ICloverService cloverService)
+            ICloverService cloverService,
+            IFileStorage fileStorage)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -151,6 +156,7 @@ namespace Doppler.BillingUser.Controllers
             _staticDataClient = staticDataClient;
             _cloverSettings = cloverSettings;
             _cloverService = cloverService;
+            _fileStorage = fileStorage;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -231,12 +237,14 @@ namespace Doppler.BillingUser.Controllers
                 return new NotFoundResult();
             }
 
-            return new OkObjectResult(currentPaymentMethod);
+            var getCurrentPaymentMethod = currentPaymentMethod.MapFromPaymentMethodToGetPaymentMethodResult();
+
+            return new OkObjectResult(getCurrentPaymentMethod);
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpPut("/accounts/{accountname}/payment-methods/current")]
-        public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromBody] PaymentMethod paymentMethod)
+        public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromForm] PaymentMethod paymentMethod)
         {
             _logger.LogDebug("Update current payment method.");
 
@@ -253,6 +261,9 @@ namespace Doppler.BillingUser.Controllers
                 {
                     return new BadRequestObjectResult("UserCanceled");
                 }
+
+                paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
+
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
@@ -1260,6 +1271,32 @@ namespace Doppler.BillingUser.Controllers
 
             //In case the static api client is down or something went wrong, in the email the tax regime will only show its Id
             return taxRegimeId.ToString();
+        }
+
+        private async Task<string> PutTaxCertificateUrl(PaymentMethod paymentMethod, string accountname)
+        {
+            var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
+
+            if (paymentMethod == null || paymentMethod.TaxCertificate == null)
+            {
+                return currentPaymentMethod.TaxCertificateUrl;
+            }
+
+            var extension = Path.GetExtension(paymentMethod.TaxCertificate.FileName);
+            string taxCertificateUrl;
+
+            // User does not have any tax certificate uploaded
+            if (currentPaymentMethod == null || currentPaymentMethod.TaxCertificateUrl == null)
+            {
+                taxCertificateUrl = await _fileStorage.SaveFile(paymentMethod.TaxCertificate.OpenReadStream(), extension, paymentMethod.TaxCertificate.ContentType);
+            }
+            else // User already has a tax certificate uploaded
+            {
+                var currentPaymentMethodTaxCerfiticateFileName = Path.GetFileName(currentPaymentMethod.TaxCertificateUrl);
+                taxCertificateUrl = await _fileStorage.EditFile(paymentMethod.TaxCertificate.OpenReadStream(), extension, currentPaymentMethodTaxCerfiticateFileName, paymentMethod.TaxCertificate.ContentType);
+            }
+
+            return taxCertificateUrl;
         }
     }
 }

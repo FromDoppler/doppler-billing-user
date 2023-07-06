@@ -30,7 +30,7 @@ namespace Doppler.BillingUser.ExternalServices.Aws
             return client;
         }
 
-        public async Task<string> SaveFile(byte[] data, string extension, string contentType)
+        public async Task<string> SaveFile(Stream data, string extension, string contentType)
         {
 
             var fileName = $"{Guid.NewGuid()}{extension}";
@@ -39,23 +39,16 @@ namespace Doppler.BillingUser.ExternalServices.Aws
             {
                 BucketName = _awsSettings.Value.BucketName,
                 Key = fileName,
+                InputStream = data,
                 ContentType = contentType
             };
 
-            using (MemoryStream memoryStream = new MemoryStream())
-            {
-                memoryStream.Write(data, 0, data.Length);
-                putRequest.InputStream = memoryStream;
-
-                await _client.PutObjectAsync(putRequest);
-
-                memoryStream.Close();
-            }
+            await _client.PutObjectAsync(putRequest);
 
             return string.Format("https://{0}.s3.{1}.amazonaws.com/{2}", _awsSettings.Value.BucketName, _awsSettings.Value.Region, fileName);
         }
 
-        public async Task<string> EditFile(byte[] data, string extension, string fileName, string contentType)
+        public async Task<string> EditFile(Stream data, string extension, string fileName, string contentType)
         {
             await DeleteFile(fileName);
             var url = await SaveFile(data, extension, contentType);
