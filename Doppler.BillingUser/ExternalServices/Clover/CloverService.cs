@@ -5,6 +5,7 @@ using Doppler.BillingUser.ExternalServices.Clover.Errors;
 using Doppler.BillingUser.ExternalServices.Clover.Requests;
 using Doppler.BillingUser.ExternalServices.Clover.Responses;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Services;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -24,6 +25,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
         private readonly ILogger<CloverService> _logger;
         private readonly IEncryptionService _encryptionService;
         private readonly IEmailTemplatesService _emailTemplatesService;
+        private readonly ISlackService _slackService;
 
         public CloverService(
             IOptions<CloverSettings> options,
@@ -31,7 +33,8 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             IFlurlClientFactory flurlClientFactory,
             ILogger<CloverService> logger,
             IEncryptionService encryptionService,
-            IEmailTemplatesService emailTemplatesService)
+            IEmailTemplatesService emailTemplatesService,
+            ISlackService slackService)
         {
             _options = options;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -39,6 +42,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             _logger = logger;
             _encryptionService = encryptionService;
             _emailTemplatesService = emailTemplatesService;
+            _slackService = slackService;
         }
 
         public async Task<string> CreateCreditCardPayment(string accountname, decimal chargeTotal, CreditCard creditCard, int clientId, bool isFreeUser, bool isReprocessCall)
@@ -121,7 +125,11 @@ namespace Doppler.BillingUser.ExternalServices.Clover
                 var errorReponseBody = await ex.GetResponseJsonAsync<ApiError>();
                 await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, paymentRequest.CreditCard.CardNumber[^4..]);
                 _logger.LogError(ex, "Unexpected error");
-                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}", ex);
+
+                var messageError = $"Failed to validate the credit card for user {accountname} {errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}.";
+                await _slackService.SendNotification(messageError);
+
+                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{errorReponseBody.Error.Code}", ex);
             }
         }
 

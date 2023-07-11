@@ -3,6 +3,7 @@ using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.Clover.Errors;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Services;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
@@ -44,7 +45,8 @@ namespace Doppler.BillingUser.Test.ExternalServices
                 new PerBaseUrlFlurlClientFactory(),
                 Mock.Of<ILogger<CloverService>>(),
                 encryptionServiceMock.Object,
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ISlackService>());
 
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(true, 200);
@@ -87,7 +89,8 @@ namespace Doppler.BillingUser.Test.ExternalServices
                 new PerBaseUrlFlurlClientFactory(),
                 Mock.Of<ILogger<CloverService>>(),
                 encryptionServiceMock.Object,
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ISlackService>());
 
             var apiError = new ApiError { Message = "Error", Error = new ApiErrorCause { Code = "Error", Message = "Error message" } };
 
@@ -99,7 +102,7 @@ namespace Doppler.BillingUser.Test.ExternalServices
 
             // Assert
             var exception = await Assert.ThrowsAsync<DopplerApplicationException>(act);
-            Assert.Equal($"DeclinedPaymentTransaction - {apiError.Error.Code}: {apiError.Error.Message}", exception.Message);
+            Assert.Equal($"DeclinedPaymentTransaction - {apiError.Error.Code}", exception.Message);
         }
 
         private static Mock<IOptions<CloverSettings>> GetCloverSettingsMock()
