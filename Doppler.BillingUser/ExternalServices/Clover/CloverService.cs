@@ -151,6 +151,10 @@ namespace Doppler.BillingUser.ExternalServices.Clover
                 await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, paymentRequest.CreditCard.CardHolderName[^4..]);
 
                 _logger.LogError(ex, "Unexpected error");
+
+                var messageError = $"Failed to create the payment for user {accountname} {errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}.";
+                await _slackService.SendNotification(messageError);
+
                 throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, errorReponseBody.Error.Code, ex);
             }
             catch (Exception ex) when (ex is not DopplerApplicationException)
