@@ -129,7 +129,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
                 var messageError = $"Failed to validate the credit card for user {accountname} {errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}.";
                 await _slackService.SendNotification(messageError);
 
-                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{errorReponseBody.Error.Code}", ex);
+                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{MapCloverError(errorReponseBody.Error.Code, errorReponseBody.Error.Message)}", ex);
             }
         }
 
@@ -155,7 +155,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
                 var messageError = $"Failed to create the payment for user {accountname} {errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}.";
                 await _slackService.SendNotification(messageError);
 
-                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, errorReponseBody.Error.Code, ex);
+                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, MapCloverError(errorReponseBody.Error.Code, errorReponseBody.Error.Message), ex);
             }
             catch (Exception ex) when (ex is not DopplerApplicationException)
             {
@@ -216,6 +216,16 @@ namespace Doppler.BillingUser.ExternalServices.Clover
                     SecurityCode = _encryptionService.DecryptAES256(creditCard.Code)
                 }
             };
+        }
+
+        private string MapCloverError(string errorCode, string errorMessage)
+        {
+            if (errorMessage.Contains("Insufficient funds"))
+            {
+                return "invalid_tip_amount";
+            }
+
+            return errorCode;
         }
     }
 }

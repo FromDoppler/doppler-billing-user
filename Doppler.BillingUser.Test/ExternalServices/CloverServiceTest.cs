@@ -105,6 +105,48 @@ namespace Doppler.BillingUser.Test.ExternalServices
             Assert.Equal($"DeclinedPaymentTransaction - {apiError.Error.Code}", exception.Message);
         }
 
+        [Fact]
+        public async Task Call_clover_api_should_be_return_invalid_tip_amount_when_the_credit_card_has_not_funds()
+        {
+            // Arrange
+            var accountname = "test1@example.com";
+            var clientId = 1000;
+            var isFree = false;
+            var creditCard = new CreditCard
+            {
+                ExpirationMonth = 1,
+                ExpirationYear = 2025,
+                HolderName = "Holder Test",
+                Number = "4111111111111111",
+                CardType = Enums.CardTypeEnum.Visa,
+                Code = "123"
+            };
+
+            var encryptionServiceMock = new Mock<IEncryptionService>();
+            encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
+
+            var service = new CloverService(
+                GetCloverSettingsMock().Object,
+                Mock.Of<IJwtTokenGenerator>(),
+                new PerBaseUrlFlurlClientFactory(),
+                Mock.Of<ILogger<CloverService>>(),
+                encryptionServiceMock.Object,
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ISlackService>());
+
+            var apiError = new ApiError { Message = "Error", Error = new ApiErrorCause { Code = "card_declined", Message = "DECLINED: Over limit / Insufficient funds" } };
+
+            using var httpTest = new HttpTest();
+            httpTest.RespondWithJson(apiError, 500);
+
+            //Act
+            Task act() => service.IsValidCreditCard(accountname, creditCard, clientId, isFree);
+
+            // Assert
+            var exception = await Assert.ThrowsAsync<DopplerApplicationException>(act);
+            Assert.Equal($"DeclinedPaymentTransaction - invalid_tip_amount", exception.Message);
+        }
+
         private static Mock<IOptions<CloverSettings>> GetCloverSettingsMock()
         {
             var cloverSettingsMock = new Mock<IOptions<CloverSettings>>();
