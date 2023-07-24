@@ -1,6 +1,7 @@
 using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.ExternalServices.Clover.Errors;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Services;
@@ -203,8 +204,10 @@ namespace Doppler.BillingUser.Test
                 Mock.Of<IEncryptionService>(),
                 Mock.Of<IEmailTemplatesService>());
 
+            var apiError = new ApiError { Message = "Error" };
+
             using var httpTest = new HttpTest();
-            httpTest.RespondWith(status: 500);
+            httpTest.RespondWithJson(apiError, 500);
 
             // Act
             async Task CallFunc() => await service.CreatePayment(_accountname, _userId, _total, _creditCard, true, false);
