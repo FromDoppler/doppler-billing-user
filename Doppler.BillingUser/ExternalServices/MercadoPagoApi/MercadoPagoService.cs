@@ -2,6 +2,7 @@ using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.MercadoPagoApi.Error;
 using Doppler.BillingUser.Services;
 using Flurl.Http;
 using Flurl.Http.Configuration;
@@ -93,6 +94,13 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
                 }
 
                 return payment;
+            }
+            catch (FlurlHttpException ex)
+            {
+                var errorReponseBody = await ex.GetResponseJsonAsync<ApiError>();
+
+                _logger.LogError(ex, "Unexpected error");
+                throw new DopplerApplicationException(PaymentErrorCode.ClientPaymentTransactionError, errorReponseBody.Message, ex);
             }
             catch (Exception ex) when (ex is not DopplerApplicationException)
             {
