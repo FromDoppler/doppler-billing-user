@@ -71,6 +71,9 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
             if (newUserTypePlan.IdUserType == UserTypeEnum.SUBSCRIBERS)
             {
                 var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(agreementInformation.DiscountId);
+
+                buyCreditAgreement.BillingCredit.TotalMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
+
                 var currentMonthPlan = (billingCreditType == BillingCreditTypeEnum.Individual_to_Subscribers) ? buyCreditAgreement.BillingCredit.Date.Day > 20 ? 0 : 1 :
                                         currentBillingCredit == null ? (buyCreditAgreement.BillingCredit.TotalMonthPlan.HasValue
                                         && buyCreditAgreement.BillingCredit.TotalMonthPlan.Value > 1 && buyCreditAgreement.BillingCredit.Date.Day > 20)
@@ -78,7 +81,6 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                                         currentBillingCredit.CurrentMonthPlan ?? 1;
 
                 buyCreditAgreement.BillingCredit.IdDiscountPlan = agreementInformation.DiscountId != 0 ? agreementInformation.DiscountId : 1;
-                buyCreditAgreement.BillingCredit.TotalMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
                 buyCreditAgreement.BillingCredit.CurrentMonthPlan = currentMonthPlan;
                 buyCreditAgreement.BillingCredit.SubscribersQty = newUserTypePlan.SubscribersQty;
             }
