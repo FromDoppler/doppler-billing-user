@@ -191,7 +191,7 @@ namespace Doppler.BillingUser.Controllers
             {
                 var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
 
-                if (currentPaymentMethod != null & currentPaymentMethod.PaymentMethodName == PaymentMethodEnum.TRANSF.ToString())
+                if (currentPaymentMethod != null && currentPaymentMethod.PaymentMethodName == PaymentMethodEnum.TRANSF.ToString())
                 {
                     var userInformation = await _userRepository.GetUserInformation(accountname);
                     await _billingRepository.SetEmptyPaymentMethod(userInformation.IdUser);
