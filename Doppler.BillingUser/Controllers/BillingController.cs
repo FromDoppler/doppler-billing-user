@@ -404,7 +404,11 @@ namespace Doppler.BillingUser.Controllers
 
             var user = await _userRepository.GetUserInformation(accountname);
 
-            var invoices = await _billingRepository.GetInvoices(user.IdUser, PaymentStatusEnum.DeclinedPaymentTransaction, PaymentStatusEnum.ClientPaymentTransactionError);
+            var invoices = await _billingRepository.GetInvoices(user.IdUser,
+                PaymentStatusEnum.DeclinedPaymentTransaction,
+                PaymentStatusEnum.ClientPaymentTransactionError,
+                PaymentStatusEnum.FailedPaymentTransaction,
+                PaymentStatusEnum.DoNotHonorPaymentResponse);
 
             if (invoices.Count == 0)
             {
