@@ -159,7 +159,7 @@ namespace Doppler.BillingUser.Controllers
             _fileStorage = fileStorage;
         }
 
-        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpGet("/accounts/{accountName}/billing-information")]
         public async Task<IActionResult> GetBillingInformation(string accountName)
         {
