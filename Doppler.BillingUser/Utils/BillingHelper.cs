@@ -68,7 +68,6 @@ namespace Doppler.BillingUser.Utils
             return sapBilling;
         }
 
-
         public static int? GetPeriodicity(UserTypePlanInformation newUserPlan, BillingCredit billingCredit)
         {
             return newUserPlan.IdUserType == UserTypeEnum.INDIVIDUAL ?
@@ -127,6 +126,59 @@ namespace Doppler.BillingUser.Utils
             account.DPromoCode = zohoDto.PromoCodo;
             account.DDiscountTypeDesc = zohoDto.DiscountTypeDescription;
             account.Industry = zohoDto.Industry;
+        }
+
+        public static SapBillingDto MapBillingToSapToReprocessAsync(
+            SapSettings timeZoneOffset,
+            ImportedBillingDetail importedBillingDetail,
+            BillingCredit billingCredit,
+            string cardNumber,
+            string cardHolderName,
+            string authorizationNumber,
+            AccountingEntry invoice,
+            DateTime? paymentDate)
+        {
+            var sapBilling = new SapBillingDto
+            {
+                Id = billingCredit.IdUser,
+                CreditsOrSubscribersQuantity = billingCredit.IdUserType == (int)UserTypeEnum.SUBSCRIBERS ? billingCredit.SubscribersQty.GetValueOrDefault() : billingCredit.CreditsQty.GetValueOrDefault(),
+                IsCustomPlan = (new[] { 0, 9, 17 }).Contains(billingCredit.IdUserTypePlan),
+                IsPlanUpgrade = true, // TODO: Check when the other types of purchases are implemented.
+                Currency = CurrencyTypeUsd,
+                Periodicity = billingCredit.TotalMonthPlan == 3 ?
+                    1 : billingCredit.TotalMonthPlan == 6 ?
+                    2 : billingCredit.TotalMonthPlan == 12 ?
+                    3 : 0,
+                PeriodMonth = string.IsNullOrEmpty(importedBillingDetail.Month) ? 0 : Convert.ToDateTime(importedBillingDetail.Month).Month,
+                PeriodYear = string.IsNullOrEmpty(importedBillingDetail.Month) ? 0 : Convert.ToDateTime(importedBillingDetail.Month).Year,
+                PlanFee = billingCredit.IdUserType == (int)UserTypeEnum.SUBSCRIBERS ?
+                    billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) :
+                    billingCredit.PlanFee,
+                Discount = (billingCredit.DiscountPlanFee) +
+                    billingCredit.DiscountPlanFeeAdmin.GetValueOrDefault() +
+                    billingCredit.DiscountPlanFeePromotion.GetValueOrDefault(),
+                DiscountedAmount = (double?)importedBillingDetail.Amount,
+                ExtraEmailsPeriodMonth = billingCredit.Date.Month,
+                ExtraEmailsPeriodYear = billingCredit.Date.Year,
+                ExtraEmailsFee = 0,
+                IsFirstPurchase = false,
+                PlanType = (int)billingCredit.IdUserType,
+                CardHolder = cardHolderName,
+                CardType = billingCredit.CCIdentificationType,
+                CardNumber = !string.IsNullOrEmpty(cardNumber) ? cardNumber[^4..] : string.Empty,
+                CardErrorCode = "100",
+                CardErrorDetail = "Successfully approved",
+                TransactionApproved = true,
+                TransferReference = authorizationNumber,
+                InvoiceId = invoice.IdAccountingEntry,
+                PaymentDate = paymentDate != null ? paymentDate.Value.ToHourOffset(timeZoneOffset.TimeZoneOffset) : null,
+                InvoiceDate = invoice.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
+                BillingSystemId = billingCredit.IdResponsabileBilling,
+                FiscalID = billingCredit.Cuit,
+                IsUpSelling = billingCredit.IdUserType != (int)UserTypeEnum.INDIVIDUAL
+            };
+
+            return sapBilling;
         }
     }
 }

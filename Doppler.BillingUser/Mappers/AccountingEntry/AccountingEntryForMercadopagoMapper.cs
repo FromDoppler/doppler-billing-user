@@ -58,6 +58,41 @@ namespace Doppler.BillingUser.Mappers
             };
         }
 
+        public async Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, int idUser, SourceTypeEnum source, CreditCardPayment payment)
+        {
+            decimal rate = 1;
+            decimal invoiceTaxes = 0;
+
+            if (total != 0)
+            {
+                var paymentDetails = await _paymentAmountService.ConvertCurrencyAmount(CurrencyTypeEnum.UsS, CurrencyTypeEnum.sARG, total);
+                rate = paymentDetails.CurrencyRate;
+                invoiceTaxes = paymentDetails.Taxes;
+            }
+            else
+            {
+                payment.Status = PaymentStatusEnum.Approved;
+            }
+
+            return new AccountingEntry
+            {
+                IdClient = idUser,
+                IdCurrencyType = (int)CurrencyTypeEnum.sARG,
+                CurrencyRate = rate,
+                Taxes = invoiceTaxes,
+                Amount = total,
+                Date = DateTime.UtcNow,
+                Status = payment.Status,
+                Source = source,
+                AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
+                InvoiceNumber = 0,
+                IdAccountType = UserAccountType,
+                IdInvoiceBillingType = (int)InvoiceBillingTypeEnum.MERCADOPAGO,
+                AuthorizationNumber = payment.AuthorizationNumber,
+                AccountEntryType = AccountEntryTypeInvoice
+            };
+        }
+
         public Task<AccountingEntry> MapToPaymentAccountingEntry(AccountingEntry invoiceEntry, CreditCard encryptedCreditCard)
         {
             return Task.FromResult(new AccountingEntry

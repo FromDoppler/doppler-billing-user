@@ -319,7 +319,13 @@ namespace Doppler.BillingUser.Controllers
                         CCNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
                         CCExpMonth = int.Parse(paymentMethod.CCExpMonth),
                         CCExpYear = int.Parse(paymentMethod.CCExpYear),
-                        CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification)
+                        CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                        CCHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                        CCType = paymentMethod.CCType,
+                        Cuit = paymentMethod.IdentificationNumber,
+                        IdentificationNumber = CreditCardHelper.ObfuscateNumber(paymentMethod.CCNumber),
+                        PaymentMethodName = paymentMethod.PaymentMethodName,
+                        ResponsabileBilling = userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ? ResponsabileBillingEnum.QBL : ResponsabileBillingEnum.Mercadopago
                     };
 
                     await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit.Value, billingCreditPaymentInfo);
@@ -392,65 +398,156 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
         {
-            var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
-
-            if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
+            try
             {
-                return new BadRequestObjectResult("Payment method not supported")
+                var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
+
+                if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
                 {
-                    StatusCode = 500
-                };
+                    return new BadRequestObjectResult("Payment method not supported")
+                    {
+                        StatusCode = 500
+                    };
+                }
+
+                var user = await _userRepository.GetUserInformation(accountname);
+
+                var invoices = await _billingRepository.GetInvoices(user.IdUser,
+                    PaymentStatusEnum.DeclinedPaymentTransaction,
+                    PaymentStatusEnum.ClientPaymentTransactionError,
+                    PaymentStatusEnum.FailedPaymentTransaction,
+                    PaymentStatusEnum.DoNotHonorPaymentResponse,
+                    PaymentStatusEnum.MercadopagoCardException);
+
+                if (invoices.Count == 0)
+                {
+                    _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
+                    return new BadRequestObjectResult("No invoice found with status declined");
+                }
+
+                var invoicesPaymentResults = new List<ReprocessInvoicePaymentResult>();
+
+                foreach (var invoice in invoices)
+                {
+                    ReprocessInvoicePaymentResult reprocessResult;
+
+                    if ((userBillingInfo.PaymentMethod == PaymentMethodEnum.MP && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL) ||
+                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO))
+                    {
+                        await GenerateWithoutRefundAsync(accountname, invoice);
+
+                        var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                        if (encryptedCreditCard == null)
+                        {
+                            var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
+                            _logger.LogError(messageError);
+                            await _slackService.SendNotification(messageError);
+                            return new ObjectResult("User credit card missing")
+                            {
+                                StatusCode = 500
+                            };
+                        }
+
+                        var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false);
+
+                        var accountEntyMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
+                        AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment);
+                        AccountingEntry paymentEntry = null;
+
+                        if (payment.Status == PaymentStatusEnum.Approved)
+                        {
+                            paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
+                        }
+
+                        await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+
+                        var cardNumber = string.Empty;
+                        var holderName = string.Empty;
+
+                        if (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ||
+                            userBillingInfo.PaymentMethod == PaymentMethodEnum.MP)
+                        {
+                            cardNumber = _encryptionService.DecryptAES256(encryptedCreditCard.Number);
+                            holderName = _encryptionService.DecryptAES256(encryptedCreditCard.HolderName);
+                        }
+
+                        var billingCredit = await _billingRepository.GetBillingCredit(userBillingInfo.IdCurrentBillingCredit ?? 0);
+                        var importedBillingDetail = await _billingRepository.GetImportedBillingDetailAsync(invoice.IdBillingSource ?? 0);
+
+                        if (billingCredit != null)
+                        {
+                            await _sapService.SendBillingToSap(
+                                BillingHelper.MapBillingToSapToReprocessAsync(_sapSettings.Value,
+                                    importedBillingDetail,
+                                    billingCredit,
+                                    cardNumber,
+                                    holderName,
+                                    payment != null ? payment.AuthorizationNumber : string.Empty,
+                                    invoice,
+                                    paymentEntry != null ? paymentEntry.Date : null),
+                                accountname);
+                        }
+                        else
+                        {
+                            var slackMessage = $"Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                            await _slackService.SendNotification(slackMessage);
+                        }
+
+
+                        reprocessResult = payment.Status switch
+                        {
+                            PaymentStatusEnum.Pending => new ReprocessInvoicePaymentResult() { Result = payment.Status, Amount = invoice.Amount },
+                            PaymentStatusEnum.Approved => new ReprocessInvoicePaymentResult() { Result = payment.Status },
+                            _ => new ReprocessInvoicePaymentResult() { Result = PaymentStatusEnum.DeclinedPaymentTransaction, PaymentError = payment.StatusDetails, Amount = invoice.Amount, InvoiceNumber = invoice.InvoiceNumber },
+                        };
+
+                        invoicesPaymentResults.Add(reprocessResult);
+                    }
+                    else
+                    {
+                        reprocessResult = await ReprocessInvoicePayment(invoice, accountname, user, userBillingInfo);
+                        invoicesPaymentResults.Add(reprocessResult);
+                    }
+                }
+
+                var invoicesResults = invoicesPaymentResults.Select(x => x.Result);
+
+                if (invoicesResults.All(x => x.Equals(PaymentStatusEnum.DeclinedPaymentTransaction)))
+                {
+                    await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Fallido", invoices.Sum(x => x.Amount), userBillingInfo.PaymentMethod.ToDescription());
+                    return new BadRequestObjectResult("No invoice was processed succesfully");
+                }
+
+                _userRepository.UnblockAccountNotPayed(accountname);
+
+                if (invoicesResults.Any(x => x == PaymentStatusEnum.Pending))
+                {
+                    var failedAndPendingInvoicesAmount = invoicesPaymentResults.Where(x => x.Result != PaymentStatusEnum.Approved).Sum(x => x.Amount);
+
+                    await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Pendiente", failedAndPendingInvoicesAmount, userBillingInfo.PaymentMethod.ToDescription());
+                    return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, anyPendingInvoices = true });
+                }
+
+                if (invoicesResults.All(x => x.Equals(PaymentStatusEnum.Approved)))
+                {
+                    await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Exitoso", 0.0M, userBillingInfo.PaymentMethod.ToDescription());
+                    return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true, anyPendingInvoices = false });
+                }
+                else
+                {
+                    var failedInvoicesAmount = invoicesPaymentResults.Where(x => x.Result == PaymentStatusEnum.DeclinedPaymentTransaction).Sum(x => x.Amount);
+
+                    await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Parcialmente exitoso", failedInvoicesAmount, userBillingInfo.PaymentMethod.ToDescription());
+                    return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, anyPendingInvoices = false });
+                }
             }
-
-            var user = await _userRepository.GetUserInformation(accountname);
-
-            var invoices = await _billingRepository.GetInvoices(user.IdUser,
-                PaymentStatusEnum.DeclinedPaymentTransaction,
-                PaymentStatusEnum.ClientPaymentTransactionError,
-                PaymentStatusEnum.FailedPaymentTransaction,
-                PaymentStatusEnum.DoNotHonorPaymentResponse);
-
-            if (invoices.Count == 0)
+            catch (Exception e)
             {
-                _logger.LogError("Invoices with accountname: {accountname} were not found.", accountname);
-                return new BadRequestObjectResult("No invoice found with status declined");
-            }
+                var messageError = $"Failed ro reprocess for user {accountname}. Exception {e.Message}.";
+                _logger.LogError(e, messageError);
+                await _slackService.SendNotification(messageError);
 
-            var invoicesPaymentResults = new List<ReprocessInvoicePaymentResult>();
-
-            foreach (var invoice in invoices)
-            {
-                var reprocessResult = await ReprocessInvoicePayment(invoice, accountname, user, userBillingInfo);
-                invoicesPaymentResults.Add(reprocessResult);
-            }
-            var invoicesResults = invoicesPaymentResults.Select(x => x.Result);
-
-            if (invoicesResults.All(x => x.Equals(PaymentStatusEnum.DeclinedPaymentTransaction)))
-            {
-                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Fallido", invoices.Sum(x => x.Amount));
-                return new BadRequestObjectResult("No invoice was processed succesfully");
-            }
-            _userRepository.UnblockAccountNotPayed(accountname);
-
-            if (invoicesResults.Any(x => x == PaymentStatusEnum.Pending))
-            {
-                var failedAndPendingInvoicesAmount = invoicesPaymentResults.Where(x => x.Result != PaymentStatusEnum.Approved).Sum(x => x.Amount);
-
-                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Pendiente", failedAndPendingInvoicesAmount);
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, anyPendingInvoices = true });
-            }
-
-            if (invoicesResults.All(x => x.Equals(PaymentStatusEnum.Approved)))
-            {
-                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Exitoso", 0.0M);
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = true, anyPendingInvoices = false });
-            }
-            else
-            {
-                var failedInvoicesAmount = invoicesPaymentResults.Where(x => x.Result == PaymentStatusEnum.DeclinedPaymentTransaction).Sum(x => x.Amount);
-
-                await _emailTemplatesService.SendReprocessStatusNotification(accountname, user.IdUser, invoices.Sum(x => x.Amount), "Parcialmente exitoso", failedInvoicesAmount);
-                return new OkObjectResult(new ReprocessInvoiceResult { allInvoicesProcessed = false, anyPendingInvoices = false });
+                return new BadRequestObjectResult(e.Message);
             }
         }
 
@@ -1301,6 +1398,69 @@ namespace Doppler.BillingUser.Controllers
             }
 
             return taxCertificateUrl;
+        }
+
+        private async Task GenerateWithoutRefundAsync(string accountName, AccountingEntry invoice)
+        {
+            string accountingEntryTypeDescriptionCnNoRefund = "Credit Note No Refund";
+            string cancellationReasonSap = "credits purchase cancellation";
+
+            try
+            {
+                /* Create the Credit Note */
+                var creditNoteEntry = new AccountingEntry
+                {
+                    AccountingTypeDescription = accountingEntryTypeDescriptionCnNoRefund,
+                    Amount = invoice.Amount,
+                    Date = DateTime.Now,
+                    IdInvoice = invoice.IdAccountingEntry,
+                    IdClient = invoice.IdClient,
+                    Source = invoice.Source,
+                    IdAccountType = invoice.IdAccountType,
+                    IdCurrencyType = invoice.IdCurrencyType,
+                    Taxes = invoice.Taxes,
+                    CurrencyRate = invoice.CurrencyRate,
+                    IdInvoiceBillingType = invoice.IdInvoiceBillingType,
+                    AccountEntryType = "P",
+                    PaymentEntryType = "N"
+                };
+
+                /* Create the Credit Note */
+                var creditNoteEntryId = await _billingRepository.CreateCreditNoteEntryAsync(creditNoteEntry);
+                creditNoteEntry.IdAccountingEntry = creditNoteEntryId;
+
+
+                /* Update status of the current invoice */
+                await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.CreditNoteGenerated, string.Empty, string.Empty);
+
+                /* Send the credit note to sap */
+                await SendCreditNoteToSapAsync(accountName, creditNoteEntry, cancellationReasonSap, (int)ResponsabileBillingEnum.QBL);
+            }
+            catch (Exception e)
+            {
+                var errorMessage = string.Format("Error generating credit note for AccountingEntry {0} -- {1}", invoice.IdInvoice, e);
+                _logger.LogError(errorMessage);
+                await _slackService.SendNotification(errorMessage);
+            }
+
+        }
+
+        private async Task<bool> SendCreditNoteToSapAsync(string accountName, AccountingEntry invoice, string reason, int billingSystemId)
+        {
+            var dtoSapCreditNote = new SapCreditNoteDto()
+            {
+                CreditNoteId = (int)invoice.IdAccountingEntry,
+                InvoiceId = (int)invoice.IdInvoice,
+                Amount = Decimal.ToDouble(invoice.Amount),
+                ClientId = (int)invoice.IdClient,
+                BillingSystemId = billingSystemId,
+                Type = 1,
+                Reason = reason
+            };
+
+            await _sapService.SendCreditNoteToSapAsync(accountName, dtoSapCreditNote);
+
+            return true;
         }
     }
 }
