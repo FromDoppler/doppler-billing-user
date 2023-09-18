@@ -17,6 +17,7 @@ namespace Doppler.BillingUser.Mappers.PaymentStatus
                 PaymentStatusApiEnum.Failed => PaymentStatusEnum.FailedPaymentTransaction,
                 PaymentStatusApiEnum.ClientFailed => PaymentStatusEnum.ClientPaymentTransactionError,
                 PaymentStatusApiEnum.DoNotHonor => PaymentStatusEnum.DoNotHonorPaymentResponse,
+                PaymentStatusApiEnum.MercadopagoException => PaymentStatusEnum.MercadopagoCardException,
                 _ => throw new Exception()
             };
         }
@@ -32,6 +33,7 @@ namespace Doppler.BillingUser.Mappers.PaymentStatus
                 PaymentStatusEnum.CreditNoteGenerated => PaymentStatusApiEnum.Approved,
                 PaymentStatusEnum.ClientPaymentTransactionError => PaymentStatusApiEnum.ClientFailed,
                 PaymentStatusEnum.DoNotHonorPaymentResponse => PaymentStatusApiEnum.DoNotHonor,
+                PaymentStatusEnum.MercadopagoCardException => PaymentStatusApiEnum.MercadopagoException,
                 _ => throw new Exception()
             };
         }

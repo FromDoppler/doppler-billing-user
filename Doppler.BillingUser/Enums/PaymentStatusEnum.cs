@@ -17,6 +17,8 @@ namespace Doppler.BillingUser.Enums
         [Description("ClientPaymentTransactionError")]
         ClientPaymentTransactionError,
         [Description("DoNotHonorPaymentResponse")]
-        DoNotHonorPaymentResponse
+        DoNotHonorPaymentResponse,
+        [Description("MercadopagoCardException")]
+        MercadopagoCardException
     }
 }

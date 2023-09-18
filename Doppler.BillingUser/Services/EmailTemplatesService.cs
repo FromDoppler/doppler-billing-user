@@ -404,7 +404,8 @@ namespace Doppler.BillingUser.Services
             int userId,
             decimal amount,
             string reprocessStatus,
-            decimal pendingAmount)
+            decimal pendingAmount,
+            string paymentMethod)
         {
             var template = _emailSettings.Value.ReprocessStatusAdminTemplateId;
             return _emailSender.SafeSendWithTemplateAsync(
@@ -417,6 +418,7 @@ namespace Doppler.BillingUser.Services
                     amount,
                     reprocessStatus,
                     pendingAmount,
+                    paymentMethod,
                     year = DateTime.UtcNow.Year
                 },
                 to: new[] { _emailSettings.Value.BillingEmail },

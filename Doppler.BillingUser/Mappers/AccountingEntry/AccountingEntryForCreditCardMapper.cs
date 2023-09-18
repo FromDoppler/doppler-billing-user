@@ -1,3 +1,4 @@
+using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Utils;
@@ -25,6 +26,24 @@ namespace Doppler.BillingUser.Mappers
                 Date = DateTime.UtcNow,
                 Status = payment.Status,
                 Source = SourceTypeHelper.SourceTypeEnumMapper(newPlan),
+                AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
+                InvoiceNumber = 0,
+                IdAccountType = UserAccountType,
+                IdInvoiceBillingType = InvoiceBillingTypeQBL,
+                AuthorizationNumber = payment.AuthorizationNumber,
+                AccountEntryType = AccountEntryTypeInvoice
+            });
+        }
+
+        public Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, int idUser, SourceTypeEnum source, CreditCardPayment payment)
+        {
+            return Task.FromResult(new AccountingEntry
+            {
+                IdClient = idUser,
+                Amount = total,
+                Date = DateTime.UtcNow,
+                Status = payment.Status,
+                Source = source,
                 AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
                 InvoiceNumber = 0,
                 IdAccountType = UserAccountType,

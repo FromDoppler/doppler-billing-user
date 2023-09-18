@@ -1,7 +1,9 @@
 using Dapper;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.Clover;
+using Doppler.BillingUser.ExternalServices.Clover.Entities;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Model;
@@ -246,7 +248,7 @@ WHERE
 
             if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
             {
-                var creditCard = new CreditCard
+                var creditCard = new ExternalServices.FirstData.CreditCard
                 {
                     Number = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
                     HolderName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
@@ -275,7 +277,7 @@ WHERE
             }
             else if (paymentMethod.PaymentMethodName == PaymentMethodEnum.MP.ToString())
             {
-                var creditCard = new CreditCard
+                var creditCard = new ExternalServices.FirstData.CreditCard
                 {
                     Number = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
                     HolderName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
@@ -438,7 +440,7 @@ WHERE
             });
         }
 
-        private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, CreditCard creditCard)
+        private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, ExternalServices.FirstData.CreditCard creditCard)
         {
             using var connection = _connectionFactory.GetConnection();
 
@@ -467,7 +469,7 @@ WHERE
                 @ccExpMonth = creditCard.ExpirationMonth,
                 @ccExpYear = creditCard.ExpirationYear,
                 @ccVerification = creditCard.Code,
-                @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                @idCCType = (int)Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
                 @paymentMethodName = paymentMethod.PaymentMethodName,
                 @razonSocial = paymentMethod.RazonSocial,
                 @idConsumerType = paymentMethod.IdConsumerType ?? FinalConsumer,
@@ -606,20 +608,36 @@ WHERE
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryFirstOrDefaultAsync("""
 UPDATE [dbo].[BillingCredits]
-SET CCNumber = @CCNumber,
-    CCExpMonth = @CCExpMonth,
-    CCExpYear = @CCExpYear,
-    CCVerification = @CCVerification
+SET CCNumber = @ccNumber,
+    CCExpMonth = @ccExpMonth,
+    CCExpYear = @ccExpYear,
+    CCVerification = @ccVerification,
+    CCHolderFullName = @ccHolderFullName,
+    IdCCType = @idCCType,
+    IdPaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+    IdResponsabileBilling = @idResponsabileBilling,
+    CUIT = @cuit,
+    CCIdentificationType = @ccIdentificationType,
+    CCIdentificationNumber = @ccIdentificationNumber
 WHERE
     IdBillingCredit = @billingCreditId
 """,
                 new
                 {
-                    @billingCreditId = billingCreditId,
-                    @CCNumber = billingCreditPaymentInfo.CCNumber,
-                    @CCExpMonth = billingCreditPaymentInfo.CCExpMonth,
-                    @CCExpYear = billingCreditPaymentInfo.CCExpYear,
-                    @CCVerification = billingCreditPaymentInfo.CCVerification
+                    billingCreditId,
+                    @ccNumber = billingCreditPaymentInfo.CCNumber,
+                    @ccExpMonth = billingCreditPaymentInfo.CCExpMonth,
+                    @ccExpYear = billingCreditPaymentInfo.CCExpYear,
+                    @ccVerification = billingCreditPaymentInfo.CCVerification,
+                    @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
+                    @idCCType = (int)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true),
+                    @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
+                    @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
+                    @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
+                    @cuit = billingCreditPaymentInfo.Cuit,
+                    @ccIdentificationType = Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString(),
+                    @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber
                 });
         }
 
@@ -847,11 +865,13 @@ SELECT
     BC.[PaymentDate],
     BC.[IdDiscountPlan],
     BC.[TotalMonthPlan],
-    BC.[CurrentMonthPlan]
+    BC.[CurrentMonthPlan],
+    UTP.[IdUserType]
 FROM
     [dbo].[BillingCredits] BC
         LEFT JOIN [dbo].[DiscountXPlan] DP
         ON BC.IdDiscountPlan = DP.IdDiscountPlan
+INNER JOIN [dbo].[UserTypesPlans] UTP ON UTP.IdUserTypePlan = BC.IdUserTypePlan
 WHERE
     IdBillingCredit = @billingCreditId",
                 new
@@ -919,7 +939,8 @@ SELECT
     AE.[IdCurrencyType],
     AE.[CurrencyRate],
     AE.[Taxes],
-    AE.[ErrorMessage]
+    AE.[ErrorMessage],
+    AE.[IdBillingSource]
 FROM
     [dbo].[AccountingEntry] AE
 WHERE
@@ -1234,7 +1255,7 @@ WHERE
             new
             {
                 @Id = id,
-                @Status = status.ToString(),
+                @Status = status.ToDescription(),
                 @StatusDetail = status == PaymentStatusEnum.DeclinedPaymentTransaction ? statusDetail : string.Empty,
                 @authorizationNumber = authorizationNumber
             });
@@ -1457,6 +1478,24 @@ WHERE
                     @idIdBillingCreditType = (int)BillingCreditTypeEnum.Canceled,
                     @idPaymentMethod = (int)PaymentMethodEnum.NONE
                 });
+        }
+
+        public async Task<ImportedBillingDetail> GetImportedBillingDetailAsync(int idImportedBillingDetail)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            return await connection.QueryFirstOrDefaultAsync<ImportedBillingDetail>(@"
+SELECT [IdImportedBillingDetail],
+    [Month],
+    [Amount],
+    [ExtraMonth],
+    [ExtraAmount],
+    [Extra]
+FROM [ImportedBillingDetail]
+WHERE [IdImportedBillingDetail] = @idImportedBillingDetail;",
+            new
+            {
+                idImportedBillingDetail
+            });
         }
 
         private int CalculateBillingSystemByTransfer(int idBillingCountry)

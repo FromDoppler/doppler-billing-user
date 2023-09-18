@@ -11,6 +11,7 @@ namespace Doppler.BillingUser.ApiModels
         Declined,
         Failed,
         ClientFailed,
-        DoNotHonor
+        DoNotHonor,
+        MercadopagoException
     }
 }
