@@ -311,24 +311,55 @@ namespace Doppler.BillingUser.Controllers
 
                 var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
 
-                if (userBillingInfo.IdCurrentBillingCredit.HasValue && userBillingInfo.IdCurrentBillingCredit.Value != 0 &&
-                    userBillingInfo.PaymentMethod != PaymentMethodEnum.TRANSF)
+                if (userBillingInfo.IdCurrentBillingCredit.HasValue && userBillingInfo.IdCurrentBillingCredit.Value != 0)
                 {
-                    var billingCreditPaymentInfo = new BillingCreditPaymentInfo()
-                    {
-                        CCNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
-                        CCExpMonth = int.Parse(paymentMethod.CCExpMonth),
-                        CCExpYear = int.Parse(paymentMethod.CCExpYear),
-                        CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
-                        CCHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
-                        CCType = paymentMethod.CCType,
-                        Cuit = paymentMethod.IdentificationNumber,
-                        IdentificationNumber = CreditCardHelper.ObfuscateNumber(paymentMethod.CCNumber),
-                        PaymentMethodName = paymentMethod.PaymentMethodName,
-                        ResponsabileBilling = userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ? ResponsabileBillingEnum.QBL : ResponsabileBillingEnum.Mercadopago
-                    };
+                    BillingCreditPaymentInfo billingCreditPaymentInfo = null;
 
-                    await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit.Value, billingCreditPaymentInfo);
+                    switch (userBillingInfo.PaymentMethod)
+                    {
+                        case PaymentMethodEnum.CC:
+                        case PaymentMethodEnum.MP:
+                            billingCreditPaymentInfo = new BillingCreditPaymentInfo()
+                            {
+                                CCNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                                CCExpMonth = int.Parse(paymentMethod.CCExpMonth),
+                                CCExpYear = int.Parse(paymentMethod.CCExpYear),
+                                CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                                CCHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                                CCType = paymentMethod.CCType,
+                                Cuit = paymentMethod.IdentificationNumber,
+                                IdentificationNumber = CreditCardHelper.ObfuscateNumber(paymentMethod.CCNumber),
+                                PaymentMethodName = paymentMethod.PaymentMethodName,
+                                ResponsabileBilling = userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ? ResponsabileBillingEnum.QBL : ResponsabileBillingEnum.Mercadopago
+                            };
+                            break;
+                        case PaymentMethodEnum.TRANSF:
+
+                            if (userBillingInfo.IdBillingCountry == (int)CountryEnum.Argentina)
+                            {
+                                billingCreditPaymentInfo = new BillingCreditPaymentInfo()
+                                {
+                                    CCNumber = string.Empty,
+                                    CCExpMonth = null,
+                                    CCExpYear = null,
+                                    CCVerification = string.Empty,
+                                    CCHolderFullName = string.Empty,
+                                    CCType = string.Empty,
+                                    IdConsumerType = paymentMethod.IdConsumerType,
+                                    Cuit = paymentMethod.IdentificationNumber,
+                                    IdentificationNumber = string.Empty,
+                                    PaymentMethodName = paymentMethod.PaymentMethodName,
+                                    ResponsabileBilling = ResponsabileBillingEnum.GBBISIDE
+                                };
+                            }
+
+                            break;
+                    }
+
+                    if (billingCreditPaymentInfo != null)
+                    {
+                        await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit.Value, billingCreditPaymentInfo);
+                    }
                 }
 
                 return new OkObjectResult("Successfully");
@@ -402,14 +433,6 @@ namespace Doppler.BillingUser.Controllers
             {
                 var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
 
-                if (userBillingInfo.PaymentMethod != PaymentMethodEnum.CC && userBillingInfo.PaymentMethod != PaymentMethodEnum.MP)
-                {
-                    return new BadRequestObjectResult("Payment method not supported")
-                    {
-                        StatusCode = 500
-                    };
-                }
-
                 var user = await _userRepository.GetUserInformation(accountname);
 
                 var invoices = await _billingRepository.GetInvoices(user.IdUser,
@@ -432,43 +455,52 @@ namespace Doppler.BillingUser.Controllers
                     ReprocessInvoicePaymentResult reprocessResult;
 
                     if ((userBillingInfo.PaymentMethod == PaymentMethodEnum.MP && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL) ||
-                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO))
+                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO) ||
+                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.TRANSF && (invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL || invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO)))
                     {
                         await GenerateWithoutRefundAsync(accountname, invoice);
 
-                        var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
-                        if (encryptedCreditCard == null)
-                        {
-                            var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
-                            _logger.LogError(messageError);
-                            await _slackService.SendNotification(messageError);
-                            return new ObjectResult("User credit card missing")
-                            {
-                                StatusCode = 500
-                            };
-                        }
-
-                        var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false);
-
-                        var accountEntyMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
-                        AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment);
-                        AccountingEntry paymentEntry = null;
-
-                        if (payment.Status == PaymentStatusEnum.Approved)
-                        {
-                            paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
-                        }
-
-                        await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
-
                         var cardNumber = string.Empty;
                         var holderName = string.Empty;
+                        CreditCardPayment payment = null;
+                        AccountingEntry paymentEntry = null;
 
-                        if (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ||
-                            userBillingInfo.PaymentMethod == PaymentMethodEnum.MP)
+                        if (userBillingInfo.PaymentMethod == PaymentMethodEnum.MP || userBillingInfo.PaymentMethod == PaymentMethodEnum.CC)
                         {
-                            cardNumber = _encryptionService.DecryptAES256(encryptedCreditCard.Number);
-                            holderName = _encryptionService.DecryptAES256(encryptedCreditCard.HolderName);
+                            var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                            if (encryptedCreditCard == null)
+                            {
+                                var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
+                                _logger.LogError(messageError);
+                                await _slackService.SendNotification(messageError);
+                                return new ObjectResult("User credit card missing")
+                                {
+                                    StatusCode = 500
+                                };
+                            }
+
+                            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false);
+
+                            var accountEntyMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
+                            AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment);
+
+                            if (payment.Status == PaymentStatusEnum.Approved)
+                            {
+                                paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
+                            }
+
+                            await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+
+                            if (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ||
+                                userBillingInfo.PaymentMethod == PaymentMethodEnum.MP)
+                            {
+                                cardNumber = _encryptionService.DecryptAES256(encryptedCreditCard.Number);
+                                holderName = _encryptionService.DecryptAES256(encryptedCreditCard.HolderName);
+                            }
+                        }
+                        else
+                        {
+                            payment = new CreditCardPayment { Status = PaymentStatusEnum.Approved, AuthorizationNumber = string.Empty };
                         }
 
                         var billingCredit = await _billingRepository.GetBillingCredit(userBillingInfo.IdCurrentBillingCredit ?? 0);
