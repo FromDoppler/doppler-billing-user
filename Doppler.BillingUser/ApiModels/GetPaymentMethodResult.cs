@@ -25,6 +25,7 @@ namespace Doppler.BillingUser.ApiModels
         public string BankName { get; set; }
         public string BankAccount { get; set; }
         public int TaxRegime { get; set; }
+        public string Cbu { get; set; }
         public TaxCertificate TaxCertificate { get; set; }
     }
 }

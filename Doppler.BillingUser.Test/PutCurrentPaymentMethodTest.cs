@@ -493,6 +493,71 @@ namespace Doppler.BillingUser.Test
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         }
 
+        [Fact]
+        public async Task PUT_Current_payment_AutomaticDebit_method_should_update_right_value_based_on_body_information()
+        {
+            // Arrange
+            const int userId = 1;
+            const int expectedRows = 1;
+
+            var currentPaymentMethod = new MultipartFormDataContent()
+            {
+                { new StringContent("DA"), "PaymentMethodName" },
+                { new StringContent("1194"), "IdSelectedPlan" },
+                { new StringContent("test"), "RazonSocial" },
+                { new StringContent("CF"), "IdConsumerType" },
+                { new StringContent("20123456"), "IdentificationNumber" },
+            };
+
+            var user = new User
+            {
+                SapProperties = "{\"ContractCurrency\" : false,\"GovernmentAccount\" : false,\"Premium\" : false,\"Plus\" : false,\"ComercialPartner\" : false,\"MarketingPartner\" : false,\"OnBoarding\" : false,\"Layout\" : false,\"Datahub\" : false,\"PushNotification\" : false,\"ExclusiveIp\" : false,\"Advisory\" : false,\"Reports\" : false,\"SMS\" : false}"
+            };
+
+            var mockConnection = new Mock<DbConnection>();
+
+            mockConnection.SetupDapperAsync(c => c.QueryFirstOrDefaultAsync<int>(null, null, null, null, null)).ReturnsAsync(userId);
+            mockConnection.SetupDapperAsync(c => c.ExecuteAsync(null, null, null, null, null)).ReturnsAsync(expectedRows);
+            mockConnection.SetupDapperAsync(c => c.QueryFirstOrDefaultAsync<User>(null, null, null, null, null)).ReturnsAsync(user);
+
+            var sapServiceMock = new Mock<ISapService>();
+            sapServiceMock.Setup(x => x.SendUserDataToSap(It.IsAny<SapBusinessPartner>(), null));
+
+            var encryptedMock = new Mock<IEncryptionService>();
+            encryptedMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("TEST");
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                            .ReturnsAsync(new User()
+                            {
+                                IdUser = 1,
+                                PaymentMethod = 1,
+                                IsCancelated = false
+                            });
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation() { IdCurrentBillingCredit = 0 });
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.SetupConnectionFactory(mockConnection.Object);
+                    services.AddSingleton(encryptedMock.Object);
+                    services.AddSingleton(sapServiceMock.Object);
+                    services.AddSingleton(userRepositoryMock.Object);
+                });
+
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
+
+            // Act
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+            userRepositoryMock.Verify(x => x.GetEncryptedCreditCard(It.IsAny<string>()), Times.Never());
+        }
+
         private static Mock<IOptions<SapSettings>> GetSapSettingsMock()
         {
             var accountPlansSettingsMock = new Mock<IOptions<SapSettings>>();

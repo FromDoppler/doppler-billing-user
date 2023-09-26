@@ -191,7 +191,8 @@ namespace Doppler.BillingUser.Controllers
             {
                 var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
 
-                if (currentPaymentMethod != null && currentPaymentMethod.PaymentMethodName == PaymentMethodEnum.TRANSF.ToString())
+                if (currentPaymentMethod != null && (currentPaymentMethod.PaymentMethodName == PaymentMethodEnum.TRANSF.ToString() ||
+                    currentPaymentMethod.PaymentMethodName == PaymentMethodEnum.DA.ToString()))
                 {
                     var userInformation = await _userRepository.GetUserInformation(accountname);
                     await _billingRepository.SetEmptyPaymentMethod(userInformation.IdUser);
@@ -263,7 +264,6 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
-
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
@@ -353,6 +353,26 @@ namespace Doppler.BillingUser.Controllers
                                 };
                             }
 
+                            break;
+                        case PaymentMethodEnum.DA:
+                            if (userBillingInfo.IdBillingCountry == (int)CountryEnum.Argentina)
+                            {
+                                billingCreditPaymentInfo = new BillingCreditPaymentInfo()
+                                {
+                                    CCNumber = string.Empty,
+                                    CCExpMonth = null,
+                                    CCExpYear = null,
+                                    CCVerification = string.Empty,
+                                    CCHolderFullName = string.Empty,
+                                    CCType = string.Empty,
+                                    IdConsumerType = paymentMethod.IdConsumerType,
+                                    Cuit = paymentMethod.IdentificationNumber,
+                                    IdentificationNumber = string.Empty,
+                                    PaymentMethodName = paymentMethod.PaymentMethodName,
+                                    Cbu = paymentMethod.Cbu,
+                                    ResponsabileBilling = ResponsabileBillingEnum.GBBISIDE
+                                };
+                            }
                             break;
                     }
 

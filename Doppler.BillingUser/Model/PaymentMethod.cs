@@ -27,5 +27,6 @@ namespace Doppler.BillingUser.Model
         public int TaxRegime { get; set; }
         public IFormFile TaxCertificate { get; set; }
         public string TaxCertificateUrl { get; set; }
+        public string Cbu { get; set; }
     }
 }
