@@ -51,7 +51,8 @@ SELECT
     U.MaxSubscribers,
     U.IsCancelated,
     U.UpgradePending,
-    U.TaxRegime
+    U.TaxRegime,
+    U.Cbu
 FROM
     [User] U
     INNER JOIN

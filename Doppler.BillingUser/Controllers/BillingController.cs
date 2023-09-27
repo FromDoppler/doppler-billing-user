@@ -85,7 +85,8 @@ namespace Doppler.BillingUser.Controllers
         {
             PaymentMethodEnum.CC,
             PaymentMethodEnum.TRANSF,
-            PaymentMethodEnum.MP
+            PaymentMethodEnum.MP,
+            PaymentMethodEnum.DA
         };
 
         private static readonly List<CountryEnum> AllowedCountriesForTransfer = new List<CountryEnum>
@@ -905,7 +906,8 @@ namespace Doppler.BillingUser.Controllers
                 if (agreementInformation.Total.GetValueOrDefault() > 0 &&
                     ((user.PaymentMethod == PaymentMethodEnum.CC) ||
                     (user.PaymentMethod == PaymentMethodEnum.MP) ||
-                    (user.PaymentMethod == PaymentMethodEnum.TRANSF && user.IdBillingCountry == (int)CountryEnum.Argentina)))
+                    (user.PaymentMethod == PaymentMethodEnum.TRANSF && user.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                    (user.PaymentMethod == PaymentMethodEnum.DA)))
                 {
                     var billingCredit = await _billingRepository.GetBillingCredit(billingCreditId);
                     var cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
@@ -1139,6 +1141,8 @@ namespace Doppler.BillingUser.Controllers
                     return new BillingCreditForMercadopagoMapper(_billingRepository, _encryptionService, _paymentAmountService);
                 case PaymentMethodEnum.TRANSF:
                     return new BillingCreditForTransferMapper(_billingRepository);
+                case PaymentMethodEnum.DA:
+                    return new BillingCreditForAutomaticDebitMapper(_billingRepository);
                 default:
                     _logger.LogError($"The paymentMethod '{paymentMethod}' does not have a mapper.");
                     throw new ArgumentException($"The paymentMethod '{paymentMethod}' does not have a mapper.");
