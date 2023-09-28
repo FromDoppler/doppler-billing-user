@@ -675,7 +675,8 @@ SET CCNumber = @ccNumber,
     IdResponsabileBilling = @idResponsabileBilling,
     CUIT = @cuit,
     CCIdentificationType = @ccIdentificationType,
-    CCIdentificationNumber = @ccIdentificationNumber
+    CCIdentificationNumber = @ccIdentificationNumber,
+    Cbu = @cbu
 WHERE
     IdBillingCredit = @billingCreditId
 ",
@@ -693,7 +694,8 @@ WHERE
                     @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
                     @cuit = billingCreditPaymentInfo.Cuit,
                     @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
-                    @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber
+                    @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
+                    @cbu = billingCreditPaymentInfo.Cbu
                 });
         }
 
