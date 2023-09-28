@@ -134,7 +134,8 @@ SELECT
     U.BankAccount,
     U.BankName,
     U.TaxRegime,
-    U.TaxCertificateUrl
+    U.TaxCertificateUrl,
+    U.Cbu
 FROM
     [User] U
 LEFT JOIN
@@ -299,11 +300,16 @@ WHERE
             {
                 await UpdateUserPaymentMethodByTransfer(user, paymentMethod);
             }
+            else if (paymentMethod.PaymentMethodName == PaymentMethodEnum.DA.ToString())
+            {
+                await UpdateUserPaymentMethodByAutomaticDebit(user, paymentMethod);
+            }
 
             //Send BP to SAP
             if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ||
                 paymentMethod.PaymentMethodName == PaymentMethodEnum.MP.ToString() ||
-                (paymentMethod.PaymentMethodName == PaymentMethodEnum.TRANSF.ToString() && user.IdBillingCountry == (int)CountryEnum.Argentina))
+                (paymentMethod.PaymentMethodName == PaymentMethodEnum.TRANSF.ToString() && user.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                (paymentMethod.PaymentMethodName == PaymentMethodEnum.DA.ToString() && user.IdBillingCountry == (int)CountryEnum.Argentina))
             {
                 await SendUserDataToSap(user.Email, paymentMethod.IdSelectedPlan);
             }
@@ -335,7 +341,8 @@ SET
     PaymentType = @paymentType,
     PaymentWay = @paymentWay,
     BankAccount = @bankAccount,
-    BankName = @bankName
+    BankName = @bankName,
+    Cbu = @cbu
 WHERE
     IdUser = @IdUser;",
             new
@@ -357,7 +364,8 @@ WHERE
                 @paymentType = string.Empty,
                 @paymentWay = string.Empty,
                 @bankAccount = string.Empty,
-                @bankName = string.Empty
+                @bankName = string.Empty,
+                @cbu = string.Empty
             });
         }
 
@@ -401,6 +409,50 @@ WHERE
                     @bankName = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankName : null,
                     @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.TaxRegime : 0,
                     @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
+                });
+        }
+
+        private async Task UpdateUserPaymentMethodByAutomaticDebit(User user, PaymentMethod paymentMethod)
+        {
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE
+    [USER]
+SET
+    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+    RazonSocial = @razonSocial,
+    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+    IdResponsabileBilling = @idResponsabileBilling,
+    CUIT = @cuit,
+    ResponsableIVA = @responsableIVA,
+    CFDIUse = @useCFDI,
+    PaymentType = @paymentType,
+    PaymentWay = @paymentWay,
+    BankAccount = @bankAccount,
+    BankName = @bankName,
+    TaxRegime = @taxRegime,
+    TaxCertificateUrl = @taxCertificateUrl,
+    Cbu = @cbu
+WHERE
+    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @razonSocial = paymentMethod.RazonSocial,
+                    @idConsumerType = paymentMethod.IdConsumerType,
+                    @idResponsabileBilling = CalculateBillingSystemByTransfer(user.IdBillingCountry),
+                    @cuit = paymentMethod.IdentificationNumber,
+                    @responsableIVA = paymentMethod.ResponsableIVA,
+                    @useCFDI = (string)null,
+                    @paymentType = (string)null,
+                    @paymentWay = (string)null,
+                    @bankAccount = (string)null,
+                    @bankName = (string)null,
+                    @taxRegime = 0,
+                    @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
+                    @cbu = paymentMethod.Cbu,
                 });
         }
 
@@ -606,7 +658,11 @@ WHERE
         public async Task UpdateBillingCreditAsync(int billingCreditId, BillingCreditPaymentInfo billingCreditPaymentInfo)
         {
             using var connection = _connectionFactory.GetConnection();
-            await connection.QueryFirstOrDefaultAsync("""
+
+            var useCard = billingCreditPaymentInfo.PaymentMethodName != PaymentMethodEnum.TRANSF.ToString() &&
+                            billingCreditPaymentInfo.PaymentMethodName != PaymentMethodEnum.DA.ToString();
+
+            await connection.QueryFirstOrDefaultAsync(@"
 UPDATE [dbo].[BillingCredits]
 SET CCNumber = @ccNumber,
     CCExpMonth = @ccExpMonth,
@@ -619,10 +675,11 @@ SET CCNumber = @ccNumber,
     IdResponsabileBilling = @idResponsabileBilling,
     CUIT = @cuit,
     CCIdentificationType = @ccIdentificationType,
-    CCIdentificationNumber = @ccIdentificationNumber
+    CCIdentificationNumber = @ccIdentificationNumber,
+    Cbu = @cbu
 WHERE
     IdBillingCredit = @billingCreditId
-""",
+",
                 new
                 {
                     billingCreditId,
@@ -631,13 +688,14 @@ WHERE
                     @ccExpYear = billingCreditPaymentInfo.CCExpYear,
                     @ccVerification = billingCreditPaymentInfo.CCVerification,
                     @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
-                    @idCCType = billingCreditPaymentInfo.PaymentMethodName != PaymentMethodEnum.TRANSF.ToString() ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
+                    @idCCType = useCard ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
                     @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
                     @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
                     @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
                     @cuit = billingCreditPaymentInfo.Cuit,
-                    @ccIdentificationType = billingCreditPaymentInfo.PaymentMethodName != PaymentMethodEnum.TRANSF.ToString() ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
-                    @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber
+                    @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
+                    @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
+                    @cbu = billingCreditPaymentInfo.Cbu
                 });
         }
 

@@ -35,7 +35,8 @@ namespace Doppler.BillingUser.Mappers.PaymentMethod
                     Name = Path.GetFileName(paymentMethod.TaxCertificateUrl)
                 },
                 TaxRegime = paymentMethod.TaxRegime,
-                UseCFDI = paymentMethod.UseCFDI
+                UseCFDI = paymentMethod.UseCFDI,
+                Cbu = paymentMethod.Cbu,
             };
 
             return getPaymentMethodResult;

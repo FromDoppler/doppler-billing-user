@@ -14,6 +14,7 @@ namespace Doppler.BillingUser.Model
         public string IdConsumerType { get; set; }
         public string IdentificationNumber { get; set; }
         public string Cuit { get; set; }
+        public string Cbu { get; set; }
         public ResponsabileBillingEnum ResponsabileBilling { get; set; }
     }
 }
