@@ -1261,6 +1261,7 @@ namespace Doppler.BillingUser.Controllers
                 var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
                 var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Upgrade_Between_Subscribers);
                 billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
+                billingCreditAgreement.BillingCredit.ActivationDate = DateTime.UtcNow;
 
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
@@ -1307,6 +1308,7 @@ namespace Doppler.BillingUser.Controllers
             var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Subscribers);
 
             billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
+            billingCreditAgreement.BillingCredit.ActivationDate = DateTime.UtcNow;
 
             var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
