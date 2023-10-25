@@ -10,7 +10,7 @@ WORKDIR /src
 COPY ./*.sh ./
 RUN shellcheck -e SC1091,SC1090 ./*.sh
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0.402-bullseye-slim AS restore
+FROM mcr.microsoft.com/dotnet/sdk:7.0.403-bullseye-slim AS restore
 WORKDIR /src
 COPY ./*.sln ./
 COPY */*.csproj ./
@@ -31,7 +31,7 @@ RUN dotnet test
 FROM build AS publish
 RUN dotnet publish "./Doppler.BillingUser/Doppler.BillingUser.csproj" -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:7.0.12-bullseye-slim AS final
+FROM mcr.microsoft.com/dotnet/aspnet:7.0.13-bullseye-slim AS final
 WORKDIR /app
 EXPOSE 80
 COPY --from=publish /app/publish .
