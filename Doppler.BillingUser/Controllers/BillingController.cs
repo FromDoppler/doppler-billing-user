@@ -477,7 +477,8 @@ namespace Doppler.BillingUser.Controllers
 
                     if ((userBillingInfo.PaymentMethod == PaymentMethodEnum.MP && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL) ||
                         (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC && invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO) ||
-                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.TRANSF && (invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL || invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO)))
+                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.TRANSF && (invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL || invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO)) ||
+                        (userBillingInfo.PaymentMethod == PaymentMethodEnum.DA && (invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.QBL || invoice.IdInvoiceBillingType == (int)InvoiceBillingTypeEnum.MERCADOPAGO)))
                     {
                         await GenerateWithoutRefundAsync(accountname, invoice);
 

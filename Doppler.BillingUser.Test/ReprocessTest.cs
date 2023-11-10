@@ -1,21 +1,20 @@
-using Microsoft.AspNetCore.Mvc.Testing;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using Xunit;
-using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Enums;
-using Doppler.BillingUser.Infrastructure;
-using Moq;
+using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.Sap;
+using Doppler.BillingUser.Infrastructure;
+using Doppler.BillingUser.Model;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net.Http.Json;
-using Doppler.BillingUser.Encryption;
+using Moq;
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using Xunit;
 
 namespace Doppler.BillingUser.Test
 {
@@ -165,6 +164,7 @@ namespace Doppler.BillingUser.Test
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
             billingRepositoryMock.Setup(x => x.CreateAccountingEntriesAsync(It.IsAny<AccountingEntry>(), It.IsAny<AccountingEntry>())).ReturnsAsync(1);
+            billingRepositoryMock.Setup(x => x.UpdateInvoiceStatus(It.IsAny<int>(), It.IsAny<PaymentStatusEnum>(), It.IsAny<string>(), It.IsAny<string>()));
             billingRepositoryMock.Setup(x => x.GetPaymentMethodByUserName(It.IsAny<string>())).ReturnsAsync(currentPaymentMethod);
             billingRepositoryMock.Setup(x => x.GetInvoices(userId, PaymentStatusEnum.DeclinedPaymentTransaction, PaymentStatusEnum.ClientPaymentTransactionError, PaymentStatusEnum.FailedPaymentTransaction, PaymentStatusEnum.DoNotHonorPaymentResponse, PaymentStatusEnum.MercadopagoCardException))
                 .ReturnsAsync(new List<AccountingEntry>()
@@ -188,6 +188,10 @@ namespace Doppler.BillingUser.Test
             var paymentGatewayMock = new Mock<IPaymentGateway>();
             paymentGatewayMock.Setup(x => x.CreateCreditCardPayment(It.IsAny<decimal>(), It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>())).ReturnsAsync(authorizatioNumber);
 
+            var emailSenderMock = new Mock<IEmailSender>();
+            emailSenderMock.Setup(x => x.SafeSendWithTemplateAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<Attachment>>(), It.IsAny<CancellationToken>()));
+
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -195,6 +199,81 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
                     services.AddSingleton(billingRepositoryMock.Object);
+                    services.AddSingleton(emailSenderMock.Object);
+                });
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+
+            var request = new HttpRequestMessage(HttpMethod.Put, "accounts/test1@example.com/payments/reprocess")
+            {
+                Headers = { { "Authorization", $"Bearer {TOKEN_PROVISORY_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_1983727216}" } }
+            };
+
+            // Act
+            var response = await client.SendAsync(request);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PUT_Reprocess_should_answer_status_200_if_payment_method_automatic_debit()
+        {
+            // Arrange
+            var currentPaymentMethod = new PaymentMethod
+            {
+                CCExpMonth = "1",
+                CCExpYear = "2022",
+                CCHolderFullName = "Test",
+                CCNumber = "411111111111"
+            };
+
+            var accountName = "test1@example.com";
+
+            var userId = 1;
+
+            var billingRepositoryMock = new Mock<IBillingRepository>();
+            billingRepositoryMock.Setup(x => x.CreateCreditNoteEntryAsync(It.IsAny<AccountingEntry>())).ReturnsAsync(1);
+            billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(new BillingCredit());
+            billingRepositoryMock.Setup(x => x.UpdateInvoiceStatus(It.IsAny<int>(), It.IsAny<PaymentStatusEnum>(), It.IsAny<string>(), It.IsAny<string>()));
+            billingRepositoryMock.Setup(x => x.GetPaymentMethodByUserName(It.IsAny<string>())).ReturnsAsync(currentPaymentMethod);
+            billingRepositoryMock.Setup(x => x.GetImportedBillingDetailAsync(It.IsAny<int>())).ReturnsAsync(new ImportedBillingDetail());
+            billingRepositoryMock.Setup(x => x.GetInvoices(userId, PaymentStatusEnum.DeclinedPaymentTransaction, PaymentStatusEnum.ClientPaymentTransactionError, PaymentStatusEnum.FailedPaymentTransaction, PaymentStatusEnum.DoNotHonorPaymentResponse, PaymentStatusEnum.MercadopagoCardException))
+                .ReturnsAsync(new List<AccountingEntry>()
+                {
+                    new AccountingEntry() { Amount = 1, Status = PaymentStatusEnum.DeclinedPaymentTransaction, IdInvoiceBillingType = (int)InvoiceBillingTypeEnum.QBL, Date = new DateTime(2021, 12, 10) }
+                });
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.UnblockAccountNotPayed(It.IsAny<string>()));
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(accountName))
+                .ReturnsAsync(new UserBillingInformation()
+                {
+                    IdUser = 1,
+                    PaymentMethod = PaymentMethodEnum.DA
+                });
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName)).ReturnsAsync(new User()
+            {
+                IdUser = 1
+            });
+
+            var sapServiceMock = new Mock<ISapService>();
+            sapServiceMock.Setup(x => x.SendBillingToSap(It.IsAny<SapBillingDto>(), It.IsAny<string>()));
+            sapServiceMock.Setup(x => x.SendCreditNoteToSapAsync(It.IsAny<string>(), It.IsAny<SapCreditNoteDto>()));
+
+            var emailSenderMock = new Mock<IEmailSender>();
+            emailSenderMock.Setup(x => x.SafeSendWithTemplateAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<Attachment>>(), It.IsAny<CancellationToken>()));
+
+            var paymentGatewayMock = new Mock<IPaymentGateway>();
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(paymentGatewayMock.Object);
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(sapServiceMock.Object);
+                    services.AddSingleton(billingRepositoryMock.Object);
+                    services.AddSingleton(emailSenderMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
 
