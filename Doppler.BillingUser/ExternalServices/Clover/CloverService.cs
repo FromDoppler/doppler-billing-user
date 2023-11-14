@@ -123,13 +123,24 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             catch (FlurlHttpException ex)
             {
                 var errorReponseBody = await ex.GetResponseJsonAsync<ApiError>();
-                await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, paymentRequest.CreditCard.CardNumber[^4..]);
-                _logger.LogError(ex, "Unexpected error");
 
-                var messageError = $"Failed to validate the credit card for user {accountname} {errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}.";
-                await _slackService.SendNotification(messageError);
+                if (errorReponseBody != null)
+                {
+                    await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, paymentRequest.CreditCard.CardNumber[^4..]);
+                    _logger.LogError(ex, "Unexpected error");
 
-                throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{MapCloverError(errorReponseBody.Error.Code, errorReponseBody.Error.Message)}", ex);
+                    var messageError = $"Failed to validate the credit card for user {accountname} {errorReponseBody.Error.Code}: {errorReponseBody.Error.Message}.";
+                    await _slackService.SendNotification(messageError);
+
+                    throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{MapCloverError(errorReponseBody.Error.Code, errorReponseBody.Error.Message)}", ex);
+                }
+                else
+                {
+                    var messageError = $"Failed to validate the credit card for user {accountname}: {ex.Message}.";
+                    await _slackService.SendNotification(messageError);
+
+                    throw new DopplerApplicationException(PaymentErrorCode.DeclinedPaymentTransaction, $"{ex.Message}", ex);
+                }
             }
         }
 
