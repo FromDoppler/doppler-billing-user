@@ -10,7 +10,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.14" />
     <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="Moq.Dapper" Version="1.0.7" />
-    <PackageReference Include="xunit" Version="2.6.5" />
+    <PackageReference Include="xunit" Version="2.6.6" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
