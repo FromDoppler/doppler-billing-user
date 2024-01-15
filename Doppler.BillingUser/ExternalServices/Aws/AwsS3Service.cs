@@ -69,7 +69,7 @@ namespace Doppler.BillingUser.ExternalServices.Aws
             }
             catch (Exception ex)
             {
-                _logger.LogError("Unexpected error trying to delete a S3 object", ex);
+                _logger.LogError(ex, "Unexpected error trying to delete a S3 object");
             }
 
         }
