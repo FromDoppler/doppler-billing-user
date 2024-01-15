@@ -183,7 +183,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
                     case PaymentErrorCode.DuplicatedPaymentTransaction:
                     case PaymentErrorCode.FraudPaymentTransaction:
                     case PaymentErrorCode.DoNotHonorPaymentResponse:
-                        throw ex;
+                        throw;
                     default:
                         throw;
                 }
