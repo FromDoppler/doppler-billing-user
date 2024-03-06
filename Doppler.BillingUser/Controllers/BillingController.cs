@@ -416,7 +416,7 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult("Successfully");
         }
 
-        [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpGet("/accounts/{accountname}/invoices")]
         public async Task<IActionResult> GetInvoices(string accountname, [FromQuery] PaymentStatusApiEnum[] withStatus)
         {
@@ -446,7 +446,7 @@ namespace Doppler.BillingUser.Controllers
             });
         }
 
-        [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
         {
