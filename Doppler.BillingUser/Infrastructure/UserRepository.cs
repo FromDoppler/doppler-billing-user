@@ -1,6 +1,7 @@
 using Dapper;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.Model;
+using Microsoft.AspNetCore.Connections;
 using System;
 using System.Threading.Tasks;
 
@@ -299,6 +300,27 @@ WHERE IdUser = @IdUser;", new
                 @cancelatedObservation = cancelatedObservation
             }
             );
+        }
+
+
+        public async Task<ConversationPlanInformation> GetConversationPlan(int idChatPlan)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var userTypePlan = await connection.QueryFirstOrDefaultAsync<ConversationPlanInformation>(@"
+SELECT
+    [IdChatPlan],
+    [ConversationQty],
+    [Fee]
+FROM
+    [dbo].[ChatPlans]
+WHERE
+    [IdChatPlan] = @idChatPlan;",
+                new
+                {
+                    idChatPlan
+                });
+
+            return userTypePlan;
         }
     }
 }

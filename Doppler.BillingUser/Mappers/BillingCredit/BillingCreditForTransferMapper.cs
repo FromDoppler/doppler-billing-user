@@ -98,6 +98,75 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
             return buyCreditAgreement;
         }
 
+        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(UserBillingInformation user, Model.BillingCredit currentBillingCredit)
+        {
+            var currentPaymentMethod = await _billingRepository.GetPaymentMethodByUserName(user.Email);
+
+            var buyCreditAgreement = new BillingCreditAgreement
+            {
+                IdUser = user.IdUser,
+                IdCountry = user.IdBillingCountry,
+                IdPaymentMethod = (int)user.PaymentMethod,
+                IdCCType = null,
+                CCExpMonth = null,
+                CCExpYear = null,
+                CCHolderFullName = null,
+                CCIdentificationType = null,
+                CCIdentificationNumber = null,
+                CCNumber = null,
+                CCVerification = null,
+                IdConsumerType = !string.IsNullOrEmpty(currentPaymentMethod.IdConsumerType) ? int.Parse(currentPaymentMethod.IdConsumerType) : null,
+                RazonSocial = currentPaymentMethod.RazonSocial,
+                ResponsableIVA = user.ResponsableIVA,
+                Cuit = currentPaymentMethod.IdentificationNumber,
+                CFDIUse = user.CFDIUse,
+                PaymentWay = user.PaymentWay,
+                PaymentType = user.PaymentType,
+                BankName = user.BankName,
+                BankAccount = user.BankAccount,
+                IdPromotion = currentBillingCredit.IdPromotion,
+                PromotionDuration = currentBillingCredit.PromotionDuration
+            };
+
+            DateTime now = DateTime.UtcNow;
+
+            buyCreditAgreement.BillingCredit = new BillingCreditModel()
+            {
+                Date = now,
+                PaymentDate = null,
+                ActivationDate = now,
+                Approved = true,
+                Payed = false,
+                IdUserTypePlan = currentBillingCredit.IdUserTypePlan,
+                PlanFee = (double?)currentBillingCredit.PlanFee,
+                CreditsQty = currentBillingCredit.CreditsQty ?? null,
+                ExtraEmailFee = currentBillingCredit.ExtraEmailFee ?? null,
+                ExtraCreditsPromotion = currentBillingCredit.ExtraCreditsPromotion,
+                DiscountPlanFeePromotion = currentBillingCredit.DiscountPlanFeePromotion,
+                IdBillingCreditType = currentBillingCredit.IdBillingCreditType
+            };
+
+            if (currentBillingCredit.IdUserType == (int)UserTypeEnum.SUBSCRIBERS)
+            {
+                buyCreditAgreement.BillingCredit.TotalMonthPlan = currentBillingCredit.TotalMonthPlan;
+
+                var currentMonthPlan = currentBillingCredit == null ? (buyCreditAgreement.BillingCredit.TotalMonthPlan.HasValue
+                                        && buyCreditAgreement.BillingCredit.TotalMonthPlan.Value > 1 && buyCreditAgreement.BillingCredit.Date.Day > 20)
+                                        ? 0 : 1 :
+                                        currentBillingCredit.CurrentMonthPlan ?? 1;
+
+                buyCreditAgreement.BillingCredit.IdDiscountPlan = currentBillingCredit.IdDiscountPlan;
+                buyCreditAgreement.BillingCredit.CurrentMonthPlan = currentMonthPlan;
+                buyCreditAgreement.BillingCredit.SubscribersQty = currentBillingCredit.SubscribersQty;
+            }
+
+            //Calculate the BillingSystem
+            buyCreditAgreement.IdResponsabileBilling = currentBillingCredit.IdResponsabileBilling;
+            buyCreditAgreement.BillingCredit.Taxes = currentBillingCredit.Taxes;
+
+            return buyCreditAgreement;
+        }
+
         private int CalculateBillingSystemByTransfer(int idBillingCountry)
         {
             return idBillingCountry switch

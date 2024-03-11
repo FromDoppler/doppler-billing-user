@@ -32,5 +32,8 @@ namespace Doppler.BillingUser.Model
         public int IdUserType { get; set; }
         public string CCNumber { get; set; }
         public string CCHolderName { get; set; }
+        public int? PromotionDuration { get; set; }
+        public double? ExtraEmailFee { get; set; }
+        public double? Taxes { get; set; }
     }
 }
