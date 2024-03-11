@@ -27,8 +27,10 @@ namespace Doppler.BillingUser.Utils
             };
         }
 
-        public static SapBillingDto MapBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, UserTypePlanInformation currentUserPlan, UserTypePlanInformation newUserPlan, string authorizationNumber, int invoicedId, decimal? total)
+        public static SapBillingDto MapBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, UserTypePlanInformation currentUserPlan, UserTypePlanInformation newUserPlan, string authorizationNumber, int invoicedId, decimal? total, IList<SapAdditionalServiceDto> additionalServices)
         {
+            var updateMarketingPlan = (currentUserPlan == null || (newUserPlan.IdUserTypePlan != currentUserPlan.IdUserTypePlan));
+
             var sapBilling = new SapBillingDto
             {
                 Id = billingCredit.IdUser,
@@ -39,7 +41,8 @@ namespace Doppler.BillingUser.Utils
                 Periodicity = BillingHelper.GetPeriodicity(newUserPlan, billingCredit),
                 PeriodMonth = billingCredit.Date.Month,
                 PeriodYear = billingCredit.Date.Year,
-                PlanFee = newUserPlan.IdUserType == UserTypeEnum.SUBSCRIBERS ? billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) : billingCredit.PlanFee,
+                //PlanFee = newUserPlan.IdUserType == UserTypeEnum.SUBSCRIBERS ? billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) : billingCredit.PlanFee,
+                PlanFee = updateMarketingPlan ? newUserPlan.IdUserType == UserTypeEnum.SUBSCRIBERS ? billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) : billingCredit.PlanFee : 0,
                 Discount = (billingCredit.DiscountPlanFee) +
                     billingCredit.DiscountPlanFeeAdmin.GetValueOrDefault() +
                     billingCredit.DiscountPlanFeePromotion.GetValueOrDefault(),
@@ -60,12 +63,14 @@ namespace Doppler.BillingUser.Utils
                 InvoiceDate = billingCredit.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
                 BillingSystemId = billingCredit.IdResponsabileBilling,
                 FiscalID = billingCredit.Cuit,
-                IsUpSelling = (currentUserPlan != null && newUserPlan.IdUserType != UserTypeEnum.INDIVIDUAL)
+                IsUpSelling = (currentUserPlan != null && newUserPlan.IdUserType != UserTypeEnum.INDIVIDUAL),
+                AdditionalServices = additionalServices
             };
 
             if (currentUserPlan != null)
             {
-                sapBilling.DiscountedAmount = (double?)total;
+                //sapBilling.DiscountedAmount = (double?)total;
+                sapBilling.DiscountedAmount = updateMarketingPlan ? (double?)total : 0;
             }
 
             return sapBilling;
