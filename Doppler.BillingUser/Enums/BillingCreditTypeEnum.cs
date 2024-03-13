@@ -9,6 +9,9 @@ namespace Doppler.BillingUser.Enums
         Individual_to_Subscribers = 8,
         Upgrade_Between_Monthlies = 13,
         Upgrade_Between_Subscribers = 14,
-        Canceled = 17
+        Canceled = 17,
+        Landing_Request = 23,
+        Landing_Buyed_CC = 24,
+        Landing_Canceled = 25
     }
 }
