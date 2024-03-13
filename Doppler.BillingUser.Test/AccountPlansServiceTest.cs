@@ -31,7 +31,7 @@ namespace Doppler.BillingUser.Test
             var service = new AccountPlansService(
                 GetAccountPlansSettingsMock().Object,
                 Mock.Of<ILogger<AccountPlansService>>(),
-                factory,
+                //factory,
                 Mock.Of<ICurrentRequestApiTokenGetter>());
 
             // Act
@@ -65,7 +65,7 @@ namespace Doppler.BillingUser.Test
             var service = new AccountPlansService(
                 GetAccountPlansSettingsMock().Object,
                 Mock.Of<ILogger<AccountPlansService>>(),
-                factory,
+                //factory,
                 Mock.Of<ICurrentRequestApiTokenGetter>());
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(new { Total = 3 });
@@ -99,7 +99,7 @@ namespace Doppler.BillingUser.Test
             var service = new AccountPlansService(
                 GetAccountPlansSettingsMock().Object,
                 Mock.Of<ILogger<AccountPlansService>>(),
-                factory,
+                //factory,
                 Mock.Of<ICurrentRequestApiTokenGetter>());
 
 
