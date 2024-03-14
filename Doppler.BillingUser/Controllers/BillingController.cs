@@ -1154,8 +1154,6 @@ namespace Doppler.BillingUser.Controllers
         {
             if (currentPlan.EmailQty < newPlan.EmailQty)
             {
-                var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
-
                 var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
                 if (currentBillingCredit != null)
                 {
@@ -1196,6 +1194,17 @@ namespace Doppler.BillingUser.Controllers
                 await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
                 //Send notifications
+                PlanAmountDetails amountDetails = null;
+
+                try
+                {
+                    amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error to get total amount for user {user.Email}.(Send Notifications)");
+                }
+
                 SendNotifications(user.Email, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Monthlies, currentPlan, amountDetails);
 
                 return billingCreditId;
@@ -1207,7 +1216,6 @@ namespace Doppler.BillingUser.Controllers
         private async Task<int> ChangeToMonthly(UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, AgreementInformation agreementInformation, Promotion promotion, CreditCardPayment payment)
         {
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
-            var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
             var creditsLeft = await _userRepository.GetAvailableCredit(user.IdUser);
 
             await _billingRepository.CreateMovementBalanceAdjustmentAsync(user.IdUser, creditsLeft, UserTypeEnum.INDIVIDUAL, UserTypeEnum.MONTHLY);
@@ -1234,6 +1242,17 @@ namespace Doppler.BillingUser.Controllers
             await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
             //Send notifications
+            PlanAmountDetails amountDetails = null;
+
+            try
+            {
+                amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error to get total amount for user {user.Email}.(Send Notifications)");
+            }
+
             SendNotifications(user.Email, newPlan, user, creditsLeft, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Individual_to_Monthly, currentPlan, amountDetails);
 
             return billingCreditId;
@@ -1244,8 +1263,6 @@ namespace Doppler.BillingUser.Controllers
             if (currentPlan.SubscribersQty < newPlan.SubscribersQty)
             {
                 var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
-                var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
-
                 if (currentBillingCredit != null)
                 {
                     promotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
@@ -1282,6 +1299,17 @@ namespace Doppler.BillingUser.Controllers
                 await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
                 //Send notifications
+                PlanAmountDetails amountDetails = null;
+
+                try
+                {
+                    amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error to get total amount for user {user.Email}.(Send Notifications)");
+                }
+
                 SendNotifications(user.Email, newPlan, user, 0, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Upgrade_Between_Subscribers, currentPlan, amountDetails);
 
                 //Activate StandBy Subscribers
@@ -1304,7 +1332,6 @@ namespace Doppler.BillingUser.Controllers
         private async Task<int> ChangeToSubscribers(UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, AgreementInformation agreementInformation, Promotion promotion, CreditCardPayment payment)
         {
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
-            var amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
             var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Subscribers);
 
@@ -1325,6 +1352,17 @@ namespace Doppler.BillingUser.Controllers
             await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
 
             //Send notifications
+            PlanAmountDetails amountDetails = null;
+
+            try
+            {
+                amountDetails = await _accountPlansService.GetCalculateUpgrade(user.Email, agreementInformation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error to get total amount for user {user.Email}.(Send Notifications)");
+            }
+
             SendNotifications(user.Email, newPlan, user, 0, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.Individual_to_Subscribers, currentPlan, amountDetails);
 
             return billingCreditId;
