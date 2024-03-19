@@ -252,7 +252,7 @@ namespace Doppler.BillingUser.Controllers
         public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromForm] PaymentMethod paymentMethod)
         {
             using var _ = _timeCollector.StartScope();
-            
+
             _logger.LogDebug("Update current payment method.");
 
             User userInformation = await _userRepository.GetUserInformation(accountname);
@@ -404,7 +404,7 @@ namespace Doppler.BillingUser.Controllers
                 await CheckattemptsToCancelUser(userInformation.IdUser, accountname);
 
                 return new BadRequestObjectResult(e.Message);
-            } 
+            }
         }
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpPost("accounts/{accountname}/payments/reprocess/send-contact-information-notification")]
