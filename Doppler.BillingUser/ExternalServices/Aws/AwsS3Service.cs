@@ -1,6 +1,7 @@
 using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Doppler.BillingUser.TimeCollector;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,12 +16,14 @@ namespace Doppler.BillingUser.ExternalServices.Aws
         private readonly IOptions<DopplerAwsSettings> _awsSettings;
         private readonly ILogger<AwsS3Service> _logger;
         private readonly IAmazonS3 _client;
+        private readonly ITimeCollector _timeCollector;
 
-        public AwsS3Service(IOptions<DopplerAwsSettings> awsSettings, ILogger<AwsS3Service> logger)
+        public AwsS3Service(IOptions<DopplerAwsSettings> awsSettings, ILogger<AwsS3Service> logger, ITimeCollector timeCollector)
         {
             _awsSettings = awsSettings;
             _logger = logger;
             _client = CreateS3Client();
+            _timeCollector = timeCollector;
         }
 
         private IAmazonS3 CreateS3Client()
@@ -32,7 +35,7 @@ namespace Doppler.BillingUser.ExternalServices.Aws
 
         public async Task<string> SaveFile(Stream data, string extension, string contentType)
         {
-
+            using var _ = _timeCollector.StartScope();
             var fileName = $"{Guid.NewGuid()}{extension}";
 
             var putRequest = new PutObjectRequest
@@ -57,6 +60,7 @@ namespace Doppler.BillingUser.ExternalServices.Aws
 
         public async Task DeleteFile(string fileName)
         {
+            using var _ = _timeCollector.StartScope();
             try
             {
                 var deleteObjectRequest = new DeleteObjectRequest

@@ -7,6 +7,7 @@ using Doppler.BillingUser.ExternalServices.Clover.Entities;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -28,6 +29,7 @@ namespace Doppler.BillingUser.Infrastructure
         private readonly ISapService _sapService;
         private readonly IOptions<CloverSettings> _cloverSettings;
         private readonly ICloverService _cloverService;
+        private readonly ITimeCollector _timeCollector;
 
         private const int InvoiceBillingTypeQBL = 1;
         private const int UserAccountType = 1;
@@ -48,7 +50,8 @@ namespace Doppler.BillingUser.Infrastructure
             IPaymentGateway paymentGateway,
             ISapService sapService,
             IOptions<CloverSettings> cloverSettings,
-            ICloverService cloverService)
+            ICloverService cloverService,
+            ITimeCollector timeCollector)
         {
             _connectionFactory = connectionFactory;
             _encryptionService = encryptionService;
@@ -56,6 +59,7 @@ namespace Doppler.BillingUser.Infrastructure
             _sapService = sapService;
             _cloverSettings = cloverSettings;
             _cloverService = cloverService;
+            _timeCollector = timeCollector;
         }
         public async Task<BillingInformation> GetBillingInformation(string email)
         {
@@ -111,6 +115,7 @@ WHERE
 
         public async Task<PaymentMethod> GetCurrentPaymentMethod(string username)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             var result = await connection.QueryFirstOrDefaultAsync<PaymentMethod>(@"
@@ -245,6 +250,7 @@ WHERE
 
         public async Task<bool> UpdateCurrentPaymentMethod(User user, PaymentMethod paymentMethod)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
@@ -372,6 +378,7 @@ WHERE
 
         private async Task UpdateUserPaymentMethodByTransfer(User user, PaymentMethod paymentMethod)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             await connection.ExecuteAsync(@"
@@ -414,6 +421,7 @@ WHERE
 
         private async Task UpdateUserPaymentMethodByAutomaticDebit(User user, PaymentMethod paymentMethod)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             await connection.ExecuteAsync(@"
@@ -458,6 +466,7 @@ WHERE
 
         private async Task UpdateUserPaymentMethod(User user, PaymentMethod paymentMethod)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             await connection.ExecuteAsync(@"
@@ -494,6 +503,7 @@ WHERE
 
         private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, ExternalServices.FirstData.CreditCard creditCard)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             await connection.ExecuteAsync(@"
@@ -532,6 +542,7 @@ WHERE
 
         private async Task SendUserDataToSap(string accountName, int planId)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
             var user = await connection.QueryFirstOrDefaultAsync<User>(@"
@@ -701,6 +712,7 @@ WHERE
 
         public async Task<int> CreateBillingCreditAsync(BillingCreditAgreement buyCreditAgreement)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.QueryFirstOrDefaultAsync<int>(@"
 INSERT INTO [dbo].[BillingCredits]
@@ -844,6 +856,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
         public async Task<int> CreateMovementCreditAsync(int idBillingCredit, int partialBalance, UserBillingInformation user, UserTypePlanInformation newUserTypePlan, int? currentMonthlyAddedEmailsWithBilling = null)
         {
+            using var _ = _timeCollector.StartScope();
             BillingCredit billingCredit = await GetBillingCredit(idBillingCredit);
             string conceptEnglish;
             string conceptSpanish;
@@ -903,6 +916,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
         public async Task<BillingCredit> GetBillingCredit(int billingCreditId)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var billingCredit = await connection.QueryFirstOrDefaultAsync<BillingCredit>(@"
 SELECT
@@ -978,6 +992,7 @@ WHERE
 
         public async Task<List<AccountingEntry>> GetInvoices(int idClient, params PaymentStatusEnum[] status)
         {
+            using var _ = _timeCollector.StartScope();
             if (status.Length == 0)
             {
                 status = new PaymentStatusEnum[] { PaymentStatusEnum.DeclinedPaymentTransaction, PaymentStatusEnum.Pending, PaymentStatusEnum.Approved };
@@ -1016,6 +1031,7 @@ WHERE
 
         public async Task<PlanDiscountInformation> GetPlanDiscountInformation(int discountId)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var discountInformation = await connection.QueryFirstOrDefaultAsync<PlanDiscountInformation>(@"
 SELECT
@@ -1034,6 +1050,7 @@ WHERE
 
         public async Task UpdateUserSubscriberLimitsAsync(int idUser)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             using var dtUserCheckLimits = new DataTable();
             dtUserCheckLimits.Columns.Add(new DataColumn("IdUser", typeof(int)));
@@ -1050,6 +1067,7 @@ WHERE
 
         public async Task<int> ActivateStandBySubscribers(int idUser)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.ExecuteScalarAsync<int>("UserReactivateStandBySubscribers", new { IdUser = idUser }, commandType: CommandType.StoredProcedure);
             return result;
@@ -1057,6 +1075,7 @@ WHERE
 
         public async Task<int> CreateAccountingEntriesAsync(AccountingEntry invoiceEntry, AccountingEntry paymentEntry)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var invoiceId = await connection.QueryFirstOrDefaultAsync<int>(@"
 INSERT INTO [dbo].[AccountingEntry]
@@ -1247,6 +1266,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
         public async Task<int> CreateCreditNoteEntryAsync(AccountingEntry creditNoteEntry)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var IdAccountingEntry = await connection.QueryFirstOrDefaultAsync<int>(@"
 INSERT INTO [dbo].[AccountingEntry]
@@ -1303,6 +1323,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
         public async Task UpdateInvoiceStatus(int id, PaymentStatusEnum status, string statusDetail, string authorizationNumber)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             await connection.ExecuteAsync(@"
 UPDATE
@@ -1324,6 +1345,8 @@ WHERE
 
         public async Task<int> CreateMovementBalanceAdjustmentAsync(int userId, int creditsQty, UserTypeEnum currentUserType, UserTypeEnum newUserType)
         {
+            using var _ = _timeCollector.StartScope();
+
             string conceptEnglish = string.Empty;
             string conceptSpanish = string.Empty;
 
@@ -1384,6 +1407,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
         public async Task CreateMovementCreditsLeftAsync(int idUser, int creditsQty, int partialBalance)
         {
+            using var _ = _timeCollector.StartScope();
             string conceptEnglish = "Not Spent Credits";
             string conceptSpanish = "Creditos No Gastados";
 
@@ -1543,6 +1567,7 @@ WHERE
 
         public async Task<ImportedBillingDetail> GetImportedBillingDetailAsync(int idImportedBillingDetail)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             return await connection.QueryFirstOrDefaultAsync<ImportedBillingDetail>(@"
 SELECT [IdImportedBillingDetail],

@@ -2,6 +2,7 @@ using Dapper;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using System;
 using System.Threading.Tasks;
 
@@ -10,14 +11,17 @@ namespace Doppler.BillingUser.Infrastructure
     public class UserPaymentHistoryRepository : IUserPaymentHistoryRepository
     {
         private readonly IDatabaseConnectionFactory _connectionFactory;
+        private readonly ITimeCollector _timeCollector;
 
-        public UserPaymentHistoryRepository(IDatabaseConnectionFactory connectionFactory)
+        public UserPaymentHistoryRepository(IDatabaseConnectionFactory connectionFactory, ITimeCollector timeCollector)
         {
             _connectionFactory = connectionFactory;
+            _timeCollector = timeCollector;
         }
 
         public async Task<int> CreateUserPaymentHistoryAsync(UserPaymentHistory userPaymentHistory)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.QueryFirstOrDefaultAsync<int>(@"
 INSERT INTO [dbo].[UserPaymentHistory]
@@ -60,6 +64,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
         public async Task<int> GetAttemptsToUpdateAsync(int idUser, DateTime from, DateTime to, string source)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.QueryFirstOrDefaultAsync<int>(@"
 SELECT COUNT(DISTINCT CreditCardLastFourDigits) FROM [dbo].[UserPaymentHistory]

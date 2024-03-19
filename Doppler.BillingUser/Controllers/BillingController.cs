@@ -22,6 +22,7 @@ using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Settings;
+using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
@@ -66,7 +67,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IStaticDataClient _staticDataClient;
         private readonly IOptions<CloverSettings> _cloverSettings;
         private readonly ICloverService _cloverService;
-
+        private readonly ITimeCollector _timeCollector;
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -131,7 +132,8 @@ namespace Doppler.BillingUser.Controllers
             IStaticDataClient staticDataClient,
             IOptions<CloverSettings> cloverSettings,
             ICloverService cloverService,
-            IFileStorage fileStorage)
+            IFileStorage fileStorage,
+            ITimeCollector timeCollector)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -158,6 +160,7 @@ namespace Doppler.BillingUser.Controllers
             _cloverSettings = cloverSettings;
             _cloverService = cloverService;
             _fileStorage = fileStorage;
+            _timeCollector = timeCollector;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -248,6 +251,8 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/payment-methods/current")]
         public async Task<IActionResult> UpdateCurrentPaymentMethod(string accountname, [FromForm] PaymentMethod paymentMethod)
         {
+            using var _ = _timeCollector.StartScope();
+            
             _logger.LogDebug("Update current payment method.");
 
             User userInformation = await _userRepository.GetUserInformation(accountname);
@@ -399,7 +404,7 @@ namespace Doppler.BillingUser.Controllers
                 await CheckattemptsToCancelUser(userInformation.IdUser, accountname);
 
                 return new BadRequestObjectResult(e.Message);
-            }
+            } 
         }
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpPost("accounts/{accountname}/payments/reprocess/send-contact-information-notification")]
@@ -450,6 +455,8 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/payments/reprocess")]
         public async Task<IActionResult> Reprocess(string accountname)
         {
+            using var _ = _timeCollector.StartScope();
+
             try
             {
                 var userBillingInfo = await _userRepository.GetUserBillingInformation(accountname);
@@ -670,6 +677,8 @@ namespace Doppler.BillingUser.Controllers
         [HttpPost("/accounts/{accountname}/agreements")]
         public async Task<IActionResult> CreateAgreement([FromRoute] string accountname, [FromBody] AgreementInformation agreementInformation)
         {
+            using var _ = _timeCollector.StartScope();
+
             var user = await _userRepository.GetUserBillingInformation(accountname);
 
             try
@@ -1483,6 +1492,8 @@ namespace Doppler.BillingUser.Controllers
 
         private async Task<string> PutTaxCertificateUrl(PaymentMethod paymentMethod, string accountname)
         {
+            using var _ = _timeCollector.StartScope();
+
             var currentPaymentMethod = await _billingRepository.GetCurrentPaymentMethod(accountname);
 
             if (paymentMethod == null || paymentMethod.TaxCertificate == null)

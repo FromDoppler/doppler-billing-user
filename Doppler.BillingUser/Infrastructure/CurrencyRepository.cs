@@ -1,5 +1,6 @@
 using Dapper;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using System;
 using System.Threading.Tasks;
 
@@ -8,14 +9,17 @@ namespace Doppler.BillingUser.Infrastructure
     public class CurrencyRepository : ICurrencyRepository
     {
         private readonly IDatabaseConnectionFactory _connectionFactory;
+        private readonly ITimeCollector _timeCollector;
 
-        public CurrencyRepository(IDatabaseConnectionFactory connectionFactory)
+        public CurrencyRepository(IDatabaseConnectionFactory connectionFactory, ITimeCollector timeCollector)
         {
             _connectionFactory = connectionFactory;
+            _timeCollector = timeCollector;
         }
 
         public async Task<decimal> GetCurrencyRateAsync(int idCurrencyTypeFrom, int idCurrencyTypeTo, DateTime date)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var rate = await connection.QueryFirstOrDefaultAsync<CurrencyRate>(@"
 SELECT
