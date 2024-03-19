@@ -776,7 +776,17 @@ namespace Doppler.BillingUser.Controllers
                 Promotion promotion = null;
                 if (!string.IsNullOrEmpty(agreementInformation.Promocode))
                 {
-                    promotion = await _accountPlansService.GetValidPromotionByCode(agreementInformation.Promocode, agreementInformation.PlanId);
+                    try
+                    {
+                        promotion = await _accountPlansService.GetValidPromotionByCode(agreementInformation.Promocode, agreementInformation.PlanId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Error to validate the promocode from de API {agreementInformation.Promocode}.");
+
+                        var encryptedCode = _encryptionService.EncryptAES256(agreementInformation.Promocode);
+                        promotion = await _promotionRepository.GetPromotionByCode(encryptedCode, (int)newPlan.IdUserType, agreementInformation.PlanId);
+                    }
                 }
 
                 int invoiceId = 0;
