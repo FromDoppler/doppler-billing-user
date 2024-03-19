@@ -7,6 +7,7 @@ using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
@@ -42,7 +43,7 @@ namespace Doppler.BillingUser.Test
             var mockConnectionFactory = new Mock<IDatabaseConnectionFactory>();
             mockConnectionFactory.Setup(c => c.GetConnection()).Returns(mockConnection.Object);
 
-            var repository = new CurrencyRepository(mockConnectionFactory.Object);
+            var repository = new CurrencyRepository(mockConnectionFactory.Object, Mock.Of<ITimeCollector>());
 
             //Act
             var result = await repository.GetCurrencyRateAsync(idCurrencyTypeFrom, idCurrencyTypeTo, date);
@@ -74,7 +75,7 @@ namespace Doppler.BillingUser.Test
             var mockConnectionFactory = new Mock<IDatabaseConnectionFactory>();
             mockConnectionFactory.Setup(c => c.GetConnection()).Returns(mockConnection.Object);
 
-            var repository = new CurrencyRepository(mockConnectionFactory.Object);
+            var repository = new CurrencyRepository(mockConnectionFactory.Object, Mock.Of<ITimeCollector>());
 
             //Act
             var result = await repository.ConvertCurrencyAsync(idCurrencyTypeFrom, idCurrencyTypeTo, amount, date, null);
@@ -107,7 +108,7 @@ namespace Doppler.BillingUser.Test
             var mockConnectionFactory = new Mock<IDatabaseConnectionFactory>();
             mockConnectionFactory.Setup(c => c.GetConnection()).Returns(mockConnection.Object);
 
-            var repository = new CurrencyRepository(mockConnectionFactory.Object);
+            var repository = new CurrencyRepository(mockConnectionFactory.Object, Mock.Of<ITimeCollector>());
 
             //Act
             var result = await repository.ConvertCurrencyAsync(idCurrencyTypeFrom, idCurrencyTypeTo, amount, date, rate);

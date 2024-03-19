@@ -1,4 +1,5 @@
 using Doppler.BillingUser.ExternalServices.Zoho;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -23,7 +24,8 @@ namespace Doppler.BillingUser.Test
 
             var service = new ZohoService(
                 GetZohoServiceSettingsMock().Object,
-                new PerBaseUrlFlurlClientFactory());
+                new PerBaseUrlFlurlClientFactory(),
+                Mock.Of<ITimeCollector>());
 
             using var httpTest = new HttpTest();
 
