@@ -1,6 +1,10 @@
+using System;
+using System.Numerics;
 using System.Threading.Tasks;
 using Dapper;
+using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Model;
+using Microsoft.AspNetCore.Connections;
 
 namespace Doppler.BillingUser.Infrastructure
 {
@@ -83,6 +87,53 @@ WHERE
                 });
 
             return times;
+        }
+
+        public async Task<Promotion> GetPromotionByCode(string code, int userType, int planId)
+        {
+            using var connection = _connectionFactory.GetConnection();
+
+            var promotion = await connection.QueryFirstOrDefaultAsync<Promotion>(@"
+SELECT
+    [IdPromotion],
+    [IdUserTypePlan],
+    [CreationDate],
+    [ExpiringDate],
+    [TimesUsed],
+    [TimesToUse],
+    [Code],
+    [ExtraCredits],
+    [Active],
+    [DiscountPlanFee] as DiscountPercentage,
+    [AllPlans],
+    [AllSubscriberPlans],
+    [AllPrepaidPlans],
+    [AllMonthlyPlans],
+    [Duration]
+FROM
+    [Promotions]  WITH(NOLOCK)
+WHERE
+    [Code] = @code AND
+    [Active] = 1 AND
+    ([TimesToUse] is null OR [TimesToUse] > [TimesUsed]) AND
+    ([ExpiringDate] is null OR [ExpiringDate] >= @now) AND
+    ([IdUserTypePlan] = @planId OR
+    [AllPlans] = 1 OR
+    (@userType = @individual AND [AllPrepaidPlans] = 1) OR
+    (@userType = @subscribers AND [AllSubscriberPlans] = 1) OR
+    (@userType = @monthly AND [AllMonthlyPlans] = 1))",
+                new
+                {
+                    code,
+                    planId,
+                    userType,
+                    @individual = (int)UserTypeEnum.INDIVIDUAL,
+                    @subscribers = (int)UserTypeEnum.SUBSCRIBERS,
+                    @monthly = (int)UserTypeEnum.MONTHLY,
+                    @now = DateTime.Now
+                });
+
+            return promotion;
         }
     }
 }
