@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
@@ -32,7 +33,8 @@ namespace Doppler.BillingUser.Test
                 GetAccountPlansSettingsMock().Object,
                 Mock.Of<ILogger<AccountPlansService>>(),
                 //factory,
-                Mock.Of<ICurrentRequestApiTokenGetter>());
+                Mock.Of<ICurrentRequestApiTokenGetter>(),
+                Mock.Of<ITimeCollector>());
 
             // Act
             using var httpTest = new HttpTest();
@@ -66,7 +68,8 @@ namespace Doppler.BillingUser.Test
                 GetAccountPlansSettingsMock().Object,
                 Mock.Of<ILogger<AccountPlansService>>(),
                 //factory,
-                Mock.Of<ICurrentRequestApiTokenGetter>());
+                Mock.Of<ICurrentRequestApiTokenGetter>(),
+                Mock.Of<ITimeCollector>());
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(new { Total = 3 });
 
@@ -100,7 +103,8 @@ namespace Doppler.BillingUser.Test
                 GetAccountPlansSettingsMock().Object,
                 Mock.Of<ILogger<AccountPlansService>>(),
                 //factory,
-                Mock.Of<ICurrentRequestApiTokenGetter>());
+                Mock.Of<ICurrentRequestApiTokenGetter>(),
+                Mock.Of<ITimeCollector>());
 
 
             // Act

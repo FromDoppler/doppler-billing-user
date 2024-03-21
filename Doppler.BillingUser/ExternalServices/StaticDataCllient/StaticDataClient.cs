@@ -1,4 +1,5 @@
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
@@ -13,15 +14,18 @@ namespace Doppler.BillingUser.ExternalServices.StaticDataCllient
     {
         private readonly ILogger<StaticDataClient> _logger;
         private readonly IOptions<StaticDataClientSettings> _options;
+        private readonly ITimeCollector _timeCollector;
 
-        public StaticDataClient(ILogger<StaticDataClient> logger, IOptions<StaticDataClientSettings> options)
+        public StaticDataClient(ILogger<StaticDataClient> logger, IOptions<StaticDataClientSettings> options, ITimeCollector timeCollector)
         {
             _logger = logger;
             _options = options;
+            _timeCollector = timeCollector;
         }
 
         public async Task<GetTaxRegimesResult> GetAllTaxRegimesAsync()
         {
+            using var _ = _timeCollector.StartScope();
             HttpClient staticDataHttpClient = new HttpClient()
             {
                 BaseAddress = new Uri(_options.Value.BaseStaticDataClientUrl)

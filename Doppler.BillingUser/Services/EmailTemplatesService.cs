@@ -1,6 +1,7 @@
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
 using Microsoft.Extensions.Options;
 using System;
@@ -12,10 +13,13 @@ namespace Doppler.BillingUser.Services
     {
         private readonly IOptions<EmailNotificationsConfiguration> _emailSettings;
         private readonly IEmailSender _emailSender;
-        public EmailTemplatesService(IOptions<EmailNotificationsConfiguration> emailSettings, IEmailSender emailSender)
+        private readonly ITimeCollector _timeCollector;
+
+        public EmailTemplatesService(IOptions<EmailNotificationsConfiguration> emailSettings, IEmailSender emailSender, ITimeCollector timeCollector)
         {
             _emailSettings = emailSettings;
             _emailSender = emailSender;
+            _timeCollector = timeCollector;
         }
 
         public Task<bool> SendNotificationForSuscribersPlan(string accountname, User userInformation, UserTypePlanInformation newPlan)
@@ -228,6 +232,7 @@ namespace Doppler.BillingUser.Services
 
         public Task SendNotificationForPaymentFailedTransaction(int userId, string errorCode, string errorMessage, string transactionCTR, string bankMessage, PaymentMethodEnum paymentMethod, bool isFreeUser, string cardHolderName, string lastFourDigits)
         {
+            using var _ = _timeCollector.StartScope();
             var template = paymentMethod == PaymentMethodEnum.CC ?
                 isFreeUser ? _emailSettings.Value.FailedCreditCardFreeUserPurchaseNotificationAdminTemplateId : _emailSettings.Value.FailedCreditCardPurchaseNotificationAdminTemplateId :
                 //Mercadopago
@@ -270,6 +275,7 @@ namespace Doppler.BillingUser.Services
 
         public Task SendNotificationForMercadoPagoPaymentInProcess(int userId, string accountname, string errorCode, string errorMessage, bool isFreeUser)
         {
+            using var _ = _timeCollector.StartScope();
             var template = isFreeUser ?
                 _emailSettings.Value.MercadoPagoFreeUserPaymentInProcessAdminTemplateId :
                 _emailSettings.Value.MercadoPagoPaymentInProcessAdminTemplateId;

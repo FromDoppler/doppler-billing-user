@@ -4,6 +4,7 @@ using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi.Error;
 using Doppler.BillingUser.Services;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Logging;
@@ -22,6 +23,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
         private readonly ILogger<MercadoPagoService> _logger;
         private readonly IEncryptionService _encryptionService;
         private readonly IEmailTemplatesService _emailTemplatesService;
+        private readonly ITimeCollector _timeCollector;
 
         const string TransactionDescription = "Doppler Email Marketing";
         const string Description = "MERPAGO*DOPPLER";
@@ -33,7 +35,8 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
             IFlurlClientFactory flurlClientFactory,
             ILogger<MercadoPagoService> logger,
             IEncryptionService encryptionService,
-            IEmailTemplatesService emailTemplatesService)
+            IEmailTemplatesService emailTemplatesService,
+            ITimeCollector timeCollector)
         {
             _options = options;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -41,6 +44,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
             _logger = logger;
             _encryptionService = encryptionService;
             _emailTemplatesService = emailTemplatesService;
+            _timeCollector = timeCollector;
         }
 
         public async Task<MercadoPagoPayment> GetPaymentById(long id, string accountname)
@@ -111,6 +115,7 @@ namespace Doppler.BillingUser.ExternalServices.MercadoPagoApi
 
         private async Task<MercadoPagoPayment> PostMercadoPagoPayment(string accountname, PaymentRequestDto paymentRequestDto)
         {
+            using var _ = _timeCollector.StartScope();
             var payment = await _flurlClient.Request(new UriTemplate(_options.Value.MercadoPagoApiUrlTemplate)
                 .AddParameter("accountname", accountname)
                 .Resolve())

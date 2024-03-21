@@ -5,6 +5,7 @@ using Doppler.BillingUser.ExternalServices.Clover.Errors;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Services;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -46,7 +47,8 @@ namespace Doppler.BillingUser.Test.ExternalServices
                 Mock.Of<ILogger<CloverService>>(),
                 encryptionServiceMock.Object,
                 Mock.Of<IEmailTemplatesService>(),
-                Mock.Of<ISlackService>());
+                Mock.Of<ISlackService>(),
+                Mock.Of<ITimeCollector>());
 
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(true, 200);
@@ -90,7 +92,8 @@ namespace Doppler.BillingUser.Test.ExternalServices
                 Mock.Of<ILogger<CloverService>>(),
                 encryptionServiceMock.Object,
                 Mock.Of<IEmailTemplatesService>(),
-                Mock.Of<ISlackService>());
+                Mock.Of<ISlackService>(),
+                Mock.Of<ITimeCollector>());
 
             var apiError = new ApiError { Message = "Error", Error = new ApiErrorCause { Code = "Error", Message = "Error message" } };
 
@@ -132,7 +135,8 @@ namespace Doppler.BillingUser.Test.ExternalServices
                 Mock.Of<ILogger<CloverService>>(),
                 encryptionServiceMock.Object,
                 Mock.Of<IEmailTemplatesService>(),
-                Mock.Of<ISlackService>());
+                Mock.Of<ISlackService>(),
+                Mock.Of<ITimeCollector>());
 
             var apiError = new ApiError { Message = "Error", Error = new ApiErrorCause { Code = "card_declined", Message = "DECLINED: Over limit / Insufficient funds" } };
 

@@ -7,6 +7,7 @@ using Doppler.BillingUser.ExternalServices.Clover.Responses;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Services;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
         private readonly IEncryptionService _encryptionService;
         private readonly IEmailTemplatesService _emailTemplatesService;
         private readonly ISlackService _slackService;
+        private readonly ITimeCollector _timeCollector;
 
         public CloverService(
             IOptions<CloverSettings> options,
@@ -34,7 +36,8 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             ILogger<CloverService> logger,
             IEncryptionService encryptionService,
             IEmailTemplatesService emailTemplatesService,
-            ISlackService slackService)
+            ISlackService slackService,
+            ITimeCollector timeCollector)
         {
             _options = options;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -43,6 +46,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             _encryptionService = encryptionService;
             _emailTemplatesService = emailTemplatesService;
             _slackService = slackService;
+            _timeCollector = timeCollector;
         }
 
         public async Task<string> CreateCreditCardPayment(string accountname, decimal chargeTotal, CreditCard creditCard, int clientId, bool isFreeUser, bool isReprocessCall)
@@ -77,6 +81,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
 
         public async Task<CustomerResponse> CreateCustomerAsync(string email, string name, CreditCard creditCard)
         {
+            using var _ = _timeCollector.StartScope();
             var customerRequest = MapToCustomerRequest(email, name, creditCard, string.Empty);
             var result = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/accounts/{email}/customer")
                 .Resolve())
@@ -89,6 +94,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
 
         public async Task<CustomerResponse> UpdateCustomerAsync(string email, string name, CreditCard creditCard, string cloverCustomerId)
         {
+            using var _ = _timeCollector.StartScope();
             var customerRequest = MapToCustomerRequest(email, name, creditCard, cloverCustomerId);
             var result = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/accounts/{email}/customer")
                 .Resolve())
@@ -101,7 +107,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
 
         public async Task<CustomerResponse> GetCustomerAsync(string email)
         {
-
+            using var _ = _timeCollector.StartScope();
             return await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/accounts/{email}/customer")
                 .Resolve())
                 .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
@@ -110,6 +116,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
 
         private async Task<bool> ValidateCreditCard(string accountname, PaymentRequest paymentRequest, bool isFreeUser)
         {
+            using var _ = _timeCollector.StartScope();
             try
             {
                 var result = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/accounts/{accountname}/creditcard/validate")
@@ -146,6 +153,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
 
         private async Task<string> PostCloverPayment(string accountname, PaymentRequest paymentRequest, bool isFreeUser)
         {
+            using var _ = _timeCollector.StartScope();
             try
             {
                 var payment = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/accounts/{accountname}/payment")

@@ -1,4 +1,5 @@
 using Doppler.BillingUser.ExternalServices.EmailSender;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
 using Microsoft.Extensions.Logging;
@@ -40,7 +41,7 @@ namespace Doppler.BillingUser.Test
             };
 
             IFlurlClientFactory factory = new PerBaseUrlFlurlClientFactory();
-            var sut = new RelayEmailSender(Options.Create(configuration), Mock.Of<ILogger<RelayEmailSender>>(), factory);
+            var sut = new RelayEmailSender(Options.Create(configuration), Mock.Of<ILogger<RelayEmailSender>>(), factory, Mock.Of<ITimeCollector>());
 
             using (var httpTest = new HttpTest())
             {

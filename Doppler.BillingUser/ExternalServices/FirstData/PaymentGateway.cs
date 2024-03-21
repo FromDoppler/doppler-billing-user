@@ -3,6 +3,7 @@ using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.Clover.Entities;
 using Doppler.BillingUser.ExternalServices.E4;
 using Doppler.BillingUser.Services;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Microsoft.Extensions.Logging;
 using System;
@@ -33,11 +34,13 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
         private readonly ILogger _logger;
         private readonly IEmailTemplatesService _emailTemplatesService;
         private readonly IFlurlClient _flurlClient = new FlurlClient();
+        private readonly ITimeCollector _timeCollector;
 
         public PaymentGateway(IEncryptionService encryptionService,
             IFirstDataService config,
             ILogger<PaymentGateway> logger,
-            IEmailTemplatesService emailTemplatesService)
+            IEmailTemplatesService emailTemplatesService,
+            ITimeCollector timeCollector)
         {
             if (config == null)
             {
@@ -55,6 +58,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
             _endpoint = _isDemo ? config.GetFirstDataServiceSoapDemo() : config.GetFirstDataServiceSoap();
             _emailTemplatesService = emailTemplatesService;
             _logger = logger;
+            _timeCollector = timeCollector;
         }
 
         private string GetHmacSignature(string hashedContent, string timeString)
@@ -78,6 +82,7 @@ namespace Doppler.BillingUser.ExternalServices.FirstData
 
         private async Task<string> PostRequest(Transaction txn, int clientId, bool isFreeUser, bool isReprocessCall = false)
         {
+            using var _ = _timeCollector.StartScope();
             PaymentErrorCode errorCode;
             try
             {

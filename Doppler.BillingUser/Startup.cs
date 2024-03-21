@@ -26,6 +26,7 @@ using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.ExternalServices.StaticDataCllient;
 using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
+using Doppler.BillingUser.TimeCollector;
 
 namespace Doppler.BillingUser
 {
@@ -118,6 +119,7 @@ namespace Doppler.BillingUser
             services.Configure<CloverSettings>(Configuration.GetSection(nameof(CloverSettings)));
             services.AddScoped<ICloverService, CloverService>();
             services.AddS3Client(Configuration);
+            services.AddTimeCollector(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

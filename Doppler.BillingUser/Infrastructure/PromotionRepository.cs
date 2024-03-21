@@ -5,20 +5,24 @@ using Dapper;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Model;
 using Microsoft.AspNetCore.Connections;
+using Doppler.BillingUser.TimeCollector;
 
 namespace Doppler.BillingUser.Infrastructure
 {
     public class PromotionRepository : IPromotionRepository
     {
         private readonly IDatabaseConnectionFactory _connectionFactory;
+        private readonly ITimeCollector _timeCollector;
 
-        public PromotionRepository(IDatabaseConnectionFactory connectionFactory)
+        public PromotionRepository(IDatabaseConnectionFactory connectionFactory, ITimeCollector timeCollector)
         {
             _connectionFactory = connectionFactory;
+            _timeCollector = timeCollector;
         }
 
         public async Task IncrementUsedTimes(Promotion promocode)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             await connection.ExecuteAsync(@"
 UPDATE
@@ -47,6 +51,7 @@ WHERE [IdPromotion] = @promocodeId", new
 
         public async Task<Promotion> GetById(int promocodeId)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var promotion = await connection.QueryFirstOrDefaultAsync<Promotion>(@"
 SELECT
@@ -67,6 +72,7 @@ WHERE [IdPromotion] = @promocodeId", new
 
         public async Task<TimesApplyedPromocode> GetHowManyTimesApplyedPromocode(string code, string accountName)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var times = await connection.QueryFirstOrDefaultAsync<TimesApplyedPromocode>(@"
 SELECT

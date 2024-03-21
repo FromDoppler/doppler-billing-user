@@ -5,6 +5,7 @@ using Doppler.BillingUser.ExternalServices.Clover.Errors;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
 using Doppler.BillingUser.Services;
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
@@ -82,7 +83,8 @@ namespace Doppler.BillingUser.Test
                 new DefaultFlurlClientFactory(),
                 Mock.Of<ILogger<MercadoPagoService>>(),
                 Mock.Of<IEncryptionService>(),
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ITimeCollector>());
 
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(new MercadoPagoPayment
@@ -112,7 +114,8 @@ namespace Doppler.BillingUser.Test
                 new DefaultFlurlClientFactory(),
                 Mock.Of<ILogger<MercadoPagoService>>(),
                 Mock.Of<IEncryptionService>(),
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ITimeCollector>());
 
             // Act
             using var httpTest = new HttpTest();
@@ -136,7 +139,8 @@ namespace Doppler.BillingUser.Test
                 new DefaultFlurlClientFactory(),
                 Mock.Of<ILogger<MercadoPagoService>>(),
                 GetEncryptionServiceMock().Object,
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ITimeCollector>());
 
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(new MercadoPagoPayment
@@ -171,7 +175,8 @@ namespace Doppler.BillingUser.Test
                 new DefaultFlurlClientFactory(),
                 Mock.Of<ILogger<MercadoPagoService>>(),
                 GetEncryptionServiceMock().Object,
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ITimeCollector>());
 
             using var httpTest = new HttpTest();
             httpTest.RespondWithJson(new MercadoPagoPayment
@@ -202,7 +207,8 @@ namespace Doppler.BillingUser.Test
                 new DefaultFlurlClientFactory(),
                 Mock.Of<ILogger<MercadoPagoService>>(),
                 Mock.Of<IEncryptionService>(),
-                Mock.Of<IEmailTemplatesService>());
+                Mock.Of<IEmailTemplatesService>(),
+                Mock.Of<ITimeCollector>());
 
             var apiError = new ApiError { Message = "Error" };
 

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Flurl.Http.Configuration;
 using Flurl.Http.Testing;
 using Xunit;
+using Doppler.BillingUser.TimeCollector;
 
 namespace Doppler.BillingUser.Test
 {
@@ -28,7 +29,8 @@ namespace Doppler.BillingUser.Test
                 GetSapServiceSettingsMock().Object,
                 Mock.Of<ILogger<SapService>>(),
                 new PerBaseUrlFlurlClientFactory(),
-                Mock.Of<IJwtTokenGenerator>());
+                Mock.Of<IJwtTokenGenerator>(),
+                Mock.Of<ITimeCollector>());
             using var httpTest = new HttpTest();
 
             //Act

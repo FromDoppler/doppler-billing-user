@@ -1,6 +1,7 @@
 using Dapper;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.TimeCollector;
 using System;
 using System.Threading.Tasks;
 
@@ -9,13 +10,15 @@ namespace Doppler.BillingUser.Infrastructure
     public class UserRepository : IUserRepository
     {
         private readonly IDatabaseConnectionFactory _connectionFactory;
-
-        public UserRepository(IDatabaseConnectionFactory connectionFactory)
+        private readonly ITimeCollector _timeCollector;
+        public UserRepository(IDatabaseConnectionFactory connectionFactory, ITimeCollector timeCollector)
         {
             _connectionFactory = connectionFactory;
+            _timeCollector = timeCollector;
         }
         public async void UnblockAccountNotPayed(string accountname)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryAsync(@"
 UPDATE [User]
@@ -30,6 +33,7 @@ WHERE [Email] = @email;
 
         public async Task<UserBillingInformation> GetUserBillingInformation(string accountName)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var user = await connection.QueryFirstOrDefaultAsync<UserBillingInformation>(@"
 SELECT
@@ -69,6 +73,7 @@ WHERE
 
         public async Task<UserTypePlanInformation> GetUserCurrentTypePlan(int idUser)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var userTypePlan = await connection.QueryFirstOrDefaultAsync<UserTypePlanInformation>(@"
 SELECT TOP 1
@@ -103,6 +108,7 @@ ORDER BY
 
         public async Task<CreditCard> GetEncryptedCreditCard(string accountName)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var encryptedCreditCard = await connection.QueryFirstOrDefaultAsync<CreditCard>(@"
 SELECT
@@ -126,6 +132,7 @@ WHERE
 
         public async Task<UserTypePlanInformation> GetUserNewTypePlan(int idUserTypePlan)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var userTypePlan = await connection.QueryFirstOrDefaultAsync<UserTypePlanInformation>(@"
 SELECT
@@ -150,6 +157,7 @@ WHERE
 
         public async Task<int> UpdateUserBillingCredit(UserBillingInformation user)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.ExecuteAsync(@"
 UPDATE
@@ -183,6 +191,7 @@ WHERE
 
         public async Task<int> GetAvailableCredit(int idUser)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var partialBalance = await connection.QueryFirstOrDefaultAsync<int>(@"
 SELECT
@@ -204,6 +213,7 @@ DESC",
 
         public async Task<User> GetUserInformation(string accountName)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var user = await connection.QueryFirstOrDefaultAsync<User>(@"
 SELECT
@@ -267,6 +277,7 @@ WHERE
 
         public async Task<int> GetCurrentMonthlyAddedEmailsWithBillingAsync(int idUser)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var partialBalance = await connection.QueryFirstOrDefaultAsync<int>(@"
 SELECT ISNULL(SUM(CreditsQty), 0)
@@ -284,6 +295,7 @@ WHERE IdUser = @idUser AND MONTH(GETDATE()) = MONTH(Date) AND YEAR(GETDATE()) = 
 
         public async Task CancelUser(int idUser, int idAccountCancelationReason, string cancelatedObservation)
         {
+            using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryAsync(@"
 UPDATE [User]

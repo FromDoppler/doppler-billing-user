@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using System.Net.Http;
 using System.Text;
+using Doppler.BillingUser.TimeCollector;
 
 namespace Doppler.BillingUser.ExternalServices.Sap
 {
@@ -18,21 +19,25 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         private readonly ILogger _logger;
         private readonly IFlurlClient _flurlClient;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
+        private readonly ITimeCollector _timeCollector;
 
         public SapService(
             IOptions<SapSettings> options,
             ILogger<SapService> logger,
             IFlurlClientFactory flurlClientFac,
-            IJwtTokenGenerator jwtTokenGenerator)
+            IJwtTokenGenerator jwtTokenGenerator,
+            ITimeCollector timeCollector)
         {
             _options = options;
             _logger = logger;
             _flurlClient = flurlClientFac.Get(_options.Value.SapCreateBusinessPartnerEndpoint);
             _jwtTokenGenerator = jwtTokenGenerator;
+            _timeCollector = timeCollector;
         }
 
         public async Task SendUserDataToSap(SapBusinessPartner sapBusinessPartner, string resultMessage = null)
         {
+            using var _ = _timeCollector.StartScope();
             if (!SapHelper.IsMakingSenseAccount(sapBusinessPartner.Email))
             {
                 try
@@ -51,6 +56,7 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         }
         public async Task SendBillingToSap(SapBillingDto sapBilling, string email)
         {
+            using var _ = _timeCollector.StartScope();
             if (!SapHelper.IsMakingSenseAccount(email))
             {
                 try
@@ -70,6 +76,7 @@ namespace Doppler.BillingUser.ExternalServices.Sap
 
         public async Task SendCreditNoteToSapAsync(string accountName, SapCreditNoteDto sapCreditNoteDto)
         {
+            using var _ = _timeCollector.StartScope();
             if (!SapHelper.IsMakingSenseAccount(accountName))
             {
                 try

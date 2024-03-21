@@ -1,3 +1,4 @@
+using Doppler.BillingUser.TimeCollector;
 using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Logging;
@@ -16,12 +17,18 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         private readonly ILogger<RelayEmailSender> _logger;
         private readonly RelayEmailSenderSettings _config;
         private readonly IFlurlClient _flurlClient;
+        private readonly ITimeCollector _timeCollector;
 
-        public RelayEmailSender(IOptions<RelayEmailSenderSettings> config, ILogger<RelayEmailSender> logger, IFlurlClientFactory flurlClientFac)
+        public RelayEmailSender(
+            IOptions<RelayEmailSenderSettings> config,
+            ILogger<RelayEmailSender> logger,
+            IFlurlClientFactory flurlClientFac,
+            ITimeCollector timeCollector)
         {
             _config = config.Value;
             _logger = logger;
             _flurlClient = flurlClientFac.Get(_config.SendTemplateUrlTemplate).WithOAuthBearerToken(_config.ApiKey);
+            _timeCollector = timeCollector;
         }
 
         public async Task<bool> SafeSendWithTemplateAsync(
@@ -62,6 +69,8 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
             CancellationToken cancellationToken = default
             )
         {
+            using var _ = _timeCollector.StartScope();
+
             var recipients = (
                 from emailAddress in to ?? Enumerable.Empty<string>()
                 select new { email = emailAddress, type = "to" }).Union(
