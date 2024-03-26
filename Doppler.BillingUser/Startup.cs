@@ -120,6 +120,7 @@ namespace Doppler.BillingUser
             services.AddScoped<ICloverService, CloverService>();
             services.AddS3Client(Configuration);
             services.AddTimeCollector(Configuration);
+            services.AddScoped<ILandingPlanUserRepository, LandingPlanUserRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -1584,6 +1584,45 @@ WHERE [IdImportedBillingDetail] = @idImportedBillingDetail;",
             });
         }
 
+        public async Task<BillingCredit> GetCurrentBillingCreditForLanding(int userId)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var billingCredit = await connection.QueryFirstOrDefaultAsync<BillingCredit>(@"
+SELECT
+    BC.[IdBillingCredit],
+    BC.[Date],
+    BC.[IdUser],
+    BC.[PlanFee],
+    BC.[CreditsQty],
+    BC.[ActivationDate],
+    BC.[TotalCreditsQty],
+    BC.[IdUserTypePlan],
+    DP.[DiscountPlanFee],
+    BC.[IdResponsabileBilling],
+    BC.[CCIdentificationType],
+    BC.TotalMonthPlan,
+    BC.CUIT As Cuit,
+    BC.DiscountPlanFeeAdmin,
+    BC.DiscountPlanFeePromotion,
+    BC.IdPromotion,
+    BC.[SubscribersQty],
+    BC.[PaymentDate],
+    BC.[IdDiscountPlan],
+    BC.[TotalMonthPlan],
+    BC.[CurrentMonthPlan]
+FROM [dbo].[BillingCredits] BC
+LEFT JOIN [dbo].[DiscountXPlan] DP ON BC.IdDiscountPlan = DP.IdDiscountPlan
+INNER JOIN [dbo].[LandingPlanUser] LPU ON LPU.IdBillingCredit = BC.IdBillingCredit
+WHERE BC.IdUser = @userId AND BC.IdBillingCreditType IN (23,24)
+ORDER BY DATE Desc",
+                new
+                {
+                    @userId = userId
+                });
+
+            return billingCredit;
+        }
+
         private int CalculateBillingSystemByTransfer(int idBillingCountry)
         {
             return idBillingCountry switch

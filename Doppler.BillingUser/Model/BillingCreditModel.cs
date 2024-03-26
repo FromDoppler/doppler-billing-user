@@ -7,7 +7,7 @@ namespace Doppler.BillingUser.Model
         public int BillingCreditsID { get; set; }
         public DateTime Date { get; set; }
         public int ClientID { get; set; }
-        public int IdUserTypePlan { get; set; }
+        public int? IdUserTypePlan { get; set; }
         public int? IdPaymentMethod { get; set; }
         public bool Approved { get; set; }
         public double? PlanFee { get; set; }

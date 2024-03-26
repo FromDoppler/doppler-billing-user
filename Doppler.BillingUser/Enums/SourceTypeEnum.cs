@@ -4,5 +4,6 @@ namespace Doppler.BillingUser.Enums
     {
         UpgradeId = 2,
         BuyCreditsId = 3,
+        BuyLandingId = 5
     }
 }
