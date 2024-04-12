@@ -946,7 +946,7 @@ FROM
     [dbo].[BillingCredits] BC
         LEFT JOIN [dbo].[DiscountXPlan] DP
         ON BC.IdDiscountPlan = DP.IdDiscountPlan
-INNER JOIN [dbo].[UserTypesPlans] UTP ON UTP.IdUserTypePlan = BC.IdUserTypePlan
+LEFT JOIN [dbo].[UserTypesPlans] UTP ON UTP.IdUserTypePlan = BC.IdUserTypePlan
 WHERE
     IdBillingCredit = @billingCreditId",
                 new

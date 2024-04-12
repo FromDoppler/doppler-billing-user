@@ -1177,6 +1177,36 @@ namespace Doppler.BillingUser.Controllers
                         IdLandingPlan = landingPlan.LandingPlanId
                     });
                 }
+
+                if (buyLandingPlans.Total.GetValueOrDefault() > 0 &&
+                    ((user.PaymentMethod == PaymentMethodEnum.CC) ||
+                    (user.PaymentMethod == PaymentMethodEnum.MP) ||
+                    (user.PaymentMethod == PaymentMethodEnum.TRANSF && user.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                    (user.PaymentMethod == PaymentMethodEnum.DA)))
+                {
+                    var billingCredit = await _billingRepository.GetBillingCredit(billingCreditId);
+                    var cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
+                    var holderName = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
+
+                    if (billingCredit != null)
+                    {
+                        await _sapService.SendBillingToSap(
+                            BillingHelper.MapLandingsBillingToSapAsync(_sapSettings.Value,
+                                cardNumber,
+                                holderName,
+                                billingCredit,
+                                buyLandingPlans.LandingPlans,
+                                authorizationNumber,
+                                invoiceId,
+                                buyLandingPlans.Total),
+                            accountname);
+                    }
+                    else
+                    {
+                        var slackMessage = $"Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                        await _slackService.SendNotification(slackMessage);
+                    }
+                }
             }
             catch (Exception e)
             {
@@ -1199,7 +1229,7 @@ namespace Doppler.BillingUser.Controllers
                 };
             }
 
-            return new OkObjectResult("Successfully");
+            return new OkObjectResult($"Successful buy landing plans for: User: {accountname}");
         }
 
         private async void SendNotifications(
