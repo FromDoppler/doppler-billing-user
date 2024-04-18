@@ -4,6 +4,7 @@ using Doppler.BillingUser.ExternalServices.Zoho;
 using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.Model;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Doppler.BillingUser.Utils
@@ -66,6 +67,47 @@ namespace Doppler.BillingUser.Utils
             {
                 sapBilling.DiscountedAmount = (double?)total;
             }
+
+            return sapBilling;
+        }
+
+        public static SapBillingDto MapLandingsBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, IList<LandingPlan> landings, string authorizationNumber, int invoicedId, decimal? total)
+        {
+            var monthsToPay = billingCredit.TotalMonthPlan - billingCredit.CurrentMonthPlan + 1;
+
+            var sapBilling = new SapBillingDto
+            {
+                Id = billingCredit.IdUser,
+                Currency = CurrencyTypeUsd,
+                Discount = (billingCredit.DiscountPlanFee),
+                ExtraEmailsFee = 0,
+                PlanType = 9,
+                CardHolder = cardHolderName,
+                CardType = billingCredit.CCIdentificationType,
+                CardNumber = !string.IsNullOrEmpty(cardNumber) ? cardNumber[^4..] : string.Empty,
+                CardErrorCode = "100",
+                CardErrorDetail = "Successfully approved",
+                TransactionApproved = true,
+                TransferReference = authorizationNumber,
+                InvoiceId = invoicedId,
+                PaymentDate = billingCredit.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
+                InvoiceDate = billingCredit.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
+                BillingSystemId = billingCredit.IdResponsabileBilling,
+                FiscalID = billingCredit.Cuit,
+                AdditionalServices = [
+                    new()
+                    {
+                        Type = AdditionalServiceTypeEnum.Landing,
+                        Charge = (double)total,
+                        Packs = landings.Select(l => new SapPackDto
+                        {
+                            Amount = l.Fee * (decimal)monthsToPay,
+                            PackId = l.LandingPlanId,
+                            Quantity = l.LandingQty
+                        }).ToList()
+                    }
+                ]
+            };
 
             return sapBilling;
         }

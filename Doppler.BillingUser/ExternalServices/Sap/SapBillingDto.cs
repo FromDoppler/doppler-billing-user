@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Doppler.BillingUser.ExternalServices.Sap
 {
@@ -36,5 +37,6 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         public DateTime? InvoiceDate { get; set; }
         public DateTime? PaymentDate { get; set; }
         public bool IsUpSelling { get; set; }
+        public IList<SapAdditionalServiceDto> AdditionalServices { get; set; }
     }
 }

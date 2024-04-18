@@ -3,6 +3,7 @@ using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using Doppler.BillingUser.ExternalServices.Clover.Entities;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Model;
@@ -546,7 +547,9 @@ namespace Doppler.BillingUser.Test
             var currentBillingCredit = new BillingCredit
             {
                 IdBillingCredit = 1,
-                ActivationDate = DateTime.Now
+                ActivationDate = DateTime.UtcNow,
+                Date = DateTime.UtcNow,
+                TotalMonthPlan = 3
             };
 
             var creditCard = new BillingUser.ExternalServices.FirstData.CreditCard
@@ -592,6 +595,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(encryptionServiceMock.Object);
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<ILandingPlanUserRepository>());
+                    services.AddSingleton(Mock.Of<ISapService>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
@@ -608,7 +612,7 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal("Successfully", message);
+            Assert.Equal($"Successful buy landing plans for: User: {accountname}", message);
         }
     }
 }
