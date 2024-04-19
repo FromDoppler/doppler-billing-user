@@ -69,6 +69,8 @@ namespace Doppler.BillingUser.Controllers
         private readonly ICloverService _cloverService;
         private readonly ITimeCollector _timeCollector;
         private readonly ILandingPlanUserRepository _landingPlanUserRepository;
+        private readonly IUserAddOnRepository _userAddOnRepository;
+
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
         {
@@ -135,7 +137,8 @@ namespace Doppler.BillingUser.Controllers
             ICloverService cloverService,
             IFileStorage fileStorage,
             ITimeCollector timeCollector,
-            ILandingPlanUserRepository landingPlanUserRepository)
+            ILandingPlanUserRepository landingPlanUserRepository,
+            IUserAddOnRepository userAddOnRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -164,6 +167,7 @@ namespace Doppler.BillingUser.Controllers
             _fileStorage = fileStorage;
             _timeCollector = timeCollector;
             _landingPlanUserRepository = landingPlanUserRepository;
+            _userAddOnRepository = userAddOnRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -1115,14 +1119,17 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("Invalid marketing plan");
                 }
 
-                var currentBillingCreditForLanging = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
-                if (currentBillingCreditForLanging != null)
+                /* Get current information about landing plans */
+                var currentLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
+                IList<LandingPlanUser> currentLandingPlans = [];
+
+                if (currentLandingBillingCredit != null)
                 {
-                    var messageError = $"Failed at buy a landing plan for user {accountname}. The user has an active langing plan";
-                    _logger.LogError(messageError);
-                    await _slackService.SendNotification(messageError);
-                    return new BadRequestObjectResult($"The user {accountname} has an active langing plan");
+                    currentLandingPlans = await _landingPlanUserRepository.GetLandingPlansByUserIdAndBillingCreditIdAsync(user.IdUser, currentLandingBillingCredit.IdBillingCredit);
                 }
+
+                var currentLandingAmount = currentLandingPlans.Sum(l => l.PackQty * l.Fee);
+                var newLandingAmount = buyLandingPlans.LandingPlans.Sum(l => l.LandingQty * l.Fee);
 
                 int invoiceId = 0;
                 string authorizationNumber = string.Empty;
@@ -1160,10 +1167,18 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 var isPaymentPending = BillingHelper.IsUpgradePending(user, null, payment);
-                var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Landing_Buyed_CC : BillingCreditTypeEnum.Landing_Request;
+                var billingCreditType = (newLandingAmount - currentLandingAmount > 0) ?
+                                        user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Landing_Buyed_CC : BillingCreditTypeEnum.Landing_Request :
+                                        BillingCreditTypeEnum.Downgrade_Between_Landings;
+
                 var billingCreditMapper = GetLandingBillingCreditMapper(user.PaymentMethod);
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(buyLandingPlans.Total.Value, user, currentBillingCredit, payment, billingCreditType);
+
+                var total = buyLandingPlans.LandingPlans.Sum(l => l.LandingQty * l.Fee);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+
+                /* Save current billing credit in the UserAddOn table */
+                await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.Landing, billingCreditId);
 
                 foreach (var landingPlan in buyLandingPlans.LandingPlans)
                 {
@@ -1178,6 +1193,8 @@ namespace Doppler.BillingUser.Controllers
                     });
                 }
 
+
+                //Send lading plan to SAP
                 if (buyLandingPlans.Total.GetValueOrDefault() > 0 &&
                     ((user.PaymentMethod == PaymentMethodEnum.CC) ||
                     (user.PaymentMethod == PaymentMethodEnum.MP) ||
@@ -1188,6 +1205,15 @@ namespace Doppler.BillingUser.Controllers
                     var cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
                     var holderName = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
 
+                    var landingsToSendToSap = buyLandingPlans.LandingPlans;
+
+                    foreach (var landingPlan in landingsToSendToSap)
+                    {
+                        var currentLandingPlan = currentLandingPlans.FirstOrDefault(l => l.IdLandingPlan == landingPlan.LandingPlanId);
+                        if (currentLandingPlan != null)
+                            landingPlan.LandingQty -= currentLandingPlan.PackQty;
+                    }
+
                     if (billingCredit != null)
                     {
                         await _sapService.SendBillingToSap(
@@ -1195,7 +1221,7 @@ namespace Doppler.BillingUser.Controllers
                                 cardNumber,
                                 holderName,
                                 billingCredit,
-                                buyLandingPlans.LandingPlans,
+                                landingsToSendToSap.Where(l => l.LandingQty > 0).ToList(),
                                 authorizationNumber,
                                 invoiceId,
                                 buyLandingPlans.Total),
