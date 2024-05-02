@@ -1211,7 +1211,10 @@ namespace Doppler.BillingUser.Controllers
                     {
                         var currentLandingPlan = currentLandingPlans.FirstOrDefault(l => l.IdLandingPlan == landingPlan.LandingPlanId);
                         if (currentLandingPlan != null)
+                        {
                             landingPlan.LandingQty -= currentLandingPlan.PackQty;
+                            landingPlan.Fee = currentLandingPlan.Fee * landingPlan.LandingQty;
+                        }
                     }
 
                     if (billingCredit != null)
