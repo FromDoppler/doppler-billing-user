@@ -375,262 +375,6 @@ WHERE
             });
         }
 
-
-        private async Task UpdateUserPaymentMethodByTransfer(User user, PaymentMethod paymentMethod)
-        {
-            using var _ = _timeCollector.StartScope();
-            using var connection = _connectionFactory.GetConnection();
-
-            await connection.ExecuteAsync(@"
-UPDATE
-    [USER]
-SET
-    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    RazonSocial = @razonSocial,
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling,
-    CUIT = @cuit,
-    ResponsableIVA = @responsableIVA,
-    CFDIUse = @useCFDI,
-    PaymentType = @paymentType,
-    PaymentWay = @paymentWay,
-    BankAccount = @bankAccount,
-    BankName = @bankName,
-    TaxRegime = @taxRegime,
-    TaxCertificateUrl = @taxCertificateUrl
-WHERE
-    IdUser = @IdUser;",
-                new
-                {
-                    user.IdUser,
-                    @paymentMethodName = paymentMethod.PaymentMethodName,
-                    @razonSocial = paymentMethod.RazonSocial,
-                    @idConsumerType = paymentMethod.IdConsumerType,
-                    @idResponsabileBilling = CalculateBillingSystemByTransfer(user.IdBillingCountry),
-                    @cuit = paymentMethod.IdentificationNumber,
-                    @responsableIVA = paymentMethod.ResponsableIVA,
-                    @useCFDI = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.UseCFDI : null,
-                    @paymentType = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentType : null,
-                    @paymentWay = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentWay.ToString() : null,
-                    @bankAccount = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankAccount : null,
-                    @bankName = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankName : null,
-                    @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.TaxRegime : 0,
-                    @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
-                });
-        }
-
-        private async Task UpdateUserPaymentMethodByAutomaticDebit(User user, PaymentMethod paymentMethod)
-        {
-            using var _ = _timeCollector.StartScope();
-            using var connection = _connectionFactory.GetConnection();
-
-            await connection.ExecuteAsync(@"
-UPDATE
-    [USER]
-SET
-    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    RazonSocial = @razonSocial,
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling,
-    CUIT = @cuit,
-    ResponsableIVA = @responsableIVA,
-    CFDIUse = @useCFDI,
-    PaymentType = @paymentType,
-    PaymentWay = @paymentWay,
-    BankAccount = @bankAccount,
-    BankName = @bankName,
-    TaxRegime = @taxRegime,
-    TaxCertificateUrl = @taxCertificateUrl,
-    Cbu = @cbu
-WHERE
-    IdUser = @IdUser;",
-                new
-                {
-                    user.IdUser,
-                    @paymentMethodName = paymentMethod.PaymentMethodName,
-                    @razonSocial = paymentMethod.RazonSocial,
-                    @idConsumerType = paymentMethod.IdConsumerType,
-                    @idResponsabileBilling = CalculateBillingSystemByTransfer(user.IdBillingCountry),
-                    @cuit = paymentMethod.IdentificationNumber,
-                    @responsableIVA = paymentMethod.ResponsableIVA,
-                    @useCFDI = (string)null,
-                    @paymentType = (string)null,
-                    @paymentWay = (string)null,
-                    @bankAccount = (string)null,
-                    @bankName = (string)null,
-                    @taxRegime = 0,
-                    @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
-                    @cbu = paymentMethod.Cbu,
-                });
-        }
-
-        private async Task UpdateUserPaymentMethod(User user, PaymentMethod paymentMethod)
-        {
-            using var _ = _timeCollector.StartScope();
-            using var connection = _connectionFactory.GetConnection();
-
-            await connection.ExecuteAsync(@"
-UPDATE
-    [USER]
-SET
-    CCHolderFullName = @ccHolderFullName,
-    CCNumber = @ccNumber,
-    CCExpMonth = @ccExpMonth,
-    CCExpYear = @ccExpYear,
-    CCVerification = @ccVerification,
-    IdCCType = @idCCType,
-    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    RazonSocial = @razonSocial,
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling
-WHERE
-    IdUser = @IdUser;",
-            new
-            {
-                user.IdUser,
-                @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
-                @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
-                @ccExpMonth = paymentMethod.CCExpMonth,
-                @ccExpYear = paymentMethod.CCExpYear,
-                @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
-                @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
-                @paymentMethodName = paymentMethod.PaymentMethodName,
-                @razonSocial = paymentMethod.RazonSocial,
-                @idConsumerType = paymentMethod.IdConsumerType,
-                @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL
-            });
-        }
-
-        private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, ExternalServices.FirstData.CreditCard creditCard)
-        {
-            using var _ = _timeCollector.StartScope();
-            using var connection = _connectionFactory.GetConnection();
-
-            await connection.ExecuteAsync(@"
-UPDATE
-    [USER]
-SET
-    CCHolderFullName = @ccHolderFullName,
-    CCNumber = @ccNumber,
-    CCExpMonth = @ccExpMonth,
-    CCExpYear = @ccExpYear,
-    CCVerification = @ccVerification,
-    IdCCType = @idCCType,
-    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    RazonSocial = @razonSocial,
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling,
-    CUIT = @cuit
-WHERE
-    IdUser = @IdUser;",
-            new
-            {
-                user.IdUser,
-                @ccHolderFullName = creditCard.HolderName,
-                @ccNumber = creditCard.Number,
-                @ccExpMonth = creditCard.ExpirationMonth,
-                @ccExpYear = creditCard.ExpirationYear,
-                @ccVerification = creditCard.Code,
-                @idCCType = (int)Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
-                @paymentMethodName = paymentMethod.PaymentMethodName,
-                @razonSocial = paymentMethod.RazonSocial,
-                @idConsumerType = paymentMethod.IdConsumerType ?? FinalConsumer,
-                @idResponsabileBilling = (int)ResponsabileBillingEnum.Mercadopago,
-                @cuit = paymentMethod.IdentificationNumber,
-            });
-        }
-
-        private async Task SendUserDataToSap(string accountName, int planId)
-        {
-            using var _ = _timeCollector.StartScope();
-            using var connection = _connectionFactory.GetConnection();
-
-            var user = await connection.QueryFirstOrDefaultAsync<User>(@"
-SELECT
-    U.FirstName,
-    U.IdUser,
-    U.BillingEmails,
-    U.RazonSocial,
-    U.BillingFirstName,
-    U.BillingLastName,
-    U.BillingAddress,
-    U.CityName,
-    U.IdState,
-    S.CountryCode as StateCountryCode,
-    U.Address,
-    U.ZipCode,
-    U.BillingZip,
-    U.Email,
-    U.PhoneNumber,
-    U.IdConsumerType,
-    U.CUIT,
-    U.IsCancelated,
-    U.SapProperties,
-    U.BlockedAccountNotPayed,
-    V.IsInbound as IsInbound,
-    BS.CountryCode as BillingStateCountryCode,
-    U.PaymentMethod,
-    (SELECT IdUserType FROM [UserTypesPlans] WHERE IdUserTypePlan = @idUserTypePlan) as IdUserType,
-    U.IdResponsabileBilling,
-    U.IdBillingState,
-    BS.Name as BillingStateName,
-    U.BillingCity
-FROM
-    [User] U
-LEFT JOIN
-    [State] S ON S.IdState = U.IdState
-LEFT JOIN
-    [Vendor] V ON V.IdVendor = U.IdVendor
-LEFT JOIN
-    [State] BS ON BS.IdState = U.IdBillingState
-WHERE
-    U.Email = @accountName;",
-                new
-                {
-                    accountName,
-                    @idUserTypePlan = planId
-                });
-
-            if (user.IdResponsabileBilling is (int)ResponsabileBillingEnum.QBL or (int)ResponsabileBillingEnum.GBBISIDE or (int)ResponsabileBillingEnum.Mercadopago)
-            {
-                var sapDto = new SapBusinessPartner
-                {
-                    Id = user.IdUser,
-                    IsClientManager = false,
-                    BillingEmails = (user.BillingEmails ?? string.Empty).Replace(" ", string.Empty).Split(','),
-                    FirstName = SapHelper.GetFirstName(user),
-                    LastName = string.IsNullOrEmpty(user.RazonSocial) ? user.BillingLastName ?? "" : "",
-                    BillingAddress = user.BillingAddress ?? "",
-                    CityName = user.CityName ?? "",
-                    StateId = user.IdState,
-                    CountryCode = user.StateCountryCode ?? "",
-                    Address = user.Address ?? "",
-                    ZipCode = user.ZipCode ?? "",
-                    BillingZip = user.BillingZip ?? "",
-                    Email = user.Email,
-                    PhoneNumber = user.PhoneNumber ?? "",
-                    FederalTaxId = user.CUIT,
-                    IdConsumerType = user.IdConsumerType,
-                    Cancelated = user.IsCancelated,
-                    SapProperties = JsonConvert.DeserializeObject(user.SapProperties),
-                    Blocked = user.BlockedAccountNotPayed,
-                    IsInbound = user.IsInbound,
-                    BillingCountryCode = user.BillingStateCountryCode ?? "",
-                    PaymentMethod = user.PaymentMethod,
-                    PlanType = user.IdUserType,
-                    BillingSystemId = user.IdResponsabileBilling
-                };
-
-                sapDto.BillingStateId = ((sapDto.BillingSystemId == (int)ResponsabileBillingEnum.QBL || sapDto.BillingSystemId == (int)ResponsabileBillingEnum.QuickBookUSA) && sapDto.BillingCountryCode != "US") ? string.Empty
-                    : (sapDto.BillingCountryCode == "US") ? (SapDictionary.StatesDictionary.TryGetValue(user.IdBillingState, out string stateIdUs) ? stateIdUs : string.Empty)
-                    : (SapDictionary.StatesDictionary.TryGetValue(user.IdBillingState, out string stateId) ? stateId : "99");
-                sapDto.County = user.BillingStateName ?? "";
-                sapDto.BillingCity = user.BillingCity ?? "";
-
-                await _sapService.SendUserDataToSap(sapDto);
-            }
-        }
-
         public async Task<PaymentMethod> GetPaymentMethodByUserName(string username)
         {
             using var connection = _connectionFactory.GetConnection();
@@ -1587,9 +1331,8 @@ WHERE [IdImportedBillingDetail] = @idImportedBillingDetail;",
         public async Task<BillingCredit> GetCurrentBillingCreditForLanding(int userId)
         {
             using var connection = _connectionFactory.GetConnection();
-            var billingCredit = await connection.QueryFirstOrDefaultAsync<BillingCredit>(@"
-SELECT
-    BC.[IdBillingCredit],
+            var billingCredit = await connection.QueryFirstOrDefaultAsync<BillingCredit>(@$"
+SELECT BC.[IdBillingCredit],
     BC.[Date],
     BC.[IdUser],
     BC.[PlanFee],
@@ -1610,14 +1353,15 @@ SELECT
     BC.[IdDiscountPlan],
     BC.[TotalMonthPlan],
     BC.[CurrentMonthPlan]
-FROM [dbo].[BillingCredits] BC
+FROM [dbo].[UserAddOn] UA
+INNER JOIN [dbo].[BillingCredits] BC ON BC.IdBillingCredit = UA.IdCurrentBillingCredit
 LEFT JOIN [dbo].[DiscountXPlan] DP ON BC.IdDiscountPlan = DP.IdDiscountPlan
-INNER JOIN [dbo].[LandingPlanUser] LPU ON LPU.IdBillingCredit = BC.IdBillingCredit
-WHERE BC.IdUser = @userId AND BC.IdBillingCreditType IN (23,24)
+WHERE UA.IdUser = @userId AND UA.IdAddOnType = {(int)AddOnType.Landing} AND
+    BC.IdBillingCreditType IN ({(int)BillingCreditTypeEnum.Landing_Request}, {(int)BillingCreditTypeEnum.Landing_Buyed_CC}, {(int)BillingCreditTypeEnum.Downgrade_Between_Landings})
 ORDER BY DATE Desc",
                 new
                 {
-                    @userId = userId
+                    userId
                 });
 
             return billingCredit;
@@ -1632,6 +1376,261 @@ ORDER BY DATE Desc",
                 (int)CountryEnum.Argentina => (int)ResponsabileBillingEnum.GBBISIDE,
                 _ => (int)ResponsabileBillingEnum.GBBISIDE,
             };
+        }
+
+        private async Task UpdateUserPaymentMethodByTransfer(User user, PaymentMethod paymentMethod)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE
+    [USER]
+SET
+    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+    RazonSocial = @razonSocial,
+    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+    IdResponsabileBilling = @idResponsabileBilling,
+    CUIT = @cuit,
+    ResponsableIVA = @responsableIVA,
+    CFDIUse = @useCFDI,
+    PaymentType = @paymentType,
+    PaymentWay = @paymentWay,
+    BankAccount = @bankAccount,
+    BankName = @bankName,
+    TaxRegime = @taxRegime,
+    TaxCertificateUrl = @taxCertificateUrl
+WHERE
+    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @razonSocial = paymentMethod.RazonSocial,
+                    @idConsumerType = paymentMethod.IdConsumerType,
+                    @idResponsabileBilling = CalculateBillingSystemByTransfer(user.IdBillingCountry),
+                    @cuit = paymentMethod.IdentificationNumber,
+                    @responsableIVA = paymentMethod.ResponsableIVA,
+                    @useCFDI = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.UseCFDI : null,
+                    @paymentType = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentType : null,
+                    @paymentWay = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.PaymentWay.ToString() : null,
+                    @bankAccount = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankAccount : null,
+                    @bankName = user.IdBillingCountry == (int)CountryEnum.Mexico && paymentMethod.PaymentWay == PaymentWayEnum.TRANSFER.ToString() ? paymentMethod.BankName : null,
+                    @taxRegime = user.IdBillingCountry == (int)CountryEnum.Mexico ? paymentMethod.TaxRegime : 0,
+                    @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
+                });
+        }
+
+        private async Task UpdateUserPaymentMethodByAutomaticDebit(User user, PaymentMethod paymentMethod)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE
+    [USER]
+SET
+    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+    RazonSocial = @razonSocial,
+    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+    IdResponsabileBilling = @idResponsabileBilling,
+    CUIT = @cuit,
+    ResponsableIVA = @responsableIVA,
+    CFDIUse = @useCFDI,
+    PaymentType = @paymentType,
+    PaymentWay = @paymentWay,
+    BankAccount = @bankAccount,
+    BankName = @bankName,
+    TaxRegime = @taxRegime,
+    TaxCertificateUrl = @taxCertificateUrl,
+    Cbu = @cbu
+WHERE
+    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @razonSocial = paymentMethod.RazonSocial,
+                    @idConsumerType = paymentMethod.IdConsumerType,
+                    @idResponsabileBilling = CalculateBillingSystemByTransfer(user.IdBillingCountry),
+                    @cuit = paymentMethod.IdentificationNumber,
+                    @responsableIVA = paymentMethod.ResponsableIVA,
+                    @useCFDI = (string)null,
+                    @paymentType = (string)null,
+                    @paymentWay = (string)null,
+                    @bankAccount = (string)null,
+                    @bankName = (string)null,
+                    @taxRegime = 0,
+                    @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
+                    @cbu = paymentMethod.Cbu,
+                });
+        }
+
+        private async Task UpdateUserPaymentMethod(User user, PaymentMethod paymentMethod)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE
+    [USER]
+SET
+    CCHolderFullName = @ccHolderFullName,
+    CCNumber = @ccNumber,
+    CCExpMonth = @ccExpMonth,
+    CCExpYear = @ccExpYear,
+    CCVerification = @ccVerification,
+    IdCCType = @idCCType,
+    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+    RazonSocial = @razonSocial,
+    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+    IdResponsabileBilling = @idResponsabileBilling
+WHERE
+    IdUser = @IdUser;",
+            new
+            {
+                user.IdUser,
+                @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                @ccExpMonth = paymentMethod.CCExpMonth,
+                @ccExpYear = paymentMethod.CCExpYear,
+                @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                @paymentMethodName = paymentMethod.PaymentMethodName,
+                @razonSocial = paymentMethod.RazonSocial,
+                @idConsumerType = paymentMethod.IdConsumerType,
+                @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL
+            });
+        }
+
+        private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, ExternalServices.FirstData.CreditCard creditCard)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE
+    [USER]
+SET
+    CCHolderFullName = @ccHolderFullName,
+    CCNumber = @ccNumber,
+    CCExpMonth = @ccExpMonth,
+    CCExpYear = @ccExpYear,
+    CCVerification = @ccVerification,
+    IdCCType = @idCCType,
+    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+    RazonSocial = @razonSocial,
+    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+    IdResponsabileBilling = @idResponsabileBilling,
+    CUIT = @cuit
+WHERE
+    IdUser = @IdUser;",
+            new
+            {
+                user.IdUser,
+                @ccHolderFullName = creditCard.HolderName,
+                @ccNumber = creditCard.Number,
+                @ccExpMonth = creditCard.ExpirationMonth,
+                @ccExpYear = creditCard.ExpirationYear,
+                @ccVerification = creditCard.Code,
+                @idCCType = (int)Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                @paymentMethodName = paymentMethod.PaymentMethodName,
+                @razonSocial = paymentMethod.RazonSocial,
+                @idConsumerType = paymentMethod.IdConsumerType ?? FinalConsumer,
+                @idResponsabileBilling = (int)ResponsabileBillingEnum.Mercadopago,
+                @cuit = paymentMethod.IdentificationNumber,
+            });
+        }
+
+        private async Task SendUserDataToSap(string accountName, int planId)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+
+            var user = await connection.QueryFirstOrDefaultAsync<User>(@"
+SELECT
+    U.FirstName,
+    U.IdUser,
+    U.BillingEmails,
+    U.RazonSocial,
+    U.BillingFirstName,
+    U.BillingLastName,
+    U.BillingAddress,
+    U.CityName,
+    U.IdState,
+    S.CountryCode as StateCountryCode,
+    U.Address,
+    U.ZipCode,
+    U.BillingZip,
+    U.Email,
+    U.PhoneNumber,
+    U.IdConsumerType,
+    U.CUIT,
+    U.IsCancelated,
+    U.SapProperties,
+    U.BlockedAccountNotPayed,
+    V.IsInbound as IsInbound,
+    BS.CountryCode as BillingStateCountryCode,
+    U.PaymentMethod,
+    (SELECT IdUserType FROM [UserTypesPlans] WHERE IdUserTypePlan = @idUserTypePlan) as IdUserType,
+    U.IdResponsabileBilling,
+    U.IdBillingState,
+    BS.Name as BillingStateName,
+    U.BillingCity
+FROM
+    [User] U
+LEFT JOIN
+    [State] S ON S.IdState = U.IdState
+LEFT JOIN
+    [Vendor] V ON V.IdVendor = U.IdVendor
+LEFT JOIN
+    [State] BS ON BS.IdState = U.IdBillingState
+WHERE
+    U.Email = @accountName;",
+                new
+                {
+                    accountName,
+                    @idUserTypePlan = planId
+                });
+
+            if (user.IdResponsabileBilling is (int)ResponsabileBillingEnum.QBL or (int)ResponsabileBillingEnum.GBBISIDE or (int)ResponsabileBillingEnum.Mercadopago)
+            {
+                var sapDto = new SapBusinessPartner
+                {
+                    Id = user.IdUser,
+                    IsClientManager = false,
+                    BillingEmails = (user.BillingEmails ?? string.Empty).Replace(" ", string.Empty).Split(','),
+                    FirstName = SapHelper.GetFirstName(user),
+                    LastName = string.IsNullOrEmpty(user.RazonSocial) ? user.BillingLastName ?? "" : "",
+                    BillingAddress = user.BillingAddress ?? "",
+                    CityName = user.CityName ?? "",
+                    StateId = user.IdState,
+                    CountryCode = user.StateCountryCode ?? "",
+                    Address = user.Address ?? "",
+                    ZipCode = user.ZipCode ?? "",
+                    BillingZip = user.BillingZip ?? "",
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber ?? "",
+                    FederalTaxId = user.CUIT,
+                    IdConsumerType = user.IdConsumerType,
+                    Cancelated = user.IsCancelated,
+                    SapProperties = JsonConvert.DeserializeObject(user.SapProperties),
+                    Blocked = user.BlockedAccountNotPayed,
+                    IsInbound = user.IsInbound,
+                    BillingCountryCode = user.BillingStateCountryCode ?? "",
+                    PaymentMethod = user.PaymentMethod,
+                    PlanType = user.IdUserType,
+                    BillingSystemId = user.IdResponsabileBilling
+                };
+
+                sapDto.BillingStateId = ((sapDto.BillingSystemId == (int)ResponsabileBillingEnum.QBL || sapDto.BillingSystemId == (int)ResponsabileBillingEnum.QuickBookUSA) && sapDto.BillingCountryCode != "US") ? string.Empty
+                    : (sapDto.BillingCountryCode == "US") ? (SapDictionary.StatesDictionary.TryGetValue(user.IdBillingState, out string stateIdUs) ? stateIdUs : string.Empty)
+                    : (SapDictionary.StatesDictionary.TryGetValue(user.IdBillingState, out string stateId) ? stateId : "99");
+                sapDto.County = user.BillingStateName ?? "";
+                sapDto.BillingCity = user.BillingCity ?? "";
+
+                await _sapService.SendUserDataToSap(sapDto);
+            }
         }
     }
 }

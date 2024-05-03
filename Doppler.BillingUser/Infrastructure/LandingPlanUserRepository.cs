@@ -1,6 +1,8 @@
 using Dapper;
+using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Model;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -45,6 +47,28 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
             });
 
             return result.FirstOrDefault();
+        }
+
+        public async Task<IList<LandingPlanUser>> GetLandingPlansByUserIdAndBillingCreditIdAsync(int userId, int billingCreditId)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var result = await connection.QueryAsync<LandingPlanUser>(@"
+SELECT [IdLandingPlanUser]
+        ,[IdUser]
+        ,[IdLandingPlan]
+        ,[IdBillingCredit]
+        ,[PackQty]
+        ,[Fee]
+        ,[CreatedAt] AS Created
+FROM [dbo].[LandingPlanUser]
+WHERE [IdUser] = @idUser AND [IdBillingCredit] = @idBillingCredit",
+            new
+            {
+                @idUser = userId,
+                @idBillingCredit = billingCreditId
+            });
+
+            return result.ToList();
         }
     }
 }

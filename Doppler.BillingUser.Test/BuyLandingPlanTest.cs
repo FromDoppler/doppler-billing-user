@@ -81,6 +81,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -124,6 +125,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -168,6 +170,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -213,6 +216,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -261,6 +265,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -316,6 +321,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -331,67 +337,6 @@ namespace Doppler.BillingUser.Test
             // Assert
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             Assert.Equal("Invalid marketing plan", messageError);
-        }
-
-        [Fact]
-        public async Task POST_buy_landings_should_return_bad_request_when_user_has_active_landing_plan()
-        {
-            // Arrange
-            var accountname = "test1@example.com";
-
-            var buyLandingPlans = new BuyLandingPlans
-            {
-                Total = 10,
-                LandingPlans = new List<LandingPlan>()
-            };
-
-            var user = new UserBillingInformation
-            {
-                IdUser = 1,
-                IsCancelated = false,
-                PaymentMethod = Enums.PaymentMethodEnum.TRANSF,
-                IdBillingCountry = 10
-            };
-
-            var currentBillingCredit = new BillingCredit
-            {
-                IdBillingCredit = 1,
-                ActivationDate = DateTime.Now
-            };
-
-            var currentBillingCreditForLanding = new BillingCredit
-            {
-                IdBillingCredit = 1
-            };
-
-            var userRepositoryMock = new Mock<IUserRepository>();
-            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
-
-            var billingRepositoryMock = new Mock<IBillingRepository>();
-            billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
-            billingRepositoryMock.Setup(x => x.GetCurrentBillingCreditForLanding(It.IsAny<int>())).ReturnsAsync(currentBillingCreditForLanding);
-
-            var client = _factory.WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureTestServices(services =>
-                {
-                    services.AddSingleton(Mock.Of<IEncryptionService>());
-                    services.AddSingleton(Mock.Of<ISlackService>());
-                    services.AddSingleton(billingRepositoryMock.Object);
-                    services.AddSingleton(userRepositoryMock.Object);
-                });
-
-            }).CreateClient(new WebApplicationFactoryClientOptions());
-
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518);
-
-            // Act
-            var response = await client.PostAsync($"accounts/{accountname}/landings/buy", JsonContent.Create(buyLandingPlans));
-            var messageError = await response.Content.ReadAsStringAsync();
-
-            // Assert
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Equal($"The user {accountname} has an active langing plan", messageError);
         }
 
         [Fact]
@@ -433,6 +378,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -508,6 +454,7 @@ namespace Doppler.BillingUser.Test
                 {
                     services.AddSingleton(encryptionServiceMock.Object);
                     services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
@@ -596,6 +543,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<ILandingPlanUserRepository>());
                     services.AddSingleton(Mock.Of<ISapService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
