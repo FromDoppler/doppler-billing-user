@@ -20,11 +20,11 @@ namespace Doppler.BillingUser.Infrastructure
         {
             using var connection = _connectionFactory.GetConnection();
             UserAddOn userAddOn = await connection.QueryFirstOrDefaultAsync<UserAddOn>(@"SELECT [IdUserAddOn]
-      ,[IdUser]
-      ,[IdAddOnType]
-      ,[IdCurrentBillingCredit]
-  FROM [dbo].[UserAddOn]
-  WHERE IdUser = @userId AND IdAddOnType = @addOnType", new { userId, addOnType });
+        ,[IdUser]
+        ,[IdAddOnType]
+        ,[IdCurrentBillingCredit]
+    FROM [dbo].[UserAddOn]
+    WHERE IdUser = @userId AND IdAddOnType = @addOnType", new { userId, addOnType });
 
             return userAddOn;
         }

@@ -1638,9 +1638,9 @@ WHERE
             using var connection = _connectionFactory.GetConnection();
 
             await connection.ExecuteAsync(@"
- UPDATE [dbo].[BillingCredits]
- SET [IdBillingCreditType] = @billingCreditType
- WHERE IdBillingCredit = @idBillingCredit",
+UPDATE [dbo].[BillingCredits]
+SET [IdBillingCreditType] = @billingCreditType
+WHERE IdBillingCredit = @idBillingCredit",
                 new
                 {
                     billingCreditType,
