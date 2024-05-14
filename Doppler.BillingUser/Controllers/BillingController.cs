@@ -2,10 +2,12 @@ using Doppler.BillingUser.ApiModels;
 using Doppler.BillingUser.DopplerSecurity;
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Exceptions;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
+using Doppler.BillingUser.ExternalServices.DopplerApi;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
@@ -34,6 +36,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Controllers
@@ -70,6 +73,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly ITimeCollector _timeCollector;
         private readonly ILandingPlanUserRepository _landingPlanUserRepository;
         private readonly IUserAddOnRepository _userAddOnRepository;
+        private readonly IDopplerMvcService _dopplerMvcService;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -138,7 +142,8 @@ namespace Doppler.BillingUser.Controllers
             IFileStorage fileStorage,
             ITimeCollector timeCollector,
             ILandingPlanUserRepository landingPlanUserRepository,
-            IUserAddOnRepository userAddOnRepository)
+            IUserAddOnRepository userAddOnRepository,
+            IDopplerMvcService dopplerMvcService)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -168,6 +173,7 @@ namespace Doppler.BillingUser.Controllers
             _timeCollector = timeCollector;
             _landingPlanUserRepository = landingPlanUserRepository;
             _userAddOnRepository = userAddOnRepository;
+            _dopplerMvcService = dopplerMvcService;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -1259,6 +1265,58 @@ namespace Doppler.BillingUser.Controllers
             }
 
             return new OkObjectResult($"Successful buy landing plans for: User: {accountname}");
+        }
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPut("/accounts/{accountname}/landings/cancel")]
+        public async Task<IActionResult> CancenlCurrentLandingPlan(string accountname)
+        {
+            try
+            {
+                User user = await _userRepository.GetUserInformation(accountname);
+
+                if (user == null)
+                {
+                    return new NotFoundObjectResult("The user does not exist");
+                }
+
+                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)AddOnType.Landing);
+
+                if (userAddOn == null)
+                {
+                    return new NotFoundObjectResult("The user does not have any landing plan");
+                }
+
+                var amountPublishedLandings = await _dopplerMvcService.GetPublishedLandingPages(user.IdUser);
+
+                if (amountPublishedLandings > 0)
+                {
+                    return new BadRequestObjectResult("Cannot cancel a user's plan with published landing pages");
+                }
+
+                await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Landing_Canceled);
+
+                await _landingPlanUserRepository.CancelLandingPLanByBillingCreditId(userAddOn.IdCurrentBillingCredit);
+
+                return new OkObjectResult($"Successful cancel landing plan for: User: {accountname}");
+
+            }
+            catch (Exception ex)
+            {
+                if (ex is SessionExpiredException)
+                {
+                    return new ObjectResult(ex.Message)
+                    {
+                        StatusCode = (int)HttpStatusCode.Unauthorized,
+                        Value = ex.Message,
+                    };
+                }
+
+                return new ObjectResult("Failed at canceling landing plan")
+                {
+                    StatusCode = 500,
+                };
+            }
         }
 
         private async void SendNotifications(

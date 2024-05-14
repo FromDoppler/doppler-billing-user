@@ -8,5 +8,6 @@ namespace Doppler.BillingUser.Infrastructure
     {
         Task<int> CreateLandingPlanUserAsync(LandingPlanUser landingPlanUser);
         Task<IList<LandingPlanUser>> GetLandingPlansByUserIdAndBillingCreditIdAsync(int userId, int billingCreditId);
+        Task CancelLandingPLanByBillingCreditId(int billingCreditId);
     }
 }

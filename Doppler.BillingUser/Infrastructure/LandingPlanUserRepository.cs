@@ -70,5 +70,15 @@ WHERE [IdUser] = @idUser AND [IdBillingCredit] = @idBillingCredit",
 
             return result.ToList();
         }
+
+        public async Task CancelLandingPLanByBillingCreditId(int billingCreditId)
+        {
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE [dbo].[LandingPlanUser]
+SET PackQty = 0
+WHERE IdBillingCredit = @idBillingCredit", new { @idBillingCredit = billingCreditId });
+        }
     }
 }

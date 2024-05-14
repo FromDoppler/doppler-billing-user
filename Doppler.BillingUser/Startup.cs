@@ -27,6 +27,7 @@ using Doppler.BillingUser.ExternalServices.StaticDataCllient;
 using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.TimeCollector;
+using Doppler.BillingUser.ExternalServices.DopplerApi;
 
 namespace Doppler.BillingUser
 {
@@ -122,6 +123,8 @@ namespace Doppler.BillingUser
             services.AddTimeCollector(Configuration);
             services.AddScoped<ILandingPlanUserRepository, LandingPlanUserRepository>();
             services.AddScoped<IUserAddOnRepository, UserAddOnRepository>();
+            services.Configure<DopplerSettings>(Configuration.GetSection(nameof(DopplerSettings)));
+            services.AddScoped<IDopplerMvcService, DopplerMvcService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
