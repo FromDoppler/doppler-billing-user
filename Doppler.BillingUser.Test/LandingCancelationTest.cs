@@ -1,3 +1,4 @@
+using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.DopplerApi;
 using Doppler.BillingUser.Infrastructure;
@@ -63,6 +64,7 @@ namespace Doppler.BillingUser.Test
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -101,6 +103,7 @@ namespace Doppler.BillingUser.Test
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(userAddOnRepository.Object);
                 });
@@ -147,6 +150,7 @@ namespace Doppler.BillingUser.Test
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(userAddOnRepository.Object);
                     services.AddSingleton(httpContextAccessor.Object);
@@ -195,6 +199,7 @@ namespace Doppler.BillingUser.Test
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(userAddOnRepository.Object);
                     services.AddSingleton(dopplerMvcService.Object);
@@ -252,6 +257,7 @@ namespace Doppler.BillingUser.Test
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(userAddOnRepository.Object);
                     services.AddSingleton(dopplerMvcService.Object);
