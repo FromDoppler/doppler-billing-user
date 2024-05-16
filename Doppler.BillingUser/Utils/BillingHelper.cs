@@ -101,7 +101,7 @@ namespace Doppler.BillingUser.Utils
                         Charge = (double)total,
                         Packs = landings.Select(l => new SapPackDto
                         {
-                            Amount = l.Fee * (decimal)monthsToPay,
+                            Amount = l.Fee * (monthsToPay.HasValue ? (decimal)monthsToPay : 1.0m),
                             PackId = l.LandingPlanId,
                             Quantity = l.LandingQty
                         }).ToList()
