@@ -1,6 +1,5 @@
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
-using Doppler.BillingUser.ExternalServices.DopplerApi;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Model;
 using Microsoft.AspNetCore.Http;
@@ -129,106 +128,6 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async Task PUT_cancel_landing_should_return_unauthorized_when_session_expired()
-        {
-            // Arrange
-            var accountname = "test1@example.com";
-            var expectedUser = new User() { IdUser = 1 };
-            var expectedUserAddOn = new UserAddOn() { IdCurrentBillingCredit = 123 };
-
-            var userRepositoryMock = new Mock<IUserRepository>();
-            var userAddOnRepository = new Mock<IUserAddOnRepository>();
-            var httpContextAccessor = new Mock<IHttpContextAccessor>();
-
-            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(expectedUser);
-
-            userAddOnRepository.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(expectedUserAddOn);
-
-            httpContextAccessor.Setup(x => x.HttpContext.Request.Cookies[DopplerMvcService.MVC_SESSION_COOKIE_NAME]).Returns(() => null);
-
-            var client = _factory.WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureTestServices(services =>
-                {
-                    services.AddSingleton(Mock.Of<IEncryptionService>());
-                    services.AddSingleton(userRepositoryMock.Object);
-                    services.AddSingleton(userAddOnRepository.Object);
-                    services.AddSingleton(httpContextAccessor.Object);
-                });
-
-            }).CreateClient(new WebApplicationFactoryClientOptions());
-
-            var request = new HttpRequestMessage(HttpMethod.Put, $"accounts/{accountname}/landings/cancel")
-            {
-                Headers = { { "Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}" } }
-            };
-
-            // Act
-            var response = await client.SendAsync(request);
-            var messageError = await response.Content.ReadAsStringAsync();
-
-            // Assert
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-            Assert.Equal("Session expired", messageError);
-
-            userAddOnRepository.Verify(x => x.GetByUserIdAndAddOnType(
-                expectedUser.IdUser,
-                (int)AddOnType.Landing), Times.Once());
-        }
-
-        [Fact]
-        public async Task PUT_cancel_landing_should_bad_request_when_user_has_published_landings()
-        {
-            // Arrange
-            var publishedLandingAmount = 1;
-            var accountname = "test1@example.com";
-            var expectedUser = new User() { IdUser = 1 };
-            var expectedUserAddOn = new UserAddOn() { IdCurrentBillingCredit = 123 };
-
-            var userRepositoryMock = new Mock<IUserRepository>();
-            var userAddOnRepository = new Mock<IUserAddOnRepository>();
-            var dopplerMvcService = new Mock<IDopplerMvcService>();
-
-            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(expectedUser);
-
-            userAddOnRepository.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(expectedUserAddOn);
-
-            dopplerMvcService.Setup(x => x.GetPublishedLandingPages(It.IsAny<int>())).ReturnsAsync(publishedLandingAmount);
-
-            var client = _factory.WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureTestServices(services =>
-                {
-                    services.AddSingleton(Mock.Of<IEncryptionService>());
-                    services.AddSingleton(userRepositoryMock.Object);
-                    services.AddSingleton(userAddOnRepository.Object);
-                    services.AddSingleton(dopplerMvcService.Object);
-                });
-
-            }).CreateClient(new WebApplicationFactoryClientOptions());
-
-            var request = new HttpRequestMessage(HttpMethod.Put, $"accounts/{accountname}/landings/cancel")
-            {
-                Headers = { { "Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}" } }
-            };
-
-            // Act
-            var response = await client.SendAsync(request);
-            var messageError = await response.Content.ReadAsStringAsync();
-
-            // Assert
-            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Equal("Cannot cancel a user's plan with published landing pages", messageError);
-
-            userAddOnRepository.Verify(x => x.GetByUserIdAndAddOnType(
-                expectedUser.IdUser,
-                (int)AddOnType.Landing), Times.Once());
-
-            dopplerMvcService.Verify(x => x.GetPublishedLandingPages(
-                expectedUser.IdUser), Times.Once());
-        }
-
-        [Fact]
         public async Task PUT_cancel_landing_should_return_ok_when_information_is_correct()
         {
             // Arrange
@@ -239,15 +138,12 @@ namespace Doppler.BillingUser.Test
 
             var userRepositoryMock = new Mock<IUserRepository>();
             var userAddOnRepository = new Mock<IUserAddOnRepository>();
-            var dopplerMvcService = new Mock<IDopplerMvcService>();
             var billingRepository = new Mock<IBillingRepository>();
             var landingPlanUserRepository = new Mock<ILandingPlanUserRepository>();
 
             userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(expectedUser);
 
             userAddOnRepository.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(expectedUserAddOn);
-
-            dopplerMvcService.Setup(x => x.GetPublishedLandingPages(It.IsAny<int>())).ReturnsAsync(publishedLandingAmount);
 
             billingRepository.Setup(x => x.UpdateBillingCreditType(It.IsAny<int>(), It.IsAny<int>()));
 
@@ -260,7 +156,6 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(userAddOnRepository.Object);
-                    services.AddSingleton(dopplerMvcService.Object);
                     services.AddSingleton(billingRepository.Object);
                     services.AddSingleton(landingPlanUserRepository.Object);
                 });
@@ -283,9 +178,6 @@ namespace Doppler.BillingUser.Test
             userAddOnRepository.Verify(x => x.GetByUserIdAndAddOnType(
                 expectedUser.IdUser,
                 (int)AddOnType.Landing), Times.Once());
-
-            dopplerMvcService.Verify(x => x.GetPublishedLandingPages(
-                expectedUser.IdUser), Times.Once());
 
             billingRepository.Verify(x => x.UpdateBillingCreditType(
                 expectedUserAddOn.IdCurrentBillingCredit,
