@@ -1632,5 +1632,20 @@ WHERE
                 await _sapService.SendUserDataToSap(sapDto);
             }
         }
+
+        public async Task UpdateBillingCreditType(int idBillingCredit, int billingCreditType)
+        {
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE [dbo].[BillingCredits]
+SET [IdBillingCreditType] = @billingCreditType
+WHERE IdBillingCredit = @idBillingCredit",
+                new
+                {
+                    billingCreditType,
+                    idBillingCredit
+                });
+        }
     }
 }

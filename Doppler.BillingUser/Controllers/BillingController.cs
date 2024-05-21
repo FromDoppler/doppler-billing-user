@@ -34,6 +34,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Controllers
@@ -1259,6 +1260,42 @@ namespace Doppler.BillingUser.Controllers
             }
 
             return new OkObjectResult($"Successful buy landing plans for: User: {accountname}");
+        }
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPut("/accounts/{accountname}/landings/cancel")]
+        public async Task<IActionResult> CancenlCurrentLandingPlan(string accountname)
+        {
+            try
+            {
+                User user = await _userRepository.GetUserInformation(accountname);
+
+                if (user == null)
+                {
+                    return new NotFoundObjectResult("The user does not exist");
+                }
+
+                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)AddOnType.Landing);
+
+                if (userAddOn == null)
+                {
+                    return new NotFoundObjectResult("The user does not have any landing plan");
+                }
+
+                await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Landing_Canceled);
+
+                await _landingPlanUserRepository.CancelLandingPLanByBillingCreditId(userAddOn.IdCurrentBillingCredit);
+
+                return new OkObjectResult($"Successful cancel landing plan for: User: {accountname}");
+
+            }
+            catch
+            {
+                return new ObjectResult("Failed at canceling landing plan")
+                {
+                    StatusCode = 500,
+                };
+            }
         }
 
         private async void SendNotifications(

@@ -65,5 +65,7 @@ namespace Doppler.BillingUser.Infrastructure
         Task<ImportedBillingDetail> GetImportedBillingDetailAsync(int idImportedBillingDetail);
 
         Task<BillingCredit> GetCurrentBillingCreditForLanding(int userId);
+
+        Task UpdateBillingCreditType(int idBillingCredit, int billingCreditType);
     }
 }

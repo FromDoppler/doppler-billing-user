@@ -1,4 +1,5 @@
 using Dapper;
+using Doppler.BillingUser.Model;
 using Doppler.BillingUser.TimeCollector;
 using System.Threading.Tasks;
 
@@ -13,6 +14,19 @@ namespace Doppler.BillingUser.Infrastructure
         {
             _connectionFactory = connectionFactory;
             _timeCollector = timeCollector;
+        }
+
+        public async Task<UserAddOn> GetByUserIdAndAddOnType(int userId, int addOnType)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            UserAddOn userAddOn = await connection.QueryFirstOrDefaultAsync<UserAddOn>(@"SELECT [IdUserAddOn]
+        ,[IdUser]
+        ,[IdAddOnType]
+        ,[IdCurrentBillingCredit]
+    FROM [dbo].[UserAddOn]
+    WHERE IdUser = @userId AND IdAddOnType = @addOnType", new { userId, addOnType });
+
+            return userAddOn;
         }
 
         public async Task SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(int userId, int addOnType, int billingCreditId)
