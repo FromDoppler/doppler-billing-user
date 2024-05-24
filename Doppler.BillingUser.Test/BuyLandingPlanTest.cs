@@ -84,6 +84,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -129,6 +130,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -175,6 +177,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -222,6 +225,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -272,6 +276,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -329,6 +334,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -387,6 +393,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -464,6 +471,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
@@ -554,6 +562,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISapService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
