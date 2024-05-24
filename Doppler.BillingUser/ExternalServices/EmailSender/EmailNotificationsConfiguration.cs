@@ -36,5 +36,6 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public string DecliendPaymentMercadoPagoUpsellingAdminTemplateId { get; set; }
         public string UpdatePlanCreditsToMontlyOrContactsAdminTemplateId { get; set; }
         public string UpgradeLandingAdminTemplateId { get; set; }
+        public string UpdateLandingAdminTemplateId { get; set; }
     }
 }
