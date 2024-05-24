@@ -1,5 +1,6 @@
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Model;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Services
@@ -18,5 +19,7 @@ namespace Doppler.BillingUser.Services
         Task SendContactInformationForTransferNotification(int userId, string username, string userlastname, string contactemail, string contactphonenumber);
         Task SendNotificationForRejectedMercadoPagoPayment(string accountname, User user, bool isUpgradePending, string paymentStatusDetails);
         Task SendNotificationForChangeIndividualToMontlyOrSubscribers(string accountname, User userInformation, UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, PlanAmountDetails amountDetails);
+        Task SendNotificationForUpgradeLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> newLandingPlans);
+        //Task SendNotificationForUpdateLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> currentLandingPlans, IList<LandingPlanUser> newLandingPlans);
     }
 }

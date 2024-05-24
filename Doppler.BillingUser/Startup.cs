@@ -122,6 +122,7 @@ namespace Doppler.BillingUser
             services.AddTimeCollector(Configuration);
             services.AddScoped<ILandingPlanUserRepository, LandingPlanUserRepository>();
             services.AddScoped<IUserAddOnRepository, UserAddOnRepository>();
+            services.AddScoped<ILandingPlanRepository, LandingPlanRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
