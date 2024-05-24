@@ -1327,7 +1327,13 @@ namespace Doppler.BillingUser.Controllers
             }
             else //Update landing plan
             {
-
+                await _emailTemplatesService.SendNotificationForUpdateLandingPlan(
+                    accountname,
+                    userInformation,
+                    user,
+                    availableLandingPlans,
+                    currentLandingPlans,
+                    newLandingPlans);
             }
         }
 
