@@ -1,4 +1,4 @@
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Doppler.BillingUser.Model
 {
@@ -6,7 +6,7 @@ namespace Doppler.BillingUser.Model
     {
         public int LandingPlanId { get; set; }
 
-        [JsonProperty("LandingQty")]
+        [JsonPropertyName("landingQty")]
         public int PackQty { get; set; }
         public decimal Fee { get; set; }
     }
