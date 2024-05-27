@@ -694,7 +694,9 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
-                        year = DateTime.UtcNow.Year
+                        year = DateTime.UtcNow.Year,
+                        newPlanDescription,
+                        newPlanFee,
                     },
                     to: new[] { accountname });
 
