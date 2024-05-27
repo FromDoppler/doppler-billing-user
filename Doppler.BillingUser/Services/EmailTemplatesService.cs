@@ -680,7 +680,25 @@ namespace Doppler.BillingUser.Services
                     },
                     to: new[] { accountname });
 
-            return Task.WhenAll(upgradePlanAdminEmail);
+            var template = _emailSettings.Value.UpgradeLandingTemplateId[userInformation.Language ?? "en"];
+
+            var upgradePlanEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        planName = newPlanDescription,
+                        amount = newPlanFee,
+                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { accountname });
+
+            return Task.WhenAll(upgradePlanAdminEmail, upgradePlanEmail);
         }
 
         public Task SendNotificationForUpdateLandingPlan(
@@ -758,7 +776,27 @@ namespace Doppler.BillingUser.Services
                     },
                     to: new[] { accountname });
 
-            return Task.WhenAll(updatePlanAdminEmail);
+            var template = _emailSettings.Value.UpgradeLandingTemplateId[userInformation.Language ?? "en"];
+
+            var upgradePlanEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        planName = newPlanDescription,
+                        amount = newPlanFee,
+                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        newPlanDescription,
+                        newPlanFee,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { accountname });
+
+            return Task.WhenAll(updatePlanAdminEmail, upgradePlanEmail);
         }
     }
 }
