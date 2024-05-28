@@ -73,7 +73,7 @@ namespace Doppler.BillingUser.Utils
 
         public static SapBillingDto MapLandingsBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, IList<LandingPlan> landings, string authorizationNumber, int invoicedId, decimal? total)
         {
-            var monthsToPay = billingCredit.TotalMonthPlan - billingCredit.CurrentMonthPlan + 1;
+            var monthsToPay = billingCredit.TotalMonthPlan - billingCredit.CurrentMonthPlan;
 
             var sapBilling = new SapBillingDto
             {
