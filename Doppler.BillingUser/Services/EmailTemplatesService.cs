@@ -672,35 +672,14 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
-
                         newPlanDescription,
                         newPlanFee,
-
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { _emailSettings.Value.AdminEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            var template = _emailSettings.Value.UpgradeLandingTemplateId[userInformation.Language ?? "en"];
-
-            var upgradePlanEmail = _emailSender.SafeSendWithTemplateAsync(
-                    templateId: template,
-                    templateModel: new
-                    {
-                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
-                        firstName = userInformation.FirstName,
-                        planName = newPlanDescription,
-                        amount = newPlanFee,
-                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
-                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
-                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
-                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
-                        year = DateTime.UtcNow.Year,
-                        newPlanDescription,
-                        newPlanFee,
-                    },
-                    to: new[] { accountname });
-
-            return Task.WhenAll(upgradePlanAdminEmail, upgradePlanEmail);
+            return Task.WhenAll(upgradePlanAdminEmail);
         }
 
         public Task SendNotificationForUpdateLandingPlan(
@@ -768,37 +747,16 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
-
                         currentPlanDescription,
                         currentPlanFee,
                         newPlanDescription,
                         newPlanFee,
-
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { _emailSettings.Value.AdminEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            var template = _emailSettings.Value.UpgradeLandingTemplateId[userInformation.Language ?? "en"];
-
-            var upgradePlanEmail = _emailSender.SafeSendWithTemplateAsync(
-                    templateId: template,
-                    templateModel: new
-                    {
-                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
-                        firstName = userInformation.FirstName,
-                        planName = newPlanDescription,
-                        amount = newPlanFee,
-                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
-                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
-                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
-                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
-                        newPlanDescription,
-                        newPlanFee,
-                        year = DateTime.UtcNow.Year
-                    },
-                    to: new[] { accountname });
-
-            return Task.WhenAll(updatePlanAdminEmail, upgradePlanEmail);
+            return Task.WhenAll(updatePlanAdminEmail);
         }
     }
 }
