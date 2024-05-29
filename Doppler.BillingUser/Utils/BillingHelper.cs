@@ -79,7 +79,6 @@ namespace Doppler.BillingUser.Utils
             {
                 Id = billingCredit.IdUser,
                 Currency = CurrencyTypeUsd,
-                Discount = (billingCredit.DiscountPlanFee),
                 ExtraEmailsFee = 0,
                 PlanType = 9,
                 CardHolder = cardHolderName,
@@ -99,6 +98,7 @@ namespace Doppler.BillingUser.Utils
                     {
                         Type = AdditionalServiceTypeEnum.Landing,
                         Charge = (double)total,
+                        Discount = billingCredit.DiscountPlanFee,
                         Packs = landings.Select(l => new SapPackDto
                         {
                             Amount = l.Fee * (monthsToPay.HasValue ? (decimal)monthsToPay : 1.0m),
