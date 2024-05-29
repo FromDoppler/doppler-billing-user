@@ -37,6 +37,5 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public string UpdatePlanCreditsToMontlyOrContactsAdminTemplateId { get; set; }
         public string UpgradeLandingAdminTemplateId { get; set; }
         public string UpdateLandingAdminTemplateId { get; set; }
-        public Dictionary<string, string> UpgradeLandingTemplateId { get; set; }
     }
 }
