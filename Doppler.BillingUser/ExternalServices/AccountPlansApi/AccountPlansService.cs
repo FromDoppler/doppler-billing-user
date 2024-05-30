@@ -102,13 +102,10 @@ namespace Doppler.BillingUser.ExternalServices.AccountPlansApi
             }
         }
 
-        public async Task<PlanAmountDetails> GetCalculateLandingUpgrade(string accountName, IList<LandingPlanUser> newLandingPlans)
+        public async Task<PlanAmountDetails> GetCalculateLandingUpgrade(string accountName, IEnumerable<int> landingIds, IEnumerable<int> landingPacks)
         {
             try
             {
-                IEnumerable<int> landingIds = newLandingPlans.Select(x => x.IdLandingPlan);
-                IEnumerable<int> landingPacks = newLandingPlans.Select(x => x.PackQty);
-
                 var PlanAmountDetails = await new UriTemplate(_options.Value.CalculateLandingUrlTemplate)
                     .AddParameter("accountname", accountName)
                     .AddParameter("landingIds", string.Join<int>(",", landingIds))

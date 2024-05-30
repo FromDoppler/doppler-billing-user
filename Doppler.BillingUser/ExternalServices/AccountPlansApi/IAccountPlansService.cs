@@ -9,6 +9,6 @@ namespace Doppler.BillingUser.ExternalServices.AccountPlansApi
         public Task<bool> IsValidTotal(string accountname, AgreementInformation agreementInformation);
         Task<Promotion> GetValidPromotionByCode(string promocode, int planId);
         Task<PlanAmountDetails> GetCalculateUpgrade(string accountName, AgreementInformation agreementInformation);
-        Task<PlanAmountDetails> GetCalculateLandingUpgrade(string accountName, IList<LandingPlanUser> newLandingPlans);
+        Task<PlanAmountDetails> GetCalculateLandingUpgrade(string accountName, IEnumerable<int> landingIds, IEnumerable<int> landingPacks);
     }
 }

@@ -1319,7 +1319,10 @@ namespace Doppler.BillingUser.Controllers
 
             try
             {
-                amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(user.Email, newLandingPlans);
+                amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
+                    user.Email,
+                    newLandingPlans.Select(x => x.IdLandingPlan),
+                    newLandingPlans.Select(x => x.PackQty));
             }
             catch (Exception ex)
             {
