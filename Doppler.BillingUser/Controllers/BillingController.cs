@@ -1329,19 +1329,6 @@ namespace Doppler.BillingUser.Controllers
             User userInformation = await _userRepository.GetUserInformation(accountname);
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
             BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
-            //PlanAmountDetails amountDetails = null;
-
-            //try
-            //{
-            //    amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
-            //        user.Email,
-            //        newLandingPlans.Select(x => x.IdLandingPlan),
-            //        newLandingPlans.Select(x => x.PackQty));
-            //}
-            //catch (Exception ex)
-            //{
-            //    _logger.LogError(ex, $"Error to get total landing amount for user {user.Email}.(Send Notifications)");
-            //}
 
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
