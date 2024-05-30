@@ -1132,6 +1132,18 @@ namespace Doppler.BillingUser.Controllers
                     currentLandingPlans = await _landingPlanUserRepository.GetLandingPlansByUserIdAndBillingCreditIdAsync(user.IdUser, currentLandingBillingCredit.IdBillingCredit);
                 }
 
+                try
+                {
+                    var amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
+                            user.Email,
+                            buyLandingPlans.LandingPlans.Select(x => x.LandingPlanId),
+                            buyLandingPlans.LandingPlans.Select(x => x.PackQty));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error to get total landing amount for user {user.Email}.(Send Notifications)");
+                }
+
                 var currentLandingAmount = currentLandingPlans.Sum(l => l.PackQty * l.Fee);
                 var newLandingAmount = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
 
