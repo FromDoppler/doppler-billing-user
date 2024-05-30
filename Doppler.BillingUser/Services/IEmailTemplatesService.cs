@@ -20,6 +20,6 @@ namespace Doppler.BillingUser.Services
         Task SendNotificationForRejectedMercadoPagoPayment(string accountname, User user, bool isUpgradePending, string paymentStatusDetails);
         Task SendNotificationForChangeIndividualToMontlyOrSubscribers(string accountname, User userInformation, UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, PlanAmountDetails amountDetails);
         Task SendNotificationForUpgradeLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> newLandingPlans, BillingCredit landingBillingCredit);
-        Task SendNotificationForUpdateLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> currentLandingPlans, IList<LandingPlanUser> newLandingPlans, BillingCredit landingBillingCredit);
+        Task SendNotificationForUpdateLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> currentLandingPlans, IList<LandingPlanUser> newLandingPlans, BillingCredit landingBillingCredit, PlanAmountDetails? amountDetails));
     }
 }

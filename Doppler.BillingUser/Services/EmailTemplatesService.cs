@@ -694,7 +694,8 @@ namespace Doppler.BillingUser.Services
             IList<LandingPlan> availableLandingPlans,
             IList<LandingPlanUser> currentLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
-            BillingCredit landingBillingCredit)
+            BillingCredit landingBillingCredit,
+            PlanAmountDetails? amountDetails)
         {
             string currentPlanDescription = "";
             decimal currentPlanFee = 0;
@@ -753,6 +754,14 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        hasDiscountPaymentAlreadyPaid = amountDetails != null && amountDetails.DiscountPaymentAlreadyPaid > 0,
+                        discountPaymentAlreadyPaid = amountDetails != null && amountDetails.DiscountPaymentAlreadyPaid > 0 ? amountDetails.DiscountPaymentAlreadyPaid : 0,
+                        hasDiscountPrepayment = amountDetails != null && amountDetails.DiscountPrepayment.Amount > 0,
+                        discountPrepaymentPercentage = amountDetails != null && amountDetails.DiscountPrepayment.DiscountPercentage > 0 ? amountDetails.DiscountPrepayment.DiscountPercentage : 0,
+                        discountPrepaymentAmount = amountDetails != null && amountDetails.DiscountPrepayment.Amount > 0 ? amountDetails.DiscountPrepayment.Amount : 0,
+                        hasDiscountPlanFeeAdmin = amountDetails != null && amountDetails.DiscountPlanFeeAdmin.Amount > 0,
+                        discountPlanFeeAdminAmount = amountDetails != null && amountDetails.DiscountPlanFeeAdmin.Amount > 0 ? amountDetails.DiscountPlanFeeAdmin.Amount : 0,
+                        discountPlanFeeAdminPercentage = amountDetails != null && amountDetails.DiscountPlanFeeAdmin.DiscountPercentage > 0 ? amountDetails.DiscountPlanFeeAdmin.DiscountPercentage : 0,
                         is1MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 1 : false,
                         is3MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 3 : false,
                         is6MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 6 : false,
