@@ -695,7 +695,7 @@ namespace Doppler.BillingUser.Services
             IList<LandingPlanUser> currentLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
             BillingCredit landingBillingCredit,
-            PlanAmountDetails? amountDetails)
+            PlanAmountDetails amountDetails)
         {
             string currentPlanDescription = "";
             decimal currentPlanFee = 0;

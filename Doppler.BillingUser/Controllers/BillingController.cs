@@ -1132,12 +1132,13 @@ namespace Doppler.BillingUser.Controllers
                     currentLandingPlans = await _landingPlanUserRepository.GetLandingPlansByUserIdAndBillingCreditIdAsync(user.IdUser, currentLandingBillingCredit.IdBillingCredit);
                 }
 
+                PlanAmountDetails amountDetails = null;
                 try
                 {
-                    var amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
-                            user.Email,
-                            buyLandingPlans.LandingPlans.Select(x => x.LandingPlanId),
-                            buyLandingPlans.LandingPlans.Select(x => x.PackQty));
+                    amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
+                        user.Email,
+                        buyLandingPlans.LandingPlans.Select(x => x.LandingPlanId),
+                        buyLandingPlans.LandingPlans.Select(x => x.PackQty));
                 }
                 catch (Exception ex)
                 {
@@ -1256,7 +1257,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(accountname, user, currentLandingPlans, newLandingPlans);
+                SendLandingNotifications(accountname, user, currentLandingPlans, newLandingPlans, amountDetails);
             }
             catch (Exception e)
             {
@@ -1322,24 +1323,25 @@ namespace Doppler.BillingUser.Controllers
             string accountname,
             UserBillingInformation user,
             IList<LandingPlanUser> currentLandingPlans,
-            IList<LandingPlanUser> newLandingPlans)
+            IList<LandingPlanUser> newLandingPlans,
+            PlanAmountDetails amountDetails)
         {
             User userInformation = await _userRepository.GetUserInformation(accountname);
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
             BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
-            PlanAmountDetails amountDetails = null;
+            //PlanAmountDetails amountDetails = null;
 
-            try
-            {
-                amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
-                    user.Email,
-                    newLandingPlans.Select(x => x.IdLandingPlan),
-                    newLandingPlans.Select(x => x.PackQty));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error to get total landing amount for user {user.Email}.(Send Notifications)");
-            }
+            //try
+            //{
+            //    amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
+            //        user.Email,
+            //        newLandingPlans.Select(x => x.IdLandingPlan),
+            //        newLandingPlans.Select(x => x.PackQty));
+            //}
+            //catch (Exception ex)
+            //{
+            //    _logger.LogError(ex, $"Error to get total landing amount for user {user.Email}.(Send Notifications)");
+            //}
 
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
