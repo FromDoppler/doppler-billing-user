@@ -1314,6 +1314,7 @@ namespace Doppler.BillingUser.Controllers
         {
             User userInformation = await _userRepository.GetUserInformation(accountname);
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
+            BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
 
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
@@ -1323,7 +1324,8 @@ namespace Doppler.BillingUser.Controllers
                     userInformation,
                     user,
                     availableLandingPlans,
-                    newLandingPlans);
+                    newLandingPlans,
+                    newLandingBillingCredit);
             }
             else //Update landing plan
             {
@@ -1333,7 +1335,8 @@ namespace Doppler.BillingUser.Controllers
                     user,
                     availableLandingPlans,
                     currentLandingPlans,
-                    newLandingPlans);
+                    newLandingPlans,
+                    newLandingBillingCredit);
             }
         }
 

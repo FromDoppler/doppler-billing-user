@@ -622,7 +622,8 @@ namespace Doppler.BillingUser.Services
             User userInformation,
             UserBillingInformation userBillingInformation,
             IList<LandingPlan> availableLandingPlans,
-            IList<LandingPlanUser> newLandingPlans)
+            IList<LandingPlanUser> newLandingPlans,
+            BillingCredit landingBillingCredit)
         {
             string newPlanDescription = "";
             decimal newPlanFee = 0;
@@ -672,6 +673,10 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        is1MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 1 : false,
+                        is3MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 3 : false,
+                        is6MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 6 : false,
+                        is12MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 12 : false,
                         newPlanDescription,
                         newPlanFee,
                         year = DateTime.UtcNow.Year
@@ -688,7 +693,8 @@ namespace Doppler.BillingUser.Services
             UserBillingInformation userBillingInformation,
             IList<LandingPlan> availableLandingPlans,
             IList<LandingPlanUser> currentLandingPlans,
-            IList<LandingPlanUser> newLandingPlans)
+            IList<LandingPlanUser> newLandingPlans,
+            BillingCredit landingBillingCredit)
         {
             string currentPlanDescription = "";
             decimal currentPlanFee = 0;
@@ -747,6 +753,10 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        is1MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 1 : false,
+                        is3MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 3 : false,
+                        is6MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 6 : false,
+                        is12MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 12 : false,
                         currentPlanDescription,
                         currentPlanFee,
                         newPlanDescription,
