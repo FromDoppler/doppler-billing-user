@@ -1197,20 +1197,22 @@ namespace Doppler.BillingUser.Controllers
                 /* Save current billing credit in the UserAddOn table */
                 await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.Landing, billingCreditId);
 
-                IList<LandingPlanUser> newLandingPlans = buyLandingPlans.LandingPlans.Select(lp => new LandingPlanUser
+                IList<LandingPlanUser> newLandingPlans = [];
+                foreach (BuyLandingPlanItem landingPlanItem in buyLandingPlans.LandingPlans)
                 {
-                    Created = DateTime.UtcNow,
-                    Fee = lp.Fee,
-                    IdBillingCredit = billingCreditId,
-                    IdUser = user.IdUser,
-                    PackQty = lp.PackQty,
-                    IdLandingPlan = lp.LandingPlanId
-                }).ToList();
+                    LandingPlanUser newLandingPlanUser = new LandingPlanUser
+                    {
+                        Created = DateTime.UtcNow,
+                        Fee = landingPlanItem.Fee,
+                        IdBillingCredit = billingCreditId,
+                        IdUser = user.IdUser,
+                        PackQty = landingPlanItem.PackQty,
+                        IdLandingPlan = landingPlanItem.LandingPlanId
+                    };
 
-                foreach (LandingPlanUser newLandingPlan in newLandingPlans)
-                {
-                    var idLandingPlanUser = await _landingPlanUserRepository.CreateLandingPlanUserAsync(newLandingPlan);
-                    newLandingPlan.IdLandingPlanUser = idLandingPlanUser;
+                    var idLandingPlanUser = await _landingPlanUserRepository.CreateLandingPlanUserAsync(newLandingPlanUser);
+                    newLandingPlanUser.IdLandingPlanUser = idLandingPlanUser;
+                    newLandingPlans.Add(newLandingPlanUser);
                 }
 
                 //Send lading plan to SAP
