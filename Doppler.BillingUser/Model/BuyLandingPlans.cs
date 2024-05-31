@@ -5,6 +5,6 @@ namespace Doppler.BillingUser.Model
     public class BuyLandingPlans
     {
         public decimal? Total { get; set; }
-        public IList<LandingPlan> LandingPlans { get; set; }
+        public IList<BuyLandingPlanItem> LandingPlans { get; set; }
     }
 }

@@ -71,6 +71,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly ITimeCollector _timeCollector;
         private readonly ILandingPlanUserRepository _landingPlanUserRepository;
         private readonly IUserAddOnRepository _userAddOnRepository;
+        private readonly ILandingPlanRepository _landingPlanRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -139,7 +140,8 @@ namespace Doppler.BillingUser.Controllers
             IFileStorage fileStorage,
             ITimeCollector timeCollector,
             ILandingPlanUserRepository landingPlanUserRepository,
-            IUserAddOnRepository userAddOnRepository)
+            IUserAddOnRepository userAddOnRepository,
+            ILandingPlanRepository landingPlanRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -169,6 +171,7 @@ namespace Doppler.BillingUser.Controllers
             _timeCollector = timeCollector;
             _landingPlanUserRepository = landingPlanUserRepository;
             _userAddOnRepository = userAddOnRepository;
+            _landingPlanRepository = landingPlanRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -1129,8 +1132,21 @@ namespace Doppler.BillingUser.Controllers
                     currentLandingPlans = await _landingPlanUserRepository.GetLandingPlansByUserIdAndBillingCreditIdAsync(user.IdUser, currentLandingBillingCredit.IdBillingCredit);
                 }
 
+                PlanAmountDetails amountDetails = null;
+                try
+                {
+                    amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
+                        user.Email,
+                        buyLandingPlans.LandingPlans.Select(x => x.LandingPlanId),
+                        buyLandingPlans.LandingPlans.Select(x => x.PackQty));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error to get total landing amount for user {user.Email}.(Send Notifications)");
+                }
+
                 var currentLandingAmount = currentLandingPlans.Sum(l => l.PackQty * l.Fee);
-                var newLandingAmount = buyLandingPlans.LandingPlans.Sum(l => l.LandingQty * l.Fee);
+                var newLandingAmount = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
 
                 int invoiceId = 0;
                 string authorizationNumber = string.Empty;
@@ -1174,26 +1190,30 @@ namespace Doppler.BillingUser.Controllers
 
                 var billingCreditMapper = GetLandingBillingCreditMapper(user.PaymentMethod);
 
-                var total = buyLandingPlans.LandingPlans.Sum(l => l.LandingQty * l.Fee);
+                var total = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
                 var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 /* Save current billing credit in the UserAddOn table */
                 await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.Landing, billingCreditId);
 
-                foreach (var landingPlan in buyLandingPlans.LandingPlans)
+                IList<LandingPlanUser> newLandingPlans = [];
+                foreach (BuyLandingPlanItem landingPlanItem in buyLandingPlans.LandingPlans)
                 {
-                    await _landingPlanUserRepository.CreateLandingPlanUserAsync(new LandingPlanUser
+                    LandingPlanUser newLandingPlanUser = new LandingPlanUser
                     {
                         Created = DateTime.UtcNow,
-                        Fee = landingPlan.Fee,
+                        Fee = landingPlanItem.Fee,
                         IdBillingCredit = billingCreditId,
                         IdUser = user.IdUser,
-                        PackQty = landingPlan.LandingQty,
-                        IdLandingPlan = landingPlan.LandingPlanId
-                    });
-                }
+                        PackQty = landingPlanItem.PackQty,
+                        IdLandingPlan = landingPlanItem.LandingPlanId
+                    };
 
+                    var idLandingPlanUser = await _landingPlanUserRepository.CreateLandingPlanUserAsync(newLandingPlanUser);
+                    newLandingPlanUser.IdLandingPlanUser = idLandingPlanUser;
+                    newLandingPlans.Add(newLandingPlanUser);
+                }
 
                 //Send lading plan to SAP
                 if (buyLandingPlans.Total.GetValueOrDefault() > 0 &&
@@ -1213,8 +1233,8 @@ namespace Doppler.BillingUser.Controllers
                         var currentLandingPlan = currentLandingPlans.FirstOrDefault(l => l.IdLandingPlan == landingPlan.LandingPlanId);
                         if (currentLandingPlan != null)
                         {
-                            landingPlan.LandingQty -= currentLandingPlan.PackQty;
-                            landingPlan.Fee = currentLandingPlan.Fee * landingPlan.LandingQty;
+                            landingPlan.PackQty -= currentLandingPlan.PackQty;
+                            landingPlan.Fee = currentLandingPlan.Fee * landingPlan.PackQty;
                         }
                     }
 
@@ -1225,7 +1245,7 @@ namespace Doppler.BillingUser.Controllers
                                 cardNumber,
                                 holderName,
                                 billingCredit,
-                                landingsToSendToSap.Where(l => l.LandingQty > 0).ToList(),
+                                landingsToSendToSap.Where(l => l.PackQty > 0).ToList(),
                                 authorizationNumber,
                                 invoiceId,
                                 buyLandingPlans.Total),
@@ -1237,6 +1257,9 @@ namespace Doppler.BillingUser.Controllers
                         await _slackService.SendNotification(slackMessage);
                     }
                 }
+
+                //Send notification
+                SendLandingNotifications(accountname, user, currentLandingPlans, newLandingPlans, amountDetails);
             }
             catch (Exception e)
             {
@@ -1295,6 +1318,42 @@ namespace Doppler.BillingUser.Controllers
                 {
                     StatusCode = 500,
                 };
+            }
+        }
+
+        private async void SendLandingNotifications(
+            string accountname,
+            UserBillingInformation user,
+            IList<LandingPlanUser> currentLandingPlans,
+            IList<LandingPlanUser> newLandingPlans,
+            PlanAmountDetails amountDetails)
+        {
+            User userInformation = await _userRepository.GetUserInformation(accountname);
+            IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
+            BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
+
+            //Upgrade landing plan
+            if (currentLandingPlans is null || currentLandingPlans.Count == 0)
+            {
+                await _emailTemplatesService.SendNotificationForUpgradeLandingPlan(
+                    accountname,
+                    userInformation,
+                    user,
+                    availableLandingPlans,
+                    newLandingPlans,
+                    newLandingBillingCredit);
+            }
+            else //Update landing plan
+            {
+                await _emailTemplatesService.SendNotificationForUpdateLandingPlan(
+                    accountname,
+                    userInformation,
+                    user,
+                    availableLandingPlans,
+                    currentLandingPlans,
+                    newLandingPlans,
+                    newLandingBillingCredit,
+                    amountDetails);
             }
         }
 

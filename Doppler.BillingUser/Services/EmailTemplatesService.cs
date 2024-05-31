@@ -5,6 +5,8 @@ using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
 using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Services
@@ -613,6 +615,168 @@ namespace Doppler.BillingUser.Services
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(updatePlanAdminEmail, updatePlanEmail);
+        }
+
+        public Task SendNotificationForUpgradeLandingPlan(
+            string accountname,
+            User userInformation,
+            UserBillingInformation userBillingInformation,
+            IList<LandingPlan> availableLandingPlans,
+            IList<LandingPlanUser> newLandingPlans,
+            BillingCredit landingBillingCredit)
+        {
+            string newPlanDescription = "";
+            decimal newPlanFee = 0;
+            foreach (LandingPlanUser newPlan in newLandingPlans)
+            {
+                string planDescription = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == newPlan.IdLandingPlan).Description;
+                newPlanDescription += $"[{planDescription} x {newPlan.PackQty}]";
+                newPlanFee += newPlan.PackQty * newPlan.Fee;
+            }
+
+            var templateAdmin = _emailSettings.Value.UpgradeLandingAdminTemplateId;
+
+            var upgradePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        user = accountname,
+                        client = $"{userInformation.FirstName} {userInformation.LastName}",
+                        address = userInformation.Address,
+                        phone = userInformation.PhoneNumber,
+                        company = userInformation.Company,
+                        city = userInformation.CityName,
+                        state = userInformation.BillingStateName,
+                        zipCode = userInformation.ZipCode,
+                        language = userInformation.Language,
+                        country = userInformation.BillingCountryName,
+                        vendor = userInformation.Vendor,
+                        razonSocial = userInformation.RazonSocial,
+                        cuit = userInformation.CUIT,
+                        isConsumerCF = userInformation.IdConsumerType == (int)ConsumerTypeEnum.CF,
+                        isConsumerRFC = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RFC,
+                        isConsumerRI = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RI,
+                        isEmptyConsumer = userInformation.IdConsumerType == 0,
+                        isCfdiUseG03 = userBillingInformation.CFDIUse == "G03",
+                        isCfdiUseP01 = userBillingInformation.CFDIUse == "P01",
+                        isPaymentTypePPD = userBillingInformation.PaymentType == "PPD",
+                        isPaymentTypePUE = userBillingInformation.PaymentType == "PUE",
+                        isPaymentWayCash = userBillingInformation.PaymentWay == "CASH",
+                        isPaymentWayCheck = userBillingInformation.PaymentWay == "CHECK",
+                        isPaymentWayTransfer = userBillingInformation.PaymentWay == "TRANSFER",
+                        bankName = userBillingInformation.BankName,
+                        bankAccount = userBillingInformation.BankAccount,
+                        taxRegime = userBillingInformation.TaxRegimeDescription,
+                        billingEmails = userInformation.BillingEmails,
+                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        is1MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 1 : false,
+                        is3MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 3 : false,
+                        is6MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 6 : false,
+                        is12MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 12 : false,
+                        newPlanDescription,
+                        newPlanFee,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { _emailSettings.Value.AdminEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return Task.WhenAll(upgradePlanAdminEmail);
+        }
+
+        public Task SendNotificationForUpdateLandingPlan(
+            string accountname,
+            User userInformation,
+            UserBillingInformation userBillingInformation,
+            IList<LandingPlan> availableLandingPlans,
+            IList<LandingPlanUser> currentLandingPlans,
+            IList<LandingPlanUser> newLandingPlans,
+            BillingCredit landingBillingCredit,
+            PlanAmountDetails amountDetails)
+        {
+            string currentPlanDescription = "";
+            decimal currentPlanFee = 0;
+            foreach (LandingPlanUser currentPlan in currentLandingPlans)
+            {
+                string planDescription = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == currentPlan.IdLandingPlan).Description;
+                currentPlanDescription += $"[{planDescription} x {currentPlan.PackQty}]";
+                currentPlanFee += currentPlan.PackQty * currentPlan.Fee;
+            }
+
+            string newPlanDescription = "";
+            decimal newPlanFee = 0;
+            foreach (LandingPlanUser newPlan in newLandingPlans)
+            {
+                string planDescription = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == newPlan.IdLandingPlan).Description;
+                newPlanDescription += $"[{planDescription} x {newPlan.PackQty}]";
+                newPlanFee += newPlan.PackQty * newPlan.Fee;
+            }
+
+            var templateAdmin = _emailSettings.Value.UpdateLandingAdminTemplateId;
+
+            var updatePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        user = accountname,
+                        client = $"{userInformation.FirstName} {userInformation.LastName}",
+                        address = userInformation.Address,
+                        phone = userInformation.PhoneNumber,
+                        company = userInformation.Company,
+                        city = userInformation.CityName,
+                        state = userInformation.BillingStateName,
+                        zipCode = userInformation.ZipCode,
+                        language = userInformation.Language,
+                        country = userInformation.BillingCountryName,
+                        vendor = userInformation.Vendor,
+                        razonSocial = userInformation.RazonSocial,
+                        cuit = userInformation.CUIT,
+                        isConsumerCF = userInformation.IdConsumerType == (int)ConsumerTypeEnum.CF,
+                        isConsumerRFC = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RFC,
+                        isConsumerRI = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RI,
+                        isEmptyConsumer = userInformation.IdConsumerType == 0,
+                        billingEmails = userInformation.BillingEmails,
+                        isCfdiUseG03 = userBillingInformation.CFDIUse == "G03",
+                        isCfdiUseP01 = userBillingInformation.CFDIUse == "P01",
+                        isPaymentTypePPD = userBillingInformation.PaymentType == "PPD",
+                        isPaymentTypePUE = userBillingInformation.PaymentType == "PUE",
+                        isPaymentWayCash = userBillingInformation.PaymentWay == "CASH",
+                        isPaymentWayCheck = userBillingInformation.PaymentWay == "CHECK",
+                        isPaymentWayTransfer = userBillingInformation.PaymentWay == "TRANSFER",
+                        bankName = userBillingInformation.BankName,
+                        bankAccount = userBillingInformation.BankAccount,
+                        taxRegime = userBillingInformation.TaxRegimeDescription,
+                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        hasDiscountPaymentAlreadyPaid = amountDetails != null && amountDetails.DiscountPaymentAlreadyPaid > 0,
+                        discountPaymentAlreadyPaid = amountDetails != null && amountDetails.DiscountPaymentAlreadyPaid > 0 ? amountDetails.DiscountPaymentAlreadyPaid : 0,
+                        hasDiscountPrepayment = amountDetails?.DiscountPrepayment != null && amountDetails.DiscountPrepayment.Amount > 0,
+                        discountPrepaymentPercentage = amountDetails?.DiscountPrepayment != null && amountDetails.DiscountPrepayment.DiscountPercentage > 0 ? amountDetails.DiscountPrepayment.DiscountPercentage : 0,
+                        discountPrepaymentAmount = amountDetails?.DiscountPrepayment != null && amountDetails.DiscountPrepayment.Amount > 0 ? amountDetails.DiscountPrepayment.Amount : 0,
+                        hasDiscountPlanFeeAdmin = amountDetails?.DiscountPlanFeeAdmin != null && amountDetails.DiscountPlanFeeAdmin.Amount > 0,
+                        discountPlanFeeAdminAmount = amountDetails?.DiscountPlanFeeAdmin != null && amountDetails.DiscountPlanFeeAdmin.Amount > 0 ? amountDetails.DiscountPlanFeeAdmin.Amount : 0,
+                        discountPlanFeeAdminPercentage = amountDetails?.DiscountPlanFeeAdmin != null && amountDetails.DiscountPlanFeeAdmin.DiscountPercentage > 0 ? amountDetails.DiscountPlanFeeAdmin.DiscountPercentage : 0,
+                        is1MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 1 : false,
+                        is3MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 3 : false,
+                        is6MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 6 : false,
+                        is12MonthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan == 12 : false,
+                        currentPlanDescription,
+                        currentPlanFee,
+                        newPlanDescription,
+                        newPlanFee,
+                        total = (amountDetails != null && amountDetails.Total > 0) ? amountDetails.Total : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: new[] { _emailSettings.Value.AdminEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return Task.WhenAll(updatePlanAdminEmail);
         }
     }
 }

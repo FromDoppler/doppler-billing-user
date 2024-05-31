@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.Model;
@@ -96,6 +98,27 @@ namespace Doppler.BillingUser.ExternalServices.AccountPlansApi
             catch (Exception e)
             {
                 _logger.LogError(e, $"Error to get total amount for user {accountName}.");
+                throw;
+            }
+        }
+
+        public async Task<PlanAmountDetails> GetCalculateLandingUpgrade(string accountName, IEnumerable<int> landingIds, IEnumerable<int> landingPacks)
+        {
+            try
+            {
+                var PlanAmountDetails = await new UriTemplate(_options.Value.CalculateLandingUrlTemplate)
+                    .AddParameter("accountname", accountName)
+                    .AddParameter("landingIds", string.Join<int>(",", landingIds))
+                    .AddParameter("landingPacks", string.Join<int>(",", landingPacks))
+                    .Resolve()
+                    .WithHeader("Authorization", $"Bearer {await _usersApiTokenGetter.GetTokenAsync()}")
+                    .GetJsonAsync<PlanAmountDetails>();
+
+                return PlanAmountDetails;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Error to get total landing amount for user {accountName}.");
                 throw;
             }
         }

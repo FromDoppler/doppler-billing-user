@@ -7,6 +7,7 @@ using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Services;
 using Flurl.Http.Testing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -69,7 +70,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
@@ -82,6 +83,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -107,7 +110,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -126,6 +129,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -151,7 +156,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -171,6 +176,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -196,7 +203,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -217,6 +224,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
                 });
 
@@ -242,7 +251,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -266,6 +275,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -292,7 +303,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -322,6 +333,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -348,7 +361,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -379,6 +392,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEncryptionService>());
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                 });
@@ -405,7 +420,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -455,6 +470,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(encryptionServiceMock.Object);
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
@@ -481,7 +498,7 @@ namespace Doppler.BillingUser.Test
             var buyLandingPlans = new BuyLandingPlans
             {
                 Total = 10,
-                LandingPlans = new List<LandingPlan>()
+                LandingPlans = new List<BuyLandingPlanItem>()
             };
 
             var user = new UserBillingInformation
@@ -544,6 +561,8 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ILandingPlanUserRepository>());
                     services.AddSingleton(Mock.Of<ISapService>());
                     services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
