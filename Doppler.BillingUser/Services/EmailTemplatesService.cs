@@ -770,7 +770,7 @@ namespace Doppler.BillingUser.Services
                         currentPlanFee,
                         newPlanDescription,
                         newPlanFee,
-                        total = amountDetails != null ? amountDetails.Total : 0,
+                        total = (amountDetails != null && amountDetails.Total > 0) ? amountDetails.Total : 0,
                         year = DateTime.UtcNow.Year
                     },
                     to: new[] { _emailSettings.Value.AdminEmail },
