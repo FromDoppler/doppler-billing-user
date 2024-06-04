@@ -1282,6 +1282,9 @@ namespace Doppler.BillingUser.Controllers
                 };
             }
 
+            var message = $"Successful buy landing plans for: User: {accountname}";
+            await _slackService.SendNotification(message);
+
             return new OkObjectResult($"Successful buy landing plans for: User: {accountname}");
         }
 
