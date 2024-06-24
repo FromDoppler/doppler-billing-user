@@ -5,6 +5,7 @@ using Moq;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Doppler.BillingUser.Test
@@ -44,7 +45,7 @@ namespace Doppler.BillingUser.Test
             };
 
         [Theory, MemberData(nameof(ConvertCurrencyData))]
-        public async void Convert_currency_amount(decimal rate, decimal amountInArs, PaymentAmountDetail expectedDetail)
+        public async Task Convert_currency_amount(decimal rate, decimal amountInArs, PaymentAmountDetail expectedDetail)
         {
 
             var currencyRepository = new Mock<ICurrencyRepository>();
