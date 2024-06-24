@@ -72,7 +72,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void Get_payment_by_id_returns_payment_when_mercadopagoapi_response_is_successful()
+        public async Task Get_payment_by_id_returns_payment_when_mercadopagoapi_response_is_successful()
         {
             // Arrange
             var expectedUrl = $"http://localhost:5000/doppler-mercadopago/accounts/test%40example.com/payment/{_paymentId}";
@@ -105,7 +105,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void Get_payment_by_id_throws_exception_when_mercadopagoapi_response_is_unsuccessful()
+        public async Task Get_payment_by_id_throws_exception_when_mercadopagoapi_response_is_unsuccessful()
         {
             // Arrange
             var service = new MercadoPagoService(
@@ -128,7 +128,7 @@ namespace Doppler.BillingUser.Test
         [Theory]
         [InlineData(MercadoPagoPaymentStatusEnum.Approved)]
         [InlineData(MercadoPagoPaymentStatusEnum.In_Process)]
-        public async void Create_payment_returns_payment_when_status_is_in_process_or_approved(MercadoPagoPaymentStatusEnum mercadoPagoPaymentStatus)
+        public async Task Create_payment_returns_payment_when_status_is_in_process_or_approved(MercadoPagoPaymentStatusEnum mercadoPagoPaymentStatus)
         {
             // Arrange
             var expectedUrl = "http://localhost:5000/doppler-mercadopago/accounts/test%40example.com/payment/";
@@ -164,7 +164,7 @@ namespace Doppler.BillingUser.Test
         [InlineData(MercadoPagoPaymentStatusEnum.Refunded)]
         [InlineData(MercadoPagoPaymentStatusEnum.Cancelled)]
         [InlineData(MercadoPagoPaymentStatusEnum.Charged_Back)]
-        public async void Create_payment_throws_doppler_application_exception_with_error_code_DeclinedPaymentTransaction_when_payment_status_is_not_in_process_or_approved(MercadoPagoPaymentStatusEnum mercadoPagoPaymentStatus)
+        public async Task Create_payment_throws_doppler_application_exception_with_error_code_DeclinedPaymentTransaction_when_payment_status_is_not_in_process_or_approved(MercadoPagoPaymentStatusEnum mercadoPagoPaymentStatus)
         {
             // Arrange
             var expectedUrl = "http://localhost:5000/doppler-mercadopago/accounts/test%40example.com/payment/";
@@ -197,7 +197,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void Create_payment_throws_doppler_application_exception_with_error_code_ClientPaymentTransactionError_when_mercadopagoapi_response_is_unsuccessful()
+        public async Task Create_payment_throws_doppler_application_exception_with_error_code_ClientPaymentTransactionError_when_mercadopagoapi_response_is_unsuccessful()
         {
             var expectedUrl = "http://localhost:5000/doppler-mercadopago/accounts/test%40example.com/payment/";
 

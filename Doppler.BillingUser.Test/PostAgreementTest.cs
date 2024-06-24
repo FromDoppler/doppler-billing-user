@@ -965,7 +965,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void POST_agreement_should_return_ok_when_promocode_is_null()
+        public async Task POST_agreement_should_return_ok_when_promocode_is_null()
         {
             // Arrange
             const string accountName = "test1@example.com";
@@ -1056,7 +1056,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void POST_agreement_should_return_internal_server_error_when_promocode_is_invalid()
+        public async Task POST_agreement_should_return_internal_server_error_when_promocode_is_invalid()
         {
             // Arrange
             const string accountName = "test1@example.com";
@@ -1106,7 +1106,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void POST_agreement_should_return_ok_when_promocode_is_valid()
+        public async Task POST_agreement_should_return_ok_when_promocode_is_valid()
         {
             // Arrange
             const string accountName = "test1@example.com";
@@ -1183,7 +1183,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void POST_agreement_should_increment_times_to_use_of_promocode_when_agreement_is_accomplished()
+        public async Task POST_agreement_should_increment_times_to_use_of_promocode_when_agreement_is_accomplished()
         {
             // Arrange
             const string accountName = "test1@example.com";
@@ -2007,7 +2007,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void POST_agreement_should_return_ok_when_update_plans_is_by_emails_or_contacts()
+        public async Task POST_agreement_should_return_ok_when_update_plans_is_by_emails_or_contacts()
         {
             // Arrange
             const string accountName = "test1@example.com";
@@ -2127,7 +2127,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async void POST_agreement_should_return_ok_when_update_plans_is_by_emails_or_contacts_and_use_Clover()
+        public async Task POST_agreement_should_return_ok_when_update_plans_is_by_emails_or_contacts_and_use_Clover()
         {
             // Arrange
             const string accountName = "test1@example.com";
