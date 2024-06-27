@@ -764,7 +764,7 @@ SELECT
 FROM
     [dbo].[AccountingEntry] AE
 WHERE
-    idClient = @idClient AND [Status] IN @statusCondition",
+    idClient = @idClient AND AccountingTypeDescription = 'Invoice' AND [Status] IN @statusCondition",
                 new
                 {
                     @idClient = idClient,
