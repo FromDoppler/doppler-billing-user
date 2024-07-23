@@ -27,6 +27,7 @@ using Doppler.BillingUser.ExternalServices.StaticDataCllient;
 using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.TimeCollector;
+using Doppler.BillingUser.ExternalServices.BeplicApi;
 
 namespace Doppler.BillingUser
 {
@@ -123,6 +124,8 @@ namespace Doppler.BillingUser
             services.AddScoped<ILandingPlanUserRepository, LandingPlanUserRepository>();
             services.AddScoped<IUserAddOnRepository, UserAddOnRepository>();
             services.AddScoped<ILandingPlanRepository, LandingPlanRepository>();
+            services.Configure<BeplicSettings>(Configuration.GetSection(nameof(BeplicSettings)));
+            services.AddScoped<IBeplicService, BeplicService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
