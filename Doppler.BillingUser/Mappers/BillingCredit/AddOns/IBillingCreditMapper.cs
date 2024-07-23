@@ -2,7 +2,7 @@ using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Model;
 using System.Threading.Tasks;
 
-namespace Doppler.BillingUser.Mappers.BillingCredit.LandingPlan
+namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
 {
     public interface IBillingCreditMapper
     {

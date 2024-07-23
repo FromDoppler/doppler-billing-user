@@ -126,6 +126,8 @@ namespace Doppler.BillingUser
             services.AddScoped<ILandingPlanRepository, LandingPlanRepository>();
             services.Configure<BeplicSettings>(Configuration.GetSection(nameof(BeplicSettings)));
             services.AddScoped<IBeplicService, BeplicService>();
+            services.AddScoped<IChatPlanRepository, ChatPlanRepository>();
+            services.AddScoped<IChatPlanUserRepository, ChatPlanUserRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

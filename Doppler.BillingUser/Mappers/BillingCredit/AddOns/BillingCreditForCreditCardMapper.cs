@@ -2,26 +2,21 @@ using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Model;
-using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Utils;
 using System;
 using System.Threading.Tasks;
 
-namespace Doppler.BillingUser.Mappers.BillingCredit.LandingPlan
+namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
 {
-    public class BillingCreditForMercadopagoMapper : IBillingCreditMapper
+    public class BillingCreditForCreditCardMapper : IBillingCreditMapper
     {
         private readonly IBillingRepository _billingRepository;
-        private readonly ICurrencyRepository _currencyRepository;
         private readonly IEncryptionService _encryptionService;
-        private readonly IPaymentAmountHelper _paymentAmountService;
-        private const int CF = 1;
 
-        public BillingCreditForMercadopagoMapper(IBillingRepository billingRepository, IEncryptionService encryptionService, IPaymentAmountHelper paymentAmountService)
+        public BillingCreditForCreditCardMapper(IBillingRepository billingRepository, IEncryptionService encryptionService)
         {
             _billingRepository = billingRepository;
             _encryptionService = encryptionService;
-            _paymentAmountService = paymentAmountService;
         }
 
         public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(decimal total, UserBillingInformation user, Model.BillingCredit currentBillingCredit, CreditCardPayment payment, BillingCreditTypeEnum billingCreditType)
@@ -41,35 +36,27 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.LandingPlan
                 CCIdentificationNumber = CreditCardHelper.ObfuscateNumber(_encryptionService.DecryptAES256(currentPaymentMethod.CCNumber)),
                 CCNumber = currentPaymentMethod.CCNumber,
                 CCVerification = currentPaymentMethod.CCVerification,
-                IdConsumerType = CF,
+                IdConsumerType = !string.IsNullOrEmpty(currentPaymentMethod.IdConsumerType) ? int.Parse(currentPaymentMethod.IdConsumerType) : null,
                 RazonSocial = currentPaymentMethod.RazonSocial,
                 ResponsableIVA = user.ResponsableIVA,
                 Cuit = currentPaymentMethod.IdentificationNumber,
-                IdResponsabileBilling = (int)ResponsabileBillingEnum.Mercadopago
+                IdResponsabileBilling = (int)ResponsabileBillingEnum.QBL
             };
 
             DateTime now = DateTime.UtcNow;
-            var isUpgradePending = BillingHelper.IsUpgradePending(user, null, payment);
-
-            buyCreditAgreement.BillingCredit = new BillingCreditModel()
+            buyCreditAgreement.BillingCredit = new BillingCreditModel
             {
                 Date = now,
-                PaymentDate = !isUpgradePending ? now : null,
-                ActivationDate = !isUpgradePending ? now : null,
-                Approved = !isUpgradePending,
-                Payed = !isUpgradePending,
+                PaymentDate = now,
+                ActivationDate = now,
+                Approved = true,
+                Payed = true,
                 PlanFee = (double)total,
                 IdBillingCreditType = (int)billingCreditType,
                 TotalMonthPlan = currentBillingCredit.TotalMonthPlan,
                 IdDiscountPlan = currentBillingCredit.IdDiscountPlan,
                 CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan
             };
-
-            if (total != 0)
-            {
-                var amountDetails = await _paymentAmountService.ConvertCurrencyAmount(CurrencyTypeEnum.UsS, CurrencyTypeEnum.sARG, total);
-                buyCreditAgreement.BillingCredit.Taxes = (double)amountDetails.Taxes;
-            }
 
             return buyCreditAgreement;
         }

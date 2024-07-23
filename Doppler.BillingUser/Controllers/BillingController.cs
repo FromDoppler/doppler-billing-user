@@ -5,6 +5,7 @@ using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using Doppler.BillingUser.ExternalServices.Aws;
+using Doppler.BillingUser.ExternalServices.BeplicApi;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
@@ -73,6 +74,9 @@ namespace Doppler.BillingUser.Controllers
         private readonly ILandingPlanUserRepository _landingPlanUserRepository;
         private readonly IUserAddOnRepository _userAddOnRepository;
         private readonly ILandingPlanRepository _landingPlanRepository;
+        private readonly IChatPlanRepository _chatPlanRepository;
+        private readonly IBeplicService _beplicService;
+        private readonly IChatPlanUserRepository _chatPlanUserRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -142,7 +146,10 @@ namespace Doppler.BillingUser.Controllers
             ITimeCollector timeCollector,
             ILandingPlanUserRepository landingPlanUserRepository,
             IUserAddOnRepository userAddOnRepository,
-            ILandingPlanRepository landingPlanRepository)
+            ILandingPlanRepository landingPlanRepository,
+            IChatPlanRepository chatPlanRepository,
+            IBeplicService beplicService,
+            IChatPlanUserRepository chatPlanUserRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -173,6 +180,9 @@ namespace Doppler.BillingUser.Controllers
             _landingPlanUserRepository = landingPlanUserRepository;
             _userAddOnRepository = userAddOnRepository;
             _landingPlanRepository = landingPlanRepository;
+            _chatPlanRepository = chatPlanRepository;
+            _beplicService = beplicService;
+            _chatPlanUserRepository = chatPlanUserRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -686,6 +696,31 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpGet("/accounts/{accountname}/plans/{planType}/current")]
+        public async Task<IActionResult> GetCurrentPlanByType(string accountname, [FromRoute] int planType)
+        {
+            _logger.LogDebug("Get current plan.");
+
+            CurrentPlan currentPlan = null;
+            switch (planType)
+            {
+                case (int)PlanTypeEnum.Marketing:
+                    currentPlan = await _billingRepository.GetCurrentPlan(accountname);
+                    break;
+                case (int)PlanTypeEnum.Chat:
+                    currentPlan = await _chatPlanUserRepository.GetCurrentPlan(accountname);
+                    break;
+            }
+
+            if (currentPlan == null)
+            {
+                return new NotFoundResult();
+            }
+
+            return new OkObjectResult(currentPlan);
+        }
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
         [HttpPost("/accounts/{accountname}/agreements")]
         public async Task<IActionResult> CreateAgreement([FromRoute] string accountname, [FromBody] AgreementInformation agreementInformation)
         {
@@ -784,6 +819,21 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("Invalid selected plan type");
                 }
 
+                //if (agreementInformation.AdditionalServices != null && agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
+                //{
+                //    var additionalServiceChatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
+                //    var chatPlan = await _chatPlanRepository.GetById(additionalServiceChatPlan.PlanId ?? 0);
+                //    var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+
+                //    if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
+                //    {
+                //        var messageError = $"Failed at creating new agreement for user {accountname}, Invalid selected chat plan {chatPlan.IdChatPlan}. Only supports upselling.";
+                //        _logger.LogError(messageError);
+                //        await _slackService.SendNotification(messageError);
+                //        return new BadRequestObjectResult("Invalid selected chat plan. Only supports upselling.");
+                //    }
+                //}
+
                 //TODO: Check the current error
                 //var isValidTotal = await _accountPlansService.IsValidTotal(accountname, agreementInformation);
                 //if (!isValidTotal)
@@ -856,10 +906,9 @@ namespace Doppler.BillingUser.Controllers
                     var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, null, BillingCreditTypeEnum.UpgradeRequest);
                     billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
-                    var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
-
                     if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
                     {
+                        var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
                         var chatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
                         var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.PlanId.Value, billingCreditId);
                         await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
@@ -943,10 +992,18 @@ namespace Doppler.BillingUser.Controllers
                             billingCreditId = await BuyCredits(currentPlan, newPlan, user, agreementInformation, promotion, payment);
                         }
                     }
+                }
 
-                    if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
+                if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
+                {
+                    billingCreditId = await BuyChatPlan(user, agreementInformation, payment);
+                }
+                else
+                {
+                    var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+                    if (currentChatPlan != null)
                     {
-                        billingCreditId = await ChangeToChatPlan(user, agreementInformation, billingCreditId > 0);
+                        await CancelChatPlan(user);
                     }
                 }
 
@@ -965,8 +1022,8 @@ namespace Doppler.BillingUser.Controllers
                     {
                         if (additionalService.Type == AdditionalServiceTypeEnum.Chat)
                         {
-                            var conversationPlan = await _userRepository.GetConversationPlan(additionalService.PlanId.Value);
-                            var planFee = (double)conversationPlan.PlanFee * (billingCredit.TotalMonthPlan ?? 1);
+                            var conversationPlan = await _chatPlanRepository.GetById(additionalService.PlanId.Value);
+                            var planFee = (double)conversationPlan.Fee * (billingCredit.TotalMonthPlan ?? 1);
                             sapAdditionalServices.Add(new SapAdditionalServiceDto { Charge = planFee, ConversationQty = conversationPlan.ConversationQty, Type = AdditionalServiceTypeEnum.Chat });
                         }
                     }
@@ -1216,7 +1273,7 @@ namespace Doppler.BillingUser.Controllers
                                         user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Landing_Buyed_CC : BillingCreditTypeEnum.Landing_Request :
                                         BillingCreditTypeEnum.Downgrade_Between_Landings;
 
-                var billingCreditMapper = GetLandingBillingCreditMapper(user.PaymentMethod);
+                var billingCreditMapper = GetAddOnBillingCreditMapper(user.PaymentMethod);
 
                 var total = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
                 var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
@@ -1494,18 +1551,18 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private Mappers.BillingCredit.LandingPlan.IBillingCreditMapper GetLandingBillingCreditMapper(PaymentMethodEnum paymentMethod)
+        private Mappers.BillingCredit.AddOns.IBillingCreditMapper GetAddOnBillingCreditMapper(PaymentMethodEnum paymentMethod)
         {
             switch (paymentMethod)
             {
                 case PaymentMethodEnum.CC:
-                    return new Mappers.BillingCredit.LandingPlan.BillingCreditForCreditCardMapper(_billingRepository, _encryptionService);
+                    return new Mappers.BillingCredit.AddOns.BillingCreditForCreditCardMapper(_billingRepository, _encryptionService);
                 case PaymentMethodEnum.MP:
-                    return new Mappers.BillingCredit.LandingPlan.BillingCreditForMercadopagoMapper(_billingRepository, _encryptionService, _paymentAmountService);
+                    return new Mappers.BillingCredit.AddOns.BillingCreditForMercadopagoMapper(_billingRepository, _encryptionService, _paymentAmountService);
                 case PaymentMethodEnum.TRANSF:
-                    return new Mappers.BillingCredit.LandingPlan.BillingCreditForTransferMapper(_billingRepository);
+                    return new Mappers.BillingCredit.AddOns.BillingCreditForTransferMapper(_billingRepository);
                 case PaymentMethodEnum.DA:
-                    return new Mappers.BillingCredit.LandingPlan.BillingCreditForAutomaticDebitMapper(_billingRepository);
+                    return new Mappers.BillingCredit.AddOns.BillingCreditForAutomaticDebitMapper(_billingRepository);
                 default:
                     _logger.LogError($"The paymentMethod '{paymentMethod}' does not have a mapper.");
                     throw new ArgumentException($"The paymentMethod '{paymentMethod}' does not have a mapper.");
@@ -1940,39 +1997,78 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private async Task<int> ChangeToChatPlan(UserBillingInformation user, AgreementInformation agreementInformation, bool updateMarketingPlan)
+        private async Task<int> BuyChatPlan(UserBillingInformation user, AgreementInformation agreementInformation, CreditCardPayment payment)
         {
             var billingCreditId = 0;
 
-            if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
+            if (user.PaymentMethod == PaymentMethodEnum.CC)
             {
-                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
-                billingCreditId = currentBillingCredit.IdBillingCredit;
-
-                if (!updateMarketingPlan)
+                if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
                 {
-                    var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-                    var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(user, currentBillingCredit);
-                    billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+                    var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+                    var additionalServiceChatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
+                    var chatPlan = await _chatPlanRepository.GetById(additionalServiceChatPlan.PlanId ?? 0);
+
+                    if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.ConversationQty != chatPlan.ConversationQty))
+                    {
+                        var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
+                        var isPaymentPending = BillingHelper.IsUpgradePending(user, null, payment);
+
+                        var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
+                        if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
+                        {
+                            billingCreditType = BillingCreditTypeEnum.Downgrade_Between_Conversation;
+                        }
+
+                        var billingCreditMapper = GetAddOnBillingCreditMapper(user.PaymentMethod);
+
+                        var total = chatPlan.Fee;
+                        var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
+
+                        billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+
+                        var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
+                        var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.IdChatPlan, billingCreditId);
+                        await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
+
+                        /* Save current billing credit in the UserAddOn table */
+                        await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.Chat, billingCreditId);
+
+                        try
+                        {
+                            if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
+                            {
+                                await _beplicService.UnassignPlanToUser(user.IdUser);
+                            }
+
+                            await _beplicService.AssignPlanToUser(user.IdUser, chatPlan.Description);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, message: ex.Message);
+                            await _slackService.SendNotification(ex.Message);
+                        }
+                    }
                 }
-
-                var chatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
-                var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
-                var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.PlanId.Value, billingCreditId);
-                await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
-
-                /* Update the user */
-                user.IdCurrentBillingCredit = billingCreditId;
-                user.OriginInbound = agreementInformation.OriginInbound;
-                user.UpgradePending = false;
-
-                await _userRepository.UpdateUserBillingCredit(user);
-
-                var status = PaymentStatusEnum.Approved.ToDescription();
-                await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
             }
 
             return billingCreditId;
+        }
+
+        private async Task CancelChatPlan(UserBillingInformation user)
+        {
+            UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)AddOnType.Chat);
+
+            if (userAddOn != null)
+            {
+                var currentChatPlanBillingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
+
+                if (currentChatPlanBillingCredit != null && currentChatPlanBillingCredit.IdBillingCreditType != (int)BillingCreditTypeEnum.Conversation_Canceled)
+                {
+                    await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Conversation_Canceled);
+                    await _beplicService.UnassignPlanToUser(user.IdUser);
+                }
+            }
         }
     }
 }

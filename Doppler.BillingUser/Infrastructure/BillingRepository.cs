@@ -224,11 +224,11 @@ SELECT
     (CASE WHEN T.IdUserType != 4 THEN PartialBalance.Total ELSE T.SubscribersQty - ISNULL(Subscribers.Total, 0) END) AS RemainingCredits
 FROM
     [BillingCredits] B
-LEFT JOIN
+INNER JOIN
     [UserTypesPlans] T ON T.[IdUserTypePlan] = B.[IdUserTypePlan]
 LEFT JOIN
     [DiscountXPlan] D ON D.[IdDiscountPlan] = B.[IdDiscountPlan]
-LEFT JOIN
+INNER JOIN
     [UserTypes] UT ON UT.[IdUserType] = T.[IdUserType]
 OUTER APPLY (SELECT TOP 1 MC.[PartialBalance] AS Total
     FROM [dbo].[MovementsCredits] MC

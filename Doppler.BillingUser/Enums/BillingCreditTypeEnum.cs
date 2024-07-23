@@ -13,6 +13,10 @@ namespace Doppler.BillingUser.Enums
         Landing_Request = 23,
         Landing_Buyed_CC = 24,
         Landing_Canceled = 25,
-        Downgrade_Between_Landings = 26
+        Downgrade_Between_Landings = 26,
+        Conversation_Buyed_CC = 28,
+        Conversation_Request = 29,
+        Conversation_Canceled = 30,
+        Downgrade_Between_Conversation = 31,
     }
 }
