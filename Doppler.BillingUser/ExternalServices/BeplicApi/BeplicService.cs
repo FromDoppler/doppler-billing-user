@@ -46,6 +46,19 @@ namespace Doppler.BillingUser.ExternalServices.BeplicApi
             }
         }
 
+        public async Task UnassignPlanToUser(int userId)
+        {
+            try
+            {
+                await UnassignBeplicPlanToCustomer(userId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error");
+                throw;
+            }
+        }
+
         private async Task<PlanResponse> GetBeplicPlanByName(string planName)
         {
             var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/plan")
@@ -73,6 +86,21 @@ namespace Doppler.BillingUser.ExternalServices.BeplicApi
                 .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
                 .PostJsonAsync(new { idExternal = userId.ToString(), idPlan = idBeplicPlan.ToString() })
                 .ReceiveJson<PlanAssignResponse>();
+
+            if (!response.Success)
+            {
+                throw new Exception(!string.IsNullOrWhiteSpace(response?.Error) ? response.Error : "Error assigning the plan to the user");
+            }
+        }
+
+        private async Task UnassignBeplicPlanToCustomer(int userId)
+        {
+            var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/plan/customer/{userId}/cancellation")
+                .Resolve())
+                .AllowHttpStatus("4xx")
+                .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
+                .PutAsync()
+                .ReceiveJson<PlanUnassignResponse>();
 
             if (!response.Success)
             {
