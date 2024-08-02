@@ -8,5 +8,7 @@ namespace Doppler.BillingUser.Model
         public int RemainingCredits { get; set; }
         public int? EmailQty { get; set; }
         public int? SubscribersQty { get; set; }
+        public int? ConversationQty { get; set; }
+        public string Description { get; set; }
     }
 }

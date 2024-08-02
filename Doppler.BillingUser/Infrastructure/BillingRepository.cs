@@ -224,11 +224,11 @@ SELECT
     (CASE WHEN T.IdUserType != 4 THEN PartialBalance.Total ELSE T.SubscribersQty - ISNULL(Subscribers.Total, 0) END) AS RemainingCredits
 FROM
     [BillingCredits] B
-LEFT JOIN
+INNER JOIN
     [UserTypesPlans] T ON T.[IdUserTypePlan] = B.[IdUserTypePlan]
 LEFT JOIN
     [DiscountXPlan] D ON D.[IdDiscountPlan] = B.[IdDiscountPlan]
-LEFT JOIN
+INNER JOIN
     [UserTypes] UT ON UT.[IdUserType] = T.[IdUserType]
 OUTER APPLY (SELECT TOP 1 MC.[PartialBalance] AS Total
     FROM [dbo].[MovementsCredits] MC
@@ -685,6 +685,10 @@ SELECT
     BC.[IdDiscountPlan],
     BC.[TotalMonthPlan],
     BC.[CurrentMonthPlan],
+    BC.[PromotionDuration],
+    BC.[ExtraEmailFee],
+    BC.[Taxes],
+    BC.[IdBillingCreditType],
     UTP.[IdUserType]
 FROM
     [dbo].[BillingCredits] BC
@@ -1326,6 +1330,38 @@ WHERE [IdImportedBillingDetail] = @idImportedBillingDetail;",
             {
                 idImportedBillingDetail
             });
+        }
+
+        public async Task<int> CreateChatPlanUserAsync(ChatPlanUser chatPlanUser)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var result = await connection.QueryAsync<int>(@"
+INSERT INTO [dbo].[ChatPlanUsers]
+    ([IdUser],
+    [IdChatPlan],
+    [Activated],
+    [ActivationDate],
+    [IdBillingCredit],
+    [CreatedAt])
+VALUES
+    (@idUser,
+    @iIdChatPlan,
+    @activated,
+    @activationDate,
+    @idBillingCredit,
+    @createdAt);
+SELECT CAST(SCOPE_IDENTITY() AS INT)",
+            new
+            {
+                @idUser = chatPlanUser.IdUser,
+                @iIdChatPlan = chatPlanUser.IdChatPlan,
+                @activated = chatPlanUser.Activated,
+                @activationDate = chatPlanUser.ActivationDate,
+                @idBillingCredit = chatPlanUser.IdBillingCredit,
+                @createdAt = DateTime.UtcNow
+            });
+
+            return result.FirstOrDefault();
         }
 
         public async Task<BillingCredit> GetCurrentBillingCreditForLanding(int userId)

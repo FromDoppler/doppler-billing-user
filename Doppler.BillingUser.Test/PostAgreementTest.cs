@@ -72,6 +72,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(accountPlansServiceMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(Mock.Of<IChatPlanUserRepository>());
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
@@ -157,6 +158,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -169,6 +173,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
@@ -347,6 +352,9 @@ namespace Doppler.BillingUser.Test
                 }
             );
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -361,6 +369,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(zohoServiceMock.Object);
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -586,6 +595,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -596,6 +608,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -762,6 +775,9 @@ namespace Doppler.BillingUser.Test
             accountServiceMock.Setup(x => x.IsValidTotal(It.IsAny<string>(), It.IsAny<AgreementInformation>()))
                 .ReturnsAsync(true);
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -772,6 +788,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISlackService>());
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
                     services.AddSingleton(Mock.Of<IEncryptionService>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -940,6 +957,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -950,6 +970,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -1028,6 +1049,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1039,6 +1063,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             });
@@ -1159,6 +1184,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1170,6 +1198,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IPromotionRepository>());
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             });
             var client = factory.CreateClient(new WebApplicationFactoryClientOptions());
@@ -1236,6 +1265,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var promotionRepositoryMock = new Mock<IPromotionRepository>();
             var factory = _factory.WithWebHostBuilder(builder =>
             {
@@ -1248,6 +1280,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(promotionRepositoryMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             });
             var client = factory.CreateClient(new WebApplicationFactoryClientOptions());
@@ -1310,6 +1343,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1320,6 +1356,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(GetSlackSettingsMock().Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
                     services.AddSingleton(encryptionServiceMock.Object);
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             });
@@ -1435,6 +1472,9 @@ namespace Doppler.BillingUser.Test
             zohoServiceMock.Setup(x => x.UpdateZohoEntityAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
                 .ThrowsAsync(new Exception());
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1449,6 +1489,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(GetZohoServiceSettingsMock().Object);
                     services.AddSingleton(zohoServiceMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             });
 
@@ -1548,6 +1589,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1560,6 +1604,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
@@ -1698,6 +1743,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1709,6 +1757,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
@@ -1842,6 +1891,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1854,6 +1906,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
@@ -1932,6 +1985,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -1943,6 +1999,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
             client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
@@ -2101,6 +2158,9 @@ namespace Doppler.BillingUser.Test
             var paymentGatewayMock = new Mock<IPaymentGateway>();
             paymentGatewayMock.Setup(x => x.CreateCreditCardPayment(It.IsAny<decimal>(), It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>())).ReturnsAsync("ET123456");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -2114,6 +2174,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(emailSenderMock.Object);
                     services.AddSingleton(Mock.Of<ISapService>());
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             });
             var client = factory.CreateClient(new WebApplicationFactoryClientOptions());
@@ -2221,6 +2282,9 @@ namespace Doppler.BillingUser.Test
             var cloverServiceMock = new Mock<ICloverService>();
             cloverServiceMock.Setup(x => x.CreateCreditCardPayment(It.IsAny<string>(), It.IsAny<decimal>(), It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>())).ReturnsAsync("ET123456");
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var factory = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -2236,6 +2300,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<ISapService>());
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
                     services.AddSingleton(GetCloverSettingsMock().Object);
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
             });
             var client = factory.CreateClient(new WebApplicationFactoryClientOptions());

@@ -7,5 +7,6 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
     public interface IBillingCreditMapper
     {
         Task<BillingCreditAgreement> MapToBillingCreditAgreement(AgreementInformation agreementInformation, UserBillingInformation user, UserTypePlanInformation newUserTypePlan, Promotion promotion, CreditCardPayment payment, Model.BillingCredit currentBillingCredit, BillingCreditTypeEnum billingCreditType);
+        Task<BillingCreditAgreement> MapToBillingCreditAgreement(UserBillingInformation user, Model.BillingCredit currentBillingCredit);
     }
 }

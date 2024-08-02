@@ -5,7 +5,7 @@ using Doppler.BillingUser.Utils;
 using System;
 using System.Threading.Tasks;
 
-namespace Doppler.BillingUser.Mappers.BillingCredit.LandingPlan
+namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
 {
     public class BillingCreditForTransferMapper : IBillingCreditMapper
     {

@@ -137,6 +137,9 @@ namespace Doppler.BillingUser.Test
                     Url = "https://hooks.slack.com/services/test"
                 });
 
+            var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
+            chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
+
             var client = factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -150,6 +153,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(slackSettingsMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
+                    services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
