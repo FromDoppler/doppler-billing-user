@@ -53,16 +53,19 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
             buyCreditAgreement.BillingCredit = new BillingCreditModel()
             {
                 Date = now,
-                PaymentDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request) ? !isUpgradePending ? now : null : null,
-                ActivationDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request) ? !isUpgradePending ? now : null : now,
-                Approved = (billingCreditType != BillingCreditTypeEnum.Landing_Request) || !isUpgradePending,
-                Payed = (billingCreditType == BillingCreditTypeEnum.Landing_Request) && !isUpgradePending,
+                PaymentDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request ||
+                                billingCreditType == BillingCreditTypeEnum.Conversation_Request) ? !isUpgradePending ? now : null : now,
+                ActivationDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request ||
+                                billingCreditType == BillingCreditTypeEnum.Conversation_Request) ? !isUpgradePending ? now : null : now,
+                Approved = (billingCreditType != BillingCreditTypeEnum.Landing_Request && billingCreditType != BillingCreditTypeEnum.Conversation_Request) || !isUpgradePending,
                 PlanFee = (double)total,
                 IdBillingCreditType = (int)billingCreditType,
                 TotalMonthPlan = currentBillingCredit.TotalMonthPlan,
                 IdDiscountPlan = currentBillingCredit.IdDiscountPlan,
                 CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan
             };
+
+            buyCreditAgreement.BillingCredit.Payed = buyCreditAgreement.BillingCredit.PaymentDate != null;
 
             //Calculate the BillingSystem
             buyCreditAgreement.IdResponsabileBilling = CalculateBillingSystemByTransfer(user.IdBillingCountry);

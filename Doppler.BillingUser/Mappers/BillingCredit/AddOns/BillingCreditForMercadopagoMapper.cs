@@ -54,16 +54,19 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
             buyCreditAgreement.BillingCredit = new BillingCreditModel()
             {
                 Date = now,
-                PaymentDate = !isUpgradePending ? now : null,
-                ActivationDate = !isUpgradePending ? now : null,
-                Approved = !isUpgradePending,
-                Payed = !isUpgradePending,
+                PaymentDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request ||
+                                billingCreditType == BillingCreditTypeEnum.Conversation_Request) ? !isUpgradePending ? now : null : now,
+                ActivationDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request ||
+                                billingCreditType == BillingCreditTypeEnum.Conversation_Request) ? !isUpgradePending ? now : null : now,
+                Approved = (billingCreditType != BillingCreditTypeEnum.Landing_Request && billingCreditType != BillingCreditTypeEnum.Conversation_Request) || !isUpgradePending,
                 PlanFee = (double)total,
                 IdBillingCreditType = (int)billingCreditType,
                 TotalMonthPlan = currentBillingCredit.TotalMonthPlan,
                 IdDiscountPlan = currentBillingCredit.IdDiscountPlan,
                 CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan
             };
+
+            buyCreditAgreement.BillingCredit.Payed = buyCreditAgreement.BillingCredit.PaymentDate != null;
 
             if (total != 0)
             {
