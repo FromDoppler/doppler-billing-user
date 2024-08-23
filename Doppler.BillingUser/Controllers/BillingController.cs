@@ -994,13 +994,13 @@ namespace Doppler.BillingUser.Controllers
                     }
                 }
 
+                var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
                 if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
                 {
                     billingCreditId = await BuyChatPlan(user, agreementInformation, payment);
                 }
                 else
                 {
-                    var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
                     if (currentChatPlan != null)
                     {
                         await CancelChatPlan(user);
@@ -1013,21 +1013,13 @@ namespace Doppler.BillingUser.Controllers
                     (user.PaymentMethod == PaymentMethodEnum.TRANSF && user.IdBillingCountry == (int)CountryEnum.Argentina) ||
                     (user.PaymentMethod == PaymentMethodEnum.DA)))
                 {
-                    var billingCredit = await _billingRepository.GetBillingCredit(billingCreditId);
+                    var billingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
                     var cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
                     var holderName = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
+                    var sapAdditionalServices = await GenerateAdditionalServcies(agreementInformation, user, billingCredit, currentChatPlan);
 
-                    var sapAdditionalServices = new List<SapAdditionalServiceDto>();
-                    foreach (var additionalService in agreementInformation.AdditionalServices)
-                    {
-                        if (additionalService.Type == AdditionalServiceTypeEnum.Chat)
-                        {
-                            var conversationPlan = await _chatPlanRepository.GetById(additionalService.PlanId.Value);
-                            var planFee = (double)conversationPlan.Fee * (billingCredit.TotalMonthPlan ?? 1);
-                            sapAdditionalServices.Add(new SapAdditionalServiceDto { Charge = planFee, ConversationQty = conversationPlan.ConversationQty, Type = AdditionalServiceTypeEnum.Chat });
-                        }
-                    }
-
+                    var totalChatPlan = sapAdditionalServices.Sum(c => c.Charge);
+                    var total = agreementInformation.Total - (decimal)totalChatPlan;
                     if (billingCredit != null)
                     {
                         await _sapService.SendBillingToSap(
@@ -1039,7 +1031,7 @@ namespace Doppler.BillingUser.Controllers
                                 newPlan,
                                 authorizationNumber,
                                 invoiceId,
-                                agreementInformation.Total,
+                                total,
                                 sapAdditionalServices),
                             accountname);
                     }
@@ -1143,6 +1135,36 @@ namespace Doppler.BillingUser.Controllers
                     Value = e.Message,
                 };
             }
+        }
+
+        private async Task<List<SapAdditionalServiceDto>> GenerateAdditionalServcies(AgreementInformation agreementInformation, UserBillingInformation user, BillingCredit billingCredit, CurrentPlan currentChatPlan)
+        {
+            var sapAdditionalServices = new List<SapAdditionalServiceDto>();
+            foreach (var additionalService in agreementInformation.AdditionalServices)
+            {
+                if (additionalService.Type == AdditionalServiceTypeEnum.Chat)
+                {
+                    var conversationPlan = await _chatPlanRepository.GetById(additionalService.PlanId.Value);
+                    var isUpSelling = (currentChatPlan != null && currentChatPlan.Fee > 0);
+
+                    if ((currentChatPlan != null && currentChatPlan.ConversationQty != conversationPlan.ConversationQty) ||
+                        currentChatPlan == null)
+                    {
+                        var planFee = (double)conversationPlan.Fee * (billingCredit.TotalMonthPlan ?? 1);
+                        var sapAdditionalServiceDto = new SapAdditionalServiceDto
+                        {
+                            Charge = !isUpSelling ? planFee : (double)additionalService.Charge.Value,
+                            ConversationQty = conversationPlan.ConversationQty,
+                            IsUpSelling = isUpSelling,
+                            Type = AdditionalServiceTypeEnum.Chat
+                        };
+
+                        sapAdditionalServices.Add(sapAdditionalServiceDto);
+                    }
+                }
+            }
+
+            return sapAdditionalServices;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
@@ -1986,6 +2008,9 @@ namespace Doppler.BillingUser.Controllers
             switch (paymentMethod)
             {
                 case PaymentMethodEnum.CC:
+                case PaymentMethodEnum.MP:
+                case PaymentMethodEnum.TRANSF:
+                case PaymentMethodEnum.DA:
                     return new ChatPlanUserForCreditCardMapper();
                 //case PaymentMethodEnum.MP:
                 //    return new BillingCreditForMercadopagoMapper(_billingRepository, _encryptionService, _paymentAmountService);
@@ -2001,53 +2026,50 @@ namespace Doppler.BillingUser.Controllers
         {
             var billingCreditId = 0;
 
-            if (user.PaymentMethod == PaymentMethodEnum.CC)
+            if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
             {
-                if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
+                var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+                var additionalServiceChatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
+                var chatPlan = await _chatPlanRepository.GetById(additionalServiceChatPlan.PlanId ?? 0);
+
+                if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.ConversationQty != chatPlan.ConversationQty && currentChatPlan.Fee > 0))
                 {
-                    var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
-                    var additionalServiceChatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
-                    var chatPlan = await _chatPlanRepository.GetById(additionalServiceChatPlan.PlanId ?? 0);
+                    var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
+                    var isPaymentPending = BillingHelper.IsUpgradePending(user, null, payment);
 
-                    if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.ConversationQty != chatPlan.ConversationQty))
+                    var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
+                    if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
                     {
-                        var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
-                        var isPaymentPending = BillingHelper.IsUpgradePending(user, null, payment);
+                        billingCreditType = BillingCreditTypeEnum.Downgrade_Between_Conversation;
+                    }
 
-                        var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
-                        if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
+                    var billingCreditMapper = GetAddOnBillingCreditMapper(user.PaymentMethod);
+
+                    var total = chatPlan.Fee;
+                    var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
+
+                    billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+
+                    var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
+                    var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.IdChatPlan, billingCreditId);
+                    await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
+
+                    /* Save current billing credit in the UserAddOn table */
+                    await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.Chat, billingCreditId);
+
+                    try
+                    {
+                        if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
                         {
-                            billingCreditType = BillingCreditTypeEnum.Downgrade_Between_Conversation;
+                            await _beplicService.UnassignPlanToUser(user.IdUser);
                         }
 
-                        var billingCreditMapper = GetAddOnBillingCreditMapper(user.PaymentMethod);
-
-                        var total = chatPlan.Fee;
-                        var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
-
-                        billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
-
-                        var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
-                        var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.IdChatPlan, billingCreditId);
-                        await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
-
-                        /* Save current billing credit in the UserAddOn table */
-                        await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.Chat, billingCreditId);
-
-                        try
-                        {
-                            if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
-                            {
-                                await _beplicService.UnassignPlanToUser(user.IdUser);
-                            }
-
-                            await _beplicService.AssignPlanToUser(user.IdUser, chatPlan.Description);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, message: ex.Message);
-                            await _slackService.SendNotification(ex.Message);
-                        }
+                        await _beplicService.AssignPlanToUser(user.IdUser, chatPlan.Description);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, message: ex.Message);
+                        await _slackService.SendNotification(ex.Message);
                     }
                 }
             }
