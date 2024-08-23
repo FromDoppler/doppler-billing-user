@@ -11,5 +11,6 @@ namespace Doppler.BillingUser.Model
         public int? ConversationQty { get; set; }
         public string Description { get; set; }
         public decimal Fee { get; set; }
+        public int PaymentMethod { get; set; }
     }
 }

@@ -102,6 +102,30 @@ namespace Doppler.BillingUser.ExternalServices.AccountPlansApi
             }
         }
 
+        public async Task<PlanAmountDetails> GetCalculateAmountToUpgrade(string accountName, int planType, int planId, int? discountId, string promocode)
+        {
+            using var _ = _timeCollector.StartScope();
+            try
+            {
+                var PlanAmountDetails = await new UriTemplate(_options.Value.CalculateAmountUrlTemplate)
+                    .AddParameter("accountname", accountName)
+                    .AddParameter("planType", planType)
+                    .AddParameter("planId", planId)
+                    .AddParameter("discountId", discountId)
+                    .AddParameter("promocode", promocode)
+                    .Resolve()
+                    .WithHeader("Authorization", $"Bearer {await _usersApiTokenGetter.GetTokenAsync()}")
+                    .GetJsonAsync<PlanAmountDetails>();
+
+                return PlanAmountDetails;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Error to get total amount for user {accountName}.");
+                throw;
+            }
+        }
+
         public async Task<PlanAmountDetails> GetCalculateLandingUpgrade(string accountName, IEnumerable<int> landingIds, IEnumerable<int> landingPacks)
         {
             try

@@ -819,6 +819,8 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("Invalid selected plan type");
                 }
 
+                var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+
                 //if (agreementInformation.AdditionalServices != null && agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
                 //{
                 //    var additionalServiceChatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
@@ -994,10 +996,9 @@ namespace Doppler.BillingUser.Controllers
                     }
                 }
 
-                var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
                 if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
                 {
-                    billingCreditId = await BuyChatPlan(user, agreementInformation, payment);
+                    billingCreditId = await BuyChatPlan(user, agreementInformation, payment, currentChatPlan);
                 }
                 else
                 {
@@ -1428,6 +1429,30 @@ namespace Doppler.BillingUser.Controllers
                 {
                     StatusCode = 500,
                 };
+            }
+        }
+
+        private async void SendConversationNotifications(
+            string accountname,
+            UserBillingInformation user,
+            ChatPlan newPlan,
+            CurrentPlan currentPlan,
+            CreditCardPayment payment,
+            PlanDiscountInformation planDiscountInformation,
+            PlanAmountDetails amountDetails)
+        {
+            User userInformation = await _userRepository.GetUserInformation(accountname);
+            bool isUpgradeApproved;
+
+
+            if (currentPlan == null)
+            {
+                isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                await _emailTemplatesService.SendNotificationForUpgradeConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true);
+            }
+            else
+            {
+                await _emailTemplatesService.SendNotificationForUpdateConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan);
             }
         }
 
@@ -2022,21 +2047,19 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private async Task<int> BuyChatPlan(UserBillingInformation user, AgreementInformation agreementInformation, CreditCardPayment payment)
+        private async Task<int> BuyChatPlan(UserBillingInformation user, AgreementInformation agreementInformation, CreditCardPayment payment, CurrentPlan currentChatPlan)
         {
             var billingCreditId = 0;
 
             if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
             {
-                var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
                 var additionalServiceChatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
                 var chatPlan = await _chatPlanRepository.GetById(additionalServiceChatPlan.PlanId ?? 0);
+                PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, (int)PlanTypeEnum.Chat, additionalServiceChatPlan.PlanId ?? 0, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
 
                 if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.ConversationQty != chatPlan.ConversationQty && currentChatPlan.Fee > 0))
                 {
-                    var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
-                    var isPaymentPending = BillingHelper.IsUpgradePending(user, null, payment);
-
                     var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
                     if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
                     {
@@ -2071,6 +2094,10 @@ namespace Doppler.BillingUser.Controllers
                         _logger.LogError(ex, message: ex.Message);
                         await _slackService.SendNotification(ex.Message);
                     }
+
+                    //Send notifications
+                    var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
+                    SendConversationNotifications(user.Email, user, chatPlan, currentChatPlan, payment, planDiscountInformation, amountDetails);
                 }
             }
 

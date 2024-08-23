@@ -778,6 +778,145 @@ namespace Doppler.BillingUser.Services
 
             return Task.WhenAll(updatePlanAdminEmail);
         }
+
+        public Task SendNotificationForUpdateConversationPlan(
+            string accountname,
+            User userInformation,
+            ChatPlan newPlan,
+            UserBillingInformation user,
+            PlanDiscountInformation planDiscountInformation,
+            PlanAmountDetails amountDetails,
+            CurrentPlan currentPlan)
+        {
+            var templateAdmin = _emailSettings.Value.UpdateConversationPlanAdminTemplateId;
+
+            var updatePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        user = accountname,
+                        client = $"{userInformation.FirstName} {userInformation.LastName}",
+                        address = userInformation.Address,
+                        phone = userInformation.PhoneNumber,
+                        company = userInformation.Company,
+                        city = userInformation.CityName,
+                        state = userInformation.BillingStateName,
+                        zipCode = userInformation.ZipCode,
+                        language = userInformation.Language,
+                        country = userInformation.BillingCountryName,
+                        vendor = userInformation.Vendor,
+                        razonSocial = userInformation.RazonSocial,
+                        cuit = userInformation.CUIT,
+                        isConsumerCF = userInformation.IdConsumerType == (int)ConsumerTypeEnum.CF,
+                        isConsumerRFC = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RFC,
+                        isConsumerRI = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RI,
+                        isEmptyConsumer = userInformation.IdConsumerType == 0,
+                        isCfdiUseG03 = user.CFDIUse == "G03",
+                        isCfdiUseP01 = user.CFDIUse == "P01",
+                        isPaymentTypePPD = user.PaymentType == "PPD",
+                        isPaymentTypePUE = user.PaymentType == "PUE",
+                        isPaymentWayCash = user.PaymentWay == "CASH",
+                        isPaymentWayCheck = user.PaymentWay == "CHECK",
+                        isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
+                        bankName = user.BankName,
+                        bankAccount = user.BankAccount,
+                        taxRegime = user.TaxRegimeDescription,
+                        billingEmails = userInformation.BillingEmails,
+                        conversationsQty = newPlan.ConversationQty,
+                        amount = newPlan.Fee,
+                        isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        currentConversationsQty = currentPlan.ConversationQty,
+                        currentAmount = currentPlan.Fee,
+                        currentIsPaymentMethodCC = currentPlan.PaymentMethod == (int)PaymentMethodEnum.CC,
+                        currentIsPaymentMethodMP = currentPlan.PaymentMethod == (int)PaymentMethodEnum.MP,
+                        currentIsPaymentMethodTransf = currentPlan.PaymentMethod == (int)PaymentMethodEnum.TRANSF,
+                        currentIsPaymentMethodDA = currentPlan.PaymentMethod == (int)PaymentMethodEnum.DA,
+                        hasDiscountPaymentAlreadyPaid = amountDetails != null && amountDetails.DiscountPaymentAlreadyPaid > 0,
+                        discountPaymentAlreadyPaid = amountDetails != null && amountDetails.DiscountPaymentAlreadyPaid > 0 ? amountDetails.DiscountPaymentAlreadyPaid : 0,
+                        hasDiscountPlanFeeAdmin = amountDetails != null && amountDetails.DiscountPlanFeeAdmin.Amount > 0,
+                        discountPlanFeeAdminAmount = amountDetails != null && amountDetails.DiscountPlanFeeAdmin.Amount > 0 ? amountDetails.DiscountPlanFeeAdmin.Amount : 0,
+                        discountPlanFeeAdminPercentage = amountDetails != null && amountDetails.DiscountPlanFeeAdmin.DiscountPercentage > 0 ? amountDetails.DiscountPlanFeeAdmin.DiscountPercentage : 0,
+                        hasDiscountPrepayment = amountDetails != null && amountDetails.DiscountPrepayment.Amount > 0,
+                        discountPrepaymentAmount = amountDetails != null && amountDetails.DiscountPrepayment.Amount > 0 ? amountDetails.DiscountPrepayment.Amount : 0,
+                        discountPrepaymentPercentage = amountDetails != null && amountDetails.DiscountPrepayment.DiscountPercentage > 0 ? amountDetails.DiscountPrepayment.DiscountPercentage : 0,
+                        hasDiscountPromocode = amountDetails != null && amountDetails.DiscountPromocode.Amount > 0,
+                        discountPromocodeAmount = amountDetails != null && amountDetails.DiscountPromocode.Amount > 0 ? amountDetails.DiscountPromocode.Amount : 0,
+                        discountPromocodePercentage = amountDetails != null && amountDetails.DiscountPromocode.DiscountPercentage > 0 ? amountDetails.DiscountPromocode.DiscountPercentage : 0,
+                        total = amountDetails != null ? amountDetails.Total : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [_emailSettings.Value.AdminEmail],
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return updatePlanAdminEmail;
+        }
+
+        public Task SendNotificationForUpgradeConversationPlan(
+            string accountname,
+            User userInformation,
+            ChatPlan newPlan,
+            UserBillingInformation user,
+            PlanDiscountInformation planDiscountInformation,
+            bool isUpgradePending,
+            bool needSendToBilling)
+        {
+            var templateAdmin = !isUpgradePending ?
+                _emailSettings.Value.UpgradeConversationPlanAdminTemplateId :
+                _emailSettings.Value.UpgradeConversationPlanRequestAdminTemplateId;
+
+            var adminEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        user = accountname,
+                        client = $"{userInformation.FirstName} {userInformation.LastName}",
+                        address = userInformation.Address,
+                        phone = userInformation.PhoneNumber,
+                        company = userInformation.Company,
+                        city = userInformation.CityName,
+                        state = userInformation.BillingStateName,
+                        zipCode = userInformation.ZipCode,
+                        language = userInformation.Language,
+                        country = userInformation.BillingCountryName,
+                        vendor = userInformation.Vendor,
+                        razonSocial = userInformation.RazonSocial,
+                        cuit = userInformation.CUIT,
+                        isConsumerCF = userInformation.IdConsumerType == (int)ConsumerTypeEnum.CF,
+                        isConsumerRFC = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RFC,
+                        isConsumerRI = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RI,
+                        isEmptyConsumer = userInformation.IdConsumerType == 0,
+                        isCfdiUseG03 = user.CFDIUse == "G03",
+                        isCfdiUseP01 = user.CFDIUse == "P01",
+                        isPaymentTypePPD = user.PaymentType == "PPD",
+                        isPaymentTypePUE = user.PaymentType == "PUE",
+                        isPaymentWayCash = user.PaymentWay == "CASH",
+                        isPaymentWayCheck = user.PaymentWay == "CHECK",
+                        isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
+                        bankName = user.BankName,
+                        bankAccount = user.BankAccount,
+                        taxRegime = user.TaxRegimeDescription,
+                        billingEmails = userInformation.BillingEmails,
+                        conversationsQty = newPlan.ConversationQty,
+                        amount = newPlan.Fee,
+                        isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: needSendToBilling ? [_emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail] : new[] { _emailSettings.Value.AdminEmail },
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return adminEmail;
+        }
+
     }
 }
 

@@ -23,7 +23,8 @@ SELECT
     CP.[Description],
     CP.[ConversationQty],
     CP.[Fee],
-    CP.[Description]
+    CP.[Description],
+    BC.IdPaymentMethod AS PaymentMethod
 FROM [UserAddOn] UA
 INNER JOIN [BillingCredits] BC ON BC.IdBillingCredit = UA.IdCurrentBillingCredit
 INNER JOIN [ChatPlanUsers] CPU ON CPU.IdBillingCredit = BC.IdBillingCredit
