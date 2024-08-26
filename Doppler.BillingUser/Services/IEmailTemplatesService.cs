@@ -21,5 +21,7 @@ namespace Doppler.BillingUser.Services
         Task SendNotificationForChangeIndividualToMontlyOrSubscribers(string accountname, User userInformation, UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, PlanAmountDetails amountDetails);
         Task SendNotificationForUpgradeLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> newLandingPlans, BillingCredit landingBillingCredit);
         Task SendNotificationForUpdateLandingPlan(string accountname, User userInformation, UserBillingInformation userBillingInformation, IList<LandingPlan> availableLandingPlans, IList<LandingPlanUser> currentLandingPlans, IList<LandingPlanUser> newLandingPlans, BillingCredit landingBillingCredit, PlanAmountDetails amountDetails);
+        Task SendNotificationForUpgradeConversationPlan(string accountname, User userInformation, ChatPlan newPlan, UserBillingInformation user, PlanDiscountInformation planDiscountInformation, bool isUpgradePending, bool needSendToBilling);
+        Task SendNotificationForUpdateConversationPlan(string accountname, User userInformation, ChatPlan newPlan, UserBillingInformation user, PlanDiscountInformation planDiscountInformation, PlanAmountDetails amountDetails, CurrentPlan currentPlan);
     }
 }
