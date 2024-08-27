@@ -34,7 +34,7 @@ namespace Doppler.BillingUser.Infrastructure
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             await connection.ExecuteAsync(@"
-IF NOT EXISTS(SELECT * FROM dbo.UserAddOn WHERE IdUser = @userId)
+IF NOT EXISTS(SELECT * FROM dbo.UserAddOn WHERE IdUser = @userId AND [IdAddOnType] = @addOnType)
 BEGIN
     INSERT INTO [dbo].[UserAddOn] ([IdUser], [IdAddOnType], [IdCurrentBillingCredit])
     VALUES (@userId, @addOnType, @billingCreditId)
