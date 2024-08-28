@@ -2082,12 +2082,16 @@ namespace Doppler.BillingUser.Controllers
 
                     try
                     {
-                        if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
+                        var isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                        if (isUpgradeApproved)
                         {
-                            await _beplicService.UnassignPlanToUser(user.IdUser);
-                        }
+                            if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
+                            {
+                                await _beplicService.UnassignPlanToUser(user.IdUser);
+                            }
 
-                        await _beplicService.AssignPlanToUser(user.IdUser, chatPlan.Description);
+                            await _beplicService.AssignPlanToUser(user.IdUser, chatPlan.Description);
+                        }
                     }
                     catch (Exception ex)
                     {
