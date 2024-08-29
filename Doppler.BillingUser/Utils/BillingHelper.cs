@@ -28,7 +28,8 @@ namespace Doppler.BillingUser.Utils
 
         public static SapBillingDto MapBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, UserTypePlanInformation currentUserPlan, UserTypePlanInformation newUserPlan, string authorizationNumber, int invoicedId, decimal? total, IList<SapAdditionalServiceDto> additionalServices)
         {
-            var updateMarketingPlan = (currentUserPlan == null || (newUserPlan.IdUserTypePlan != currentUserPlan.IdUserTypePlan));
+            var updateMarketingPlan = currentUserPlan == null || (newUserPlan.IdUserTypePlan != currentUserPlan.IdUserTypePlan) ||
+                                        newUserPlan.IdUserType == UserTypeEnum.INDIVIDUAL;
 
             var sapBilling = new SapBillingDto
             {
