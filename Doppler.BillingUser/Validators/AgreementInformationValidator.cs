@@ -7,10 +7,6 @@ namespace Doppler.BillingUser.Validators
     {
         public AgreementInformationValidator()
         {
-            RuleFor(x => x.PlanId)
-                .NotEmpty()
-                .GreaterThan(0);
-
             RuleFor(x => x.Total)
                 .NotEmpty();
         }
