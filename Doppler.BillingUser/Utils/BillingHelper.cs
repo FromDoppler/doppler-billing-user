@@ -41,8 +41,7 @@ namespace Doppler.BillingUser.Utils
                 Periodicity = BillingHelper.GetPeriodicity(newUserPlan, billingCredit),
                 PeriodMonth = billingCredit.Date.Month,
                 PeriodYear = billingCredit.Date.Year,
-                //PlanFee = newUserPlan.IdUserType == UserTypeEnum.SUBSCRIBERS ? billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) : billingCredit.PlanFee,
-                PlanFee = updateMarketingPlan ? newUserPlan.IdUserType == UserTypeEnum.SUBSCRIBERS ? billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) : billingCredit.PlanFee : 0,
+                PlanFee = total > 0 ? updateMarketingPlan ? newUserPlan.IdUserType == UserTypeEnum.SUBSCRIBERS ? billingCredit.PlanFee * (billingCredit.TotalMonthPlan ?? 1) : billingCredit.PlanFee : 0 : 0,
                 Discount = (billingCredit.DiscountPlanFee) +
                     billingCredit.DiscountPlanFeeAdmin.GetValueOrDefault() +
                     billingCredit.DiscountPlanFeePromotion.GetValueOrDefault(),
