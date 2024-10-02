@@ -899,24 +899,15 @@ namespace Doppler.BillingUser.Controllers
                     invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
                 }
 
-                var billingCreditId = 0;
+                var marketingBillingCreditId = 0;
                 var partialBalance = 0;
 
                 if (currentPlan == null)
                 {
                     var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
                     var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, null, BillingCreditTypeEnum.UpgradeRequest);
-                    billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
-
-                    if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
-                    {
-                        var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
-                        var chatPlan = agreementInformation.AdditionalServices.FirstOrDefault(s => s.Type == AdditionalServiceTypeEnum.Chat);
-                        var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.PlanId.Value, billingCreditId);
-                        await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
-                    }
-
-                    user.IdCurrentBillingCredit = billingCreditId;
+                    marketingBillingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+                    user.IdCurrentBillingCredit = marketingBillingCreditId;
                     user.OriginInbound = agreementInformation.OriginInbound;
                     user.UpgradePending = BillingHelper.IsUpgradePending(user, promotion, payment);
                     user.UTCFirstPayment = user.UpgradePending.HasValue && !user.UpgradePending.Value ? DateTime.UtcNow : null;
@@ -935,7 +926,7 @@ namespace Doppler.BillingUser.Controllers
                     {
                         if (newPlan.IdUserType != UserTypeEnum.SUBSCRIBERS)
                         {
-                            await _billingRepository.CreateMovementCreditAsync(billingCreditId, partialBalance, user, newPlan);
+                            await _billingRepository.CreateMovementCreditAsync(marketingBillingCreditId, partialBalance, user, newPlan);
                         }
                         else
                         {
@@ -955,7 +946,7 @@ namespace Doppler.BillingUser.Controllers
                         await _promotionRepository.IncrementUsedTimes(promotion);
 
                     var status = user.UpgradePending.HasValue && !user.UpgradePending.Value ? PaymentStatusEnum.Approved.ToDescription() : PaymentStatusEnum.Pending.ToDescription();
-                    await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
+                    await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, marketingBillingCreditId, string.Empty, Source);
 
                     //Send notifications
                     SendNotifications(accountname, newPlan, user, partialBalance, promotion, agreementInformation.Promocode, agreementInformation.DiscountId, payment, BillingCreditTypeEnum.UpgradeRequest, currentPlan, null);
@@ -966,13 +957,13 @@ namespace Doppler.BillingUser.Controllers
                     {
                         if (currentPlan.IdUserTypePlan != newPlan.IdUserTypePlan && currentPlan.IdUserType == UserTypeEnum.MONTHLY)
                         {
-                            billingCreditId = await ChangeBetweenMonthlyPlans(currentPlan, newPlan, user, agreementInformation, promotion, payment);
+                            marketingBillingCreditId = await ChangeBetweenMonthlyPlans(currentPlan, newPlan, user, agreementInformation, promotion, payment);
                         }
                         else
                         {
                             if (currentPlan.IdUserType == UserTypeEnum.INDIVIDUAL)
                             {
-                                billingCreditId = await ChangeToMonthly(currentPlan, newPlan, user, agreementInformation, promotion, payment);
+                                marketingBillingCreditId = await ChangeToMonthly(currentPlan, newPlan, user, agreementInformation, promotion, payment);
                             }
                         }
                     }
@@ -982,23 +973,29 @@ namespace Doppler.BillingUser.Controllers
                         {
                             if (currentPlan.IdUserType == UserTypeEnum.SUBSCRIBERS)
                             {
-                                billingCreditId = await ChangeBetweenSubscribersPlans(currentPlan, newPlan, user, agreementInformation, promotion, payment);
+                                marketingBillingCreditId = await ChangeBetweenSubscribersPlans(currentPlan, newPlan, user, agreementInformation, promotion, payment);
                             }
                             else
                             {
-                                billingCreditId = await ChangeToSubscribers(currentPlan, newPlan, user, agreementInformation, promotion, payment);
+                                marketingBillingCreditId = await ChangeToSubscribers(currentPlan, newPlan, user, agreementInformation, promotion, payment);
                             }
                         }
                         else if (currentPlan.IdUserType == UserTypeEnum.INDIVIDUAL && newPlan.IdUserType == UserTypeEnum.INDIVIDUAL)
                         {
-                            billingCreditId = await BuyCredits(currentPlan, newPlan, user, agreementInformation, promotion, payment);
+                            marketingBillingCreditId = await BuyCredits(currentPlan, newPlan, user, agreementInformation, promotion, payment);
                         }
                     }
                 }
 
                 if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
                 {
-                    billingCreditId = await BuyChatPlan(user, agreementInformation, payment, currentChatPlan);
+                    if (marketingBillingCreditId == 0)
+                    {
+                        var marketingBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
+                        marketingBillingCreditId = marketingBillingCredit.IdBillingCredit;
+                    }
+
+                    var chatPlanBillingCreditId = await BuyChatPlan(user, agreementInformation, payment, currentChatPlan);
                 }
                 else
                 {
@@ -1014,7 +1011,7 @@ namespace Doppler.BillingUser.Controllers
                     (user.PaymentMethod == PaymentMethodEnum.TRANSF && user.IdBillingCountry == (int)CountryEnum.Argentina) ||
                     (user.PaymentMethod == PaymentMethodEnum.DA)))
                 {
-                    var billingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
+                    var billingCredit = await _billingRepository.GetBillingCredit(marketingBillingCreditId);
                     var cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
                     var holderName = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
                     var sapAdditionalServices = await GenerateAdditionalServcies(agreementInformation, user, billingCredit, currentChatPlan);
