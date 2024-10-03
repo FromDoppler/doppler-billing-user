@@ -1154,7 +1154,8 @@ namespace Doppler.BillingUser.Controllers
                             Charge = !isUpSelling ? planFee : (double)additionalService.Charge.Value,
                             ConversationQty = conversationPlan.ConversationQty,
                             IsUpSelling = isUpSelling,
-                            Type = AdditionalServiceTypeEnum.Chat
+                            Type = AdditionalServiceTypeEnum.Chat,
+                            IsCustom = additionalService.IsCustom
                         };
 
                         sapAdditionalServices.Add(sapAdditionalServiceDto);
