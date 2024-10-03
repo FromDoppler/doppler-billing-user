@@ -77,6 +77,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IChatPlanRepository _chatPlanRepository;
         private readonly IBeplicService _beplicService;
         private readonly IChatPlanUserRepository _chatPlanUserRepository;
+        private readonly IClientManagerRepository _clientManagerRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -149,7 +150,8 @@ namespace Doppler.BillingUser.Controllers
             ILandingPlanRepository landingPlanRepository,
             IChatPlanRepository chatPlanRepository,
             IBeplicService beplicService,
-            IChatPlanUserRepository chatPlanUserRepository)
+            IChatPlanUserRepository chatPlanUserRepository,
+            IClientManagerRepository clientManagerRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -183,6 +185,7 @@ namespace Doppler.BillingUser.Controllers
             _chatPlanRepository = chatPlanRepository;
             _beplicService = beplicService;
             _chatPlanUserRepository = chatPlanUserRepository;
+            _clientManagerRepository = clientManagerRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -747,6 +750,14 @@ namespace Doppler.BillingUser.Controllers
                     return new NotFoundObjectResult("Invalid user");
                 }
 
+                if (user.IdBillingCountry == 0)
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Invalid country";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new NotFoundObjectResult("Invalid country");
+                }
+
                 if (user.IsCancelated)
                 {
                     var messageError = $"Failed at creating new agreement for user {accountname}, Canceled user";
@@ -872,7 +883,15 @@ namespace Doppler.BillingUser.Controllers
                 if (agreementInformation.Total.GetValueOrDefault() > 0 &&
                     (user.PaymentMethod == PaymentMethodEnum.CC || user.PaymentMethod == PaymentMethodEnum.MP))
                 {
-                    encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                    if (!user.IdClientManager.HasValue)
+                    {
+                        encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                    }
+                    else
+                    {
+                        encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
+                    }
+
                     if (encryptedCreditCard == null)
                     {
                         var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
