@@ -39,15 +39,15 @@ WHERE [Email] = @email;
             var user = await connection.QueryFirstOrDefaultAsync<UserBillingInformation>(@"
 SELECT
     U.IdUser,
-    U.PaymentMethod,
-    U.ResponsableIVA,
-    U.PaymentType,
-    U.PaymentWay,
-    U.BankName,
-    U.BankAccount,
-    U.CFDIUse,
+    CASE WHEN U.IdClientManager IS NULL THEN U.PaymentMethod ELSE CM.IdPaymentMethod END as PaymentMethod,
+    CASE WHEN U.IdClientManager IS NULL THEN U.ResponsableIVA ELSE 0 END as ResponsableIVA,
+    CASE WHEN U.IdClientManager IS NULL THEN U.PaymentType ELSE CM.PaymentType END as PaymentType,
+    CASE WHEN U.IdClientManager IS NULL THEN U.PaymentWay ELSE CM.PaymentWay END as PaymentWay,
+    CASE WHEN U.IdClientManager IS NULL THEN U.BankName ELSE CM.BankName END as BankName,
+    CASE WHEN U.IdClientManager IS NULL THEN U.BankAccount ELSE CM.BankAccount END as BankAccount,
+    CASE WHEN U.IdClientManager IS NULL THEN U.CFDIUse ELSE CM.CFDIUse END as CFDIUse,
     U.Email,
-    S.IdCountry as IdBillingCountry,
+    CASE WHEN U.IdClientManager IS NULL THEN S.IdCountry ELSE CMS.IdCountry END as IdBillingCountry,
     U.UTCFirstPayment,
     U.OriginInbound,
     U.CUIT,
@@ -57,11 +57,16 @@ SELECT
     U.IsCancelated,
     U.UpgradePending,
     U.TaxRegime,
-    U.Cbu
+    U.Cbu,
+    U.IdClientManager
 FROM
     [User] U
-    INNER JOIN
+    LEFT JOIN
+        ClientManager CM ON CM.IdClientManager = U.IdClientManager
+    LEFT JOIN
         State S ON U.IdBillingState = S.IdState
+    LEFT JOIN
+        State CMS ON CM.IdBillingState = CMS.IdState
 WHERE
     U.Email = @email;",
                 new
