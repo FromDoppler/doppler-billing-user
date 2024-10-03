@@ -7,5 +7,6 @@ namespace Doppler.BillingUser.Model
         public int? PlanId { get; set; }
         public decimal? Charge { get; set; }
         public AdditionalServiceTypeEnum Type { get; set; }
+        public bool IsCustom { get; set; }
     }
 }
