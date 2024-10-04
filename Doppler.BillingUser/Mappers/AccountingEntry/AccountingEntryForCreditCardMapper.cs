@@ -10,14 +10,13 @@ namespace Doppler.BillingUser.Mappers
     public class AccountingEntryForCreditCardMapper : IAccountingEntryMapper
     {
         private const string AccountingEntryTypeDescriptionInvoice = "Invoice";
-        private const int UserAccountType = 1;
         private const int InvoiceBillingTypeQBL = 1;
         private const string AccountEntryTypeInvoice = "I";
         private const string AccountingEntryTypeDescriptionCCPayment = "CC Payment";
         private const string AccountEntryTypePayment = "P";
         private const string PaymentEntryTypePayment = "P";
 
-        public Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, UserBillingInformation user, UserTypePlanInformation newPlan, CreditCardPayment payment)
+        public Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, UserBillingInformation user, UserTypePlanInformation newPlan, CreditCardPayment payment, AccountTypeEnum accountType)
         {
             return Task.FromResult(new AccountingEntry
             {
@@ -28,14 +27,14 @@ namespace Doppler.BillingUser.Mappers
                 Source = SourceTypeHelper.SourceTypeEnumMapper(newPlan),
                 AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
                 InvoiceNumber = 0,
-                IdAccountType = UserAccountType,
+                IdAccountType = (int)accountType,
                 IdInvoiceBillingType = InvoiceBillingTypeQBL,
                 AuthorizationNumber = payment.AuthorizationNumber,
                 AccountEntryType = AccountEntryTypeInvoice
             });
         }
 
-        public Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, int idUser, SourceTypeEnum source, CreditCardPayment payment)
+        public Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, int idUser, SourceTypeEnum source, CreditCardPayment payment, AccountTypeEnum accountType)
         {
             return Task.FromResult(new AccountingEntry
             {
@@ -46,7 +45,7 @@ namespace Doppler.BillingUser.Mappers
                 Source = source,
                 AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
                 InvoiceNumber = 0,
-                IdAccountType = UserAccountType,
+                IdAccountType = (int)accountType,
                 IdInvoiceBillingType = InvoiceBillingTypeQBL,
                 AuthorizationNumber = payment.AuthorizationNumber,
                 AccountEntryType = AccountEntryTypeInvoice
@@ -66,7 +65,7 @@ namespace Doppler.BillingUser.Mappers
                 Date = DateTime.UtcNow,
                 Source = invoiceEntry.Source,
                 AccountingTypeDescription = AccountingEntryTypeDescriptionCCPayment,
-                IdAccountType = UserAccountType,
+                IdAccountType = invoiceEntry.IdAccountType,
                 IdInvoiceBillingType = InvoiceBillingTypeQBL,
                 AccountEntryType = AccountEntryTypePayment,
                 AuthorizationNumber = invoiceEntry.AuthorizationNumber,

@@ -61,7 +61,15 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
+                });
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
                 });
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -124,7 +132,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(accountName)).ReturnsAsync(creditCard);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
@@ -230,6 +239,13 @@ namespace Doppler.BillingUser.Test
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.GetUserBillingInformation("test1@example.com"))
                 .ReturnsAsync(new UserBillingInformation() { Email = "test1@example.com", PaymentMethod = PaymentMethodEnum.CC });
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -295,7 +311,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
@@ -395,6 +412,13 @@ namespace Doppler.BillingUser.Test
 
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(null as UserBillingInformation);
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -430,7 +454,15 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.MP
+                    PaymentMethod = PaymentMethodEnum.MP,
+                    IdBillingCountry = 1
+                });
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
                 });
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -460,7 +492,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation()
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -480,6 +513,13 @@ namespace Doppler.BillingUser.Test
             {
                 IdUserType = UserTypeEnum.INDIVIDUAL
             });
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -517,6 +557,13 @@ namespace Doppler.BillingUser.Test
             var accountName = "test1@example.com";
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(accountName)).ReturnsAsync(user);
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -570,7 +617,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
             {
@@ -672,7 +720,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation()
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -737,7 +786,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation()
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -809,7 +859,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation()
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -825,6 +876,13 @@ namespace Doppler.BillingUser.Test
 
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(accountName)).ReturnsAsync(user);
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
             userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
             {
@@ -859,7 +917,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation()
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -877,6 +936,13 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
             userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -932,7 +998,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
             {
@@ -1017,7 +1084,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
                 .ReturnsAsync(new UserTypePlanInformation
@@ -1097,7 +1165,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
                 .ReturnsAsync(new UserTypePlanInformation
@@ -1166,7 +1235,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
                 .ReturnsAsync(new UserTypePlanInformation
@@ -1247,7 +1317,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
                 .ReturnsAsync(new UserTypePlanInformation
@@ -1301,7 +1372,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -1331,6 +1403,13 @@ namespace Doppler.BillingUser.Test
             });
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>()))
                 .ReturnsAsync(creditCard);
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var paymentGatewayMock = new Mock<IPaymentGateway>();
             paymentGatewayMock.Setup(x => x.CreateCreditCardPayment(It.IsAny<decimal>(), It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()))
@@ -1419,7 +1498,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
@@ -1549,7 +1629,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(accountName)).ReturnsAsync(creditCard);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
@@ -1637,7 +1718,8 @@ namespace Doppler.BillingUser.Test
             {
                 IdUser = 1,
                 PaymentMethod = PaymentMethodEnum.CC,
-                IsCancelated = true
+                IsCancelated = true,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -1655,6 +1737,13 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
             userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -1796,6 +1885,13 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
             userRepositoryMock.Setup(x => x.GetUserCurrentTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(null as UserTypePlanInformation);
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -1857,7 +1953,8 @@ namespace Doppler.BillingUser.Test
                 .ReturnsAsync(new UserBillingInformation()
                 {
                     IdUser = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(accountName)).ReturnsAsync(creditCard);
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>())).ReturnsAsync(new UserTypePlanInformation()
@@ -2019,7 +2116,8 @@ namespace Doppler.BillingUser.Test
             var user = new UserBillingInformation()
             {
                 IdUser = 1,
-                PaymentMethod = PaymentMethodEnum.CC
+                PaymentMethod = PaymentMethodEnum.CC,
+                IdBillingCountry = 1
             };
 
             var agreement = new
@@ -2041,6 +2139,13 @@ namespace Doppler.BillingUser.Test
                 SubscribersQty = 1500,
                 Fee = 25
             });
+            userRepositoryMock.Setup(x => x.GetUserInformation(accountName))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    IdClientManager = null,
+                    IdBillingCountry = 1
+                });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -2127,7 +2232,8 @@ namespace Doppler.BillingUser.Test
                 {
                     IdUser = 1,
                     IdCurrentBillingCredit = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
                 .ReturnsAsync(new UserTypePlanInformation
@@ -2251,7 +2357,8 @@ namespace Doppler.BillingUser.Test
                 {
                     IdUser = 1,
                     IdCurrentBillingCredit = 1,
-                    PaymentMethod = PaymentMethodEnum.CC
+                    PaymentMethod = PaymentMethodEnum.CC,
+                    IdBillingCountry = 1
                 });
             userRepositoryMock.Setup(x => x.GetUserNewTypePlan(It.IsAny<int>()))
                 .ReturnsAsync(new UserTypePlanInformation

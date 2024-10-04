@@ -28,6 +28,7 @@ using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -533,10 +534,10 @@ namespace Doppler.BillingUser.Controllers
                                 };
                             }
 
-                            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false);
+                            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false, encryptedCreditCard);
 
                             var accountEntyMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
-                            AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment);
+                            AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment, AccountTypeEnum.User);
 
                             if (payment.Status == PaymentStatusEnum.Approved)
                             {
@@ -656,7 +657,7 @@ namespace Doppler.BillingUser.Controllers
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
 
-            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null, true);
+            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null, true, encryptedCreditCard);
 
             if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction)
             {
@@ -729,8 +730,23 @@ namespace Doppler.BillingUser.Controllers
         {
             using var _ = _timeCollector.StartScope();
 
-            var user = await _userRepository.GetUserBillingInformation(accountname);
+            var user = await _userRepository.GetUserInformation(accountname);
 
+            if (!user.IdClientManager.HasValue)
+            {
+                var userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
+
+                return await CreateAgreementToUser(accountname, agreementInformation, userBillingInformation);
+            }
+            else
+            {
+                var userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
+                return await CreateAgreementToCM(accountname, agreementInformation, userBillingInformation);
+            }
+        }
+
+        private async Task<IActionResult> CreateAgreementToUser(string accountname, AgreementInformation agreementInformation, UserBillingInformation user)
+        {
             try
             {
                 var results = await _agreementInformationValidator.ValidateAsync(agreementInformation);
@@ -883,14 +899,7 @@ namespace Doppler.BillingUser.Controllers
                 if (agreementInformation.Total.GetValueOrDefault() > 0 &&
                     (user.PaymentMethod == PaymentMethodEnum.CC || user.PaymentMethod == PaymentMethodEnum.MP))
                 {
-                    if (!user.IdClientManager.HasValue)
-                    {
-                        encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
-                    }
-                    else
-                    {
-                        encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
-                    }
+                    encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
 
                     if (encryptedCreditCard == null)
                     {
@@ -903,10 +912,10 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod, currentPlan == null, false);
+                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod, currentPlan == null, false, encryptedCreditCard);
 
                     var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
-                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment);
+                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment, AccountTypeEnum.User);
                     AccountingEntry paymentEntry = null;
                     authorizationNumber = payment.AuthorizationNumber;
 
@@ -1014,7 +1023,7 @@ namespace Doppler.BillingUser.Controllers
                         marketingBillingCreditId = marketingBillingCredit.IdBillingCredit;
                     }
 
-                    var chatPlanBillingCreditId = await BuyChatPlan(user, agreementInformation, payment, currentChatPlan);
+                    var chatPlanBillingCreditId = await BuyChatPlan(user, agreementInformation, payment, currentChatPlan, AccountTypeEnum.User);
                 }
                 else
                 {
@@ -1138,7 +1147,7 @@ namespace Doppler.BillingUser.Controllers
                 var cardNumber = string.Empty;
                 if (user.PaymentMethod == PaymentMethodEnum.CC)
                 {
-                    var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                    CreditCard encryptedCreditCard = encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
                     cardNumber = user.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number)[^4..] : "";
                 }
 
@@ -1146,6 +1155,188 @@ namespace Doppler.BillingUser.Controllers
                 var messageError = $"Failed at creating new agreement for user {accountname} {cardNumberDetails}. Exception {e.Message}";
                 _logger.LogError(e, messageError);
                 await _slackService.SendNotification(messageError);
+                return new ObjectResult("Failed at creating new agreement")
+                {
+                    StatusCode = 500,
+                    Value = e.Message,
+                };
+            }
+        }
+
+        private async Task<IActionResult> CreateAgreementToCM(string accountname, AgreementInformation agreementInformation, UserBillingInformation clientManager)
+        {
+            try
+            {
+                var results = await _agreementInformationValidator.ValidateAsync(agreementInformation);
+                if (!results.IsValid)
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Validation error {results.ToString("-")}";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult(results.ToString("-"));
+                }
+
+                if (clientManager == null)
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Invalid user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new NotFoundObjectResult("Invalid user");
+                }
+
+                if (clientManager.IdBillingCountry == 0)
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Invalid country";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new NotFoundObjectResult("Invalid country");
+                }
+
+                if (clientManager.IsCancelated)
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Canceled user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult("UserCanceled");
+                }
+
+                if (!AllowedPaymentMethodsForBilling.Any(p => p == clientManager.PaymentMethod))
+                {
+                    var messageError = $"Failed at creating new agreement for user {accountname}, Invalid payment method {clientManager.PaymentMethod}";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult("Invalid payment method");
+                }
+
+                if (clientManager.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == clientManager.IdBillingCountry))
+                {
+                    var messageErrorTransference = $"Failed at creating new agreement for user {accountname}, payment method {clientManager.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
+                    _logger.LogError(messageErrorTransference);
+                    await _slackService.SendNotification(messageErrorTransference);
+                    return new BadRequestObjectResult("Invalid payment method");
+                }
+
+                var userFromCM = await _userRepository.GetUserBillingInformation(accountname);
+                var currentChatPlan = await _chatPlanUserRepository.GetCurrentPlan(userFromCM.Email);
+
+                int invoiceId = 0;
+                string authorizationNumber = string.Empty;
+                CreditCard encryptedCreditCard = null;
+                CreditCardPayment payment = null;
+
+                agreementInformation.AdditionalServices ??= [];
+
+                if (agreementInformation.Total.GetValueOrDefault() > 0 &&
+                    (clientManager.PaymentMethod == PaymentMethodEnum.CC || clientManager.PaymentMethod == PaymentMethodEnum.MP))
+                {
+                    encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(clientManager.IdUser);
+
+                    if (encryptedCreditCard == null)
+                    {
+                        var messageError = $"Failed at creating new agreement for user {accountname}, missing credit card information";
+                        _logger.LogError(messageError);
+                        await _slackService.SendNotification(messageError);
+                        return new ObjectResult("User credit card missing")
+                        {
+                            StatusCode = 500
+                        };
+                    }
+
+                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, clientManager.IdUser, accountname, clientManager.PaymentMethod, false, false, encryptedCreditCard);
+
+                    var accountEntyMapper = GetAccountingEntryMapper(clientManager.PaymentMethod);
+                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, clientManager, new UserTypePlanInformation { IdUserTypePlan = (int)UserTypeEnum.MONTHLY }, payment, AccountTypeEnum.CM);
+                    AccountingEntry paymentEntry = null;
+                    authorizationNumber = payment.AuthorizationNumber;
+
+                    if (payment.Status == PaymentStatusEnum.Approved)
+                    {
+                        paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
+                    }
+
+                    invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+                }
+
+                var marketingBillingCreditId = 0;
+
+                if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
+                {
+                    var marketingBillingCredit = await _billingRepository.GetBillingCredit(userFromCM.IdCurrentBillingCredit.Value);
+                    marketingBillingCreditId = marketingBillingCredit.IdBillingCredit;
+
+                    var chatPlanBillingCreditId = await BuyChatPlan(userFromCM, agreementInformation, payment, currentChatPlan, AccountTypeEnum.CM);
+                }
+                else
+                {
+                    if (currentChatPlan != null)
+                    {
+                        await CancelChatPlan(userFromCM);
+                    }
+                }
+
+                if (agreementInformation.Total.GetValueOrDefault() > 0 &&
+                    ((clientManager.PaymentMethod == PaymentMethodEnum.CC) ||
+                    (clientManager.PaymentMethod == PaymentMethodEnum.MP) ||
+                    (clientManager.PaymentMethod == PaymentMethodEnum.TRANSF && clientManager.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                    (clientManager.PaymentMethod == PaymentMethodEnum.DA)))
+                {
+                    var billingCredit = await _billingRepository.GetBillingCredit(userFromCM.IdCurrentBillingCredit.Value);
+                    var cardNumber = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
+                    var holderName = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
+                    var sapAdditionalServices = await GenerateAdditionalServcies(agreementInformation, clientManager, billingCredit, currentChatPlan);
+                    var userTypePlanInformation = new UserTypePlanInformation { IdUserType = UserTypeEnum.CM_MONTHLY };
+
+                    var totalChatPlan = sapAdditionalServices.Sum(c => c.Charge);
+                    var total = agreementInformation.Total - (decimal)totalChatPlan;
+                    if (billingCredit != null)
+                    {
+                        var billingSystem = ResponsabileBillingEnum.QBL;
+
+                        switch (clientManager.PaymentMethod)
+                        {
+                            case PaymentMethodEnum.CC:
+                                billingSystem = ResponsabileBillingEnum.QBL;
+                                break;
+                            case PaymentMethodEnum.DA:
+                            case PaymentMethodEnum.TRANSF:
+                                billingSystem = ResponsabileBillingEnum.GBBISIDE;
+                                break;
+                            case PaymentMethodEnum.MP:
+                                billingSystem = ResponsabileBillingEnum.Mercadopago;
+                                break;
+                        }
+
+                        billingCredit.IdUser = clientManager.IdUser;
+                        billingCredit.Cuit = clientManager.Cuit;
+                        billingCredit.IdResponsabileBilling = (int)billingSystem;
+
+                        await _sapService.SendBillingToSap(
+                            BillingHelper.MapBillingToSapAsync(_sapSettings.Value,
+                                cardNumber,
+                                holderName,
+                                billingCredit,
+                                null,
+                                userTypePlanInformation,
+                                authorizationNumber,
+                                invoiceId,
+                                total,
+                                sapAdditionalServices),
+                            accountname);
+                    }
+                    else
+                    {
+                        var slackMessage = $"Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                        await _slackService.SendNotification(slackMessage);
+                    }
+                }
+
+                var message = $"CM - Successful at creating a new agreement for: User: {accountname} - Conversations plan: {agreementInformation.AdditionalServices.FirstOrDefault().PlanId}";
+                await _slackService.SendNotification(message);
+
+                return new OkObjectResult("Successfully");
+            }
+            catch (Exception e)
+            {
                 return new ObjectResult("Failed at creating new agreement")
                 {
                     StatusCode = 500,
@@ -1293,10 +1484,10 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, user.IdUser, accountname, user.PaymentMethod, false, false);
+                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, user.IdUser, accountname, user.PaymentMethod, false, false, encryptedCreditCard);
 
                     var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
-                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyLandingPlans.Total.Value, user.IdUser, SourceTypeEnum.BuyLandingId, payment);
+                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyLandingPlans.Total.Value, user.IdUser, SourceTypeEnum.BuyLandingId, payment, AccountTypeEnum.User);
                     AccountingEntry paymentEntry = null;
                     authorizationNumber = payment.AuthorizationNumber;
 
@@ -1456,9 +1647,19 @@ namespace Doppler.BillingUser.Controllers
             CurrentPlan currentPlan,
             CreditCardPayment payment,
             PlanDiscountInformation planDiscountInformation,
-            PlanAmountDetails amountDetails)
+            PlanAmountDetails amountDetails,
+            AccountTypeEnum accountType)
         {
-            User userInformation = await _userRepository.GetUserInformation(accountname);
+            User userInformation;
+            if (accountType == AccountTypeEnum.User)
+            {
+                userInformation = await _userRepository.GetUserInformation(accountname);
+            }
+            else
+            {
+                userInformation = await _clientManagerRepository.GetUserInformation(accountname);
+            }
+
             bool isUpgradeApproved;
 
 
@@ -1565,9 +1766,9 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod, bool isFreeUser, bool isReprocessCall)
+        private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod, bool isFreeUser, bool isReprocessCall, CreditCard encryptedCreditCard)
         {
-            var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+            //var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
 
             switch (paymentMethod)
             {
@@ -2054,19 +2255,26 @@ namespace Doppler.BillingUser.Controllers
                 case PaymentMethodEnum.TRANSF:
                 case PaymentMethodEnum.DA:
                     return new ChatPlanUserForCreditCardMapper();
-                //case PaymentMethodEnum.MP:
-                //    return new BillingCreditForMercadopagoMapper(_billingRepository, _encryptionService, _paymentAmountService);
-                //case PaymentMethodEnum.TRANSF:
-                //    return new BillingCreditForTransferMapper(_billingRepository);
                 default:
                     _logger.LogError($"The paymentMethod '{paymentMethod}' does not have a mapper.");
                     throw new ArgumentException($"The paymentMethod '{paymentMethod}' does not have a mapper.");
             }
         }
 
-        private async Task<int> BuyChatPlan(UserBillingInformation user, AgreementInformation agreementInformation, CreditCardPayment payment, CurrentPlan currentChatPlan)
+        private async Task<int> BuyChatPlan(UserBillingInformation user, AgreementInformation agreementInformation, CreditCardPayment payment, CurrentPlan currentChatPlan, AccountTypeEnum accountType)
         {
             var billingCreditId = 0;
+            User userFromCM = null;
+            UserBillingInformation clientManager = null;
+
+            PaymentMethodEnum paymentMethod = user.PaymentMethod;
+
+            if (accountType == AccountTypeEnum.CM)
+            {
+                userFromCM = await _userRepository.GetUserInformation(user.Email);
+                clientManager = await _clientManagerRepository.GetUserBillingInformation(userFromCM.IdClientManager.Value);
+                paymentMethod = clientManager.PaymentMethod;
+            }
 
             if (agreementInformation.AdditionalServices.Select(s => s.Type).Contains(AdditionalServiceTypeEnum.Chat))
             {
@@ -2077,20 +2285,20 @@ namespace Doppler.BillingUser.Controllers
 
                 if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.IdPlan != chatPlan.IdChatPlan))
                 {
-                    var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
+                    var billingCreditType = paymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
                     if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
                     {
                         billingCreditType = BillingCreditTypeEnum.Downgrade_Between_Conversation;
                     }
 
-                    var billingCreditMapper = GetAddOnBillingCreditMapper(user.PaymentMethod);
+                    var billingCreditMapper = GetAddOnBillingCreditMapper(paymentMethod);
 
                     var total = chatPlan.Fee;
                     var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
 
                     billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
-                    var chatPlanUserMapper = GetChatPlanUserMapper(user.PaymentMethod);
+                    var chatPlanUserMapper = GetChatPlanUserMapper(paymentMethod);
                     var chatPlanUser = chatPlanUserMapper.MapToChatPlanUser(user.IdUser, chatPlan.IdChatPlan, billingCreditId);
                     await _billingRepository.CreateChatPlanUserAsync(chatPlanUser);
 
@@ -2099,7 +2307,7 @@ namespace Doppler.BillingUser.Controllers
 
                     try
                     {
-                        var isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                        var isUpgradeApproved = (paymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                         if (isUpgradeApproved)
                         {
                             if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
@@ -2117,8 +2325,18 @@ namespace Doppler.BillingUser.Controllers
                     }
 
                     //Send notifications
+                    UserBillingInformation userToSendNotification = null;
+                    if (accountType == AccountTypeEnum.User)
+                    {
+                        userToSendNotification = user;
+                    }
+                    else
+                    {
+                        userToSendNotification = clientManager;
+                    }
+
                     var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
-                    SendConversationNotifications(user.Email, user, chatPlan, currentChatPlan, payment, planDiscountInformation, amountDetails);
+                    SendConversationNotifications(userToSendNotification.Email, userToSendNotification, chatPlan, currentChatPlan, payment, planDiscountInformation, amountDetails, accountType);
                 }
             }
 

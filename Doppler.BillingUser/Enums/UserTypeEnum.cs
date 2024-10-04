@@ -4,6 +4,8 @@ namespace Doppler.BillingUser.Enums
 {
     public enum UserTypeEnum
     {
+        [Description("CM-Monthly")]
+        CM_MONTHLY = 0,
         [Description("Free")]
         FREE = 1,
         [Description("Monthly")]

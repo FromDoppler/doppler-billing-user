@@ -23,19 +23,31 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
         {
             var currentPaymentMethod = await _billingRepository.GetPaymentMethodByUserName(user.Email);
 
+            var creditCardData = new
+            {
+                currentPaymentMethod.IdCCType,
+                CCExpMonth = !string.IsNullOrEmpty(currentPaymentMethod.CCExpMonth) ? short.Parse(currentPaymentMethod.CCExpMonth) : (short?)null,
+                CCExpYear = !string.IsNullOrEmpty(currentPaymentMethod.CCExpYear) ? short.Parse(currentPaymentMethod.CCExpYear) : (short?)null,
+                CCIdentificationNumber = !string.IsNullOrEmpty(currentPaymentMethod.CCNumber) ? CreditCardHelper.ObfuscateNumber(_encryptionService.DecryptAES256(currentPaymentMethod.CCNumber)) : string.Empty,
+                currentPaymentMethod.CCHolderFullName,
+                currentPaymentMethod.CCType,
+                currentPaymentMethod.CCVerification,
+                currentPaymentMethod.CCNumber,
+            };
+
             var buyCreditAgreement = new BillingCreditAgreement
             {
                 IdUser = user.IdUser,
                 IdCountry = user.IdBillingCountry,
                 IdPaymentMethod = (int)user.PaymentMethod,
-                IdCCType = currentPaymentMethod.IdCCType,
-                CCExpMonth = short.Parse(currentPaymentMethod.CCExpMonth),
-                CCExpYear = short.Parse(currentPaymentMethod.CCExpYear),
-                CCHolderFullName = currentPaymentMethod.CCHolderFullName,
-                CCIdentificationType = currentPaymentMethod.CCType,
-                CCIdentificationNumber = CreditCardHelper.ObfuscateNumber(_encryptionService.DecryptAES256(currentPaymentMethod.CCNumber)),
-                CCNumber = currentPaymentMethod.CCNumber,
-                CCVerification = currentPaymentMethod.CCVerification,
+                IdCCType = creditCardData.IdCCType,
+                CCExpMonth = creditCardData.CCExpMonth,
+                CCExpYear = creditCardData.CCExpYear,
+                CCHolderFullName = creditCardData.CCHolderFullName,
+                CCIdentificationType = creditCardData.CCType,
+                CCIdentificationNumber = creditCardData.CCIdentificationNumber,
+                CCNumber = creditCardData.CCNumber,
+                CCVerification = creditCardData.CCVerification,
                 IdConsumerType = !string.IsNullOrEmpty(currentPaymentMethod.IdConsumerType) ? int.Parse(currentPaymentMethod.IdConsumerType) : null,
                 RazonSocial = currentPaymentMethod.RazonSocial,
                 ResponsableIVA = user.ResponsableIVA,

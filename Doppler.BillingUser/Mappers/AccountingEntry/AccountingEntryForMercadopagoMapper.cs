@@ -12,7 +12,6 @@ namespace Doppler.BillingUser.Mappers
     {
         private IPaymentAmountHelper _paymentAmountService;
         private const string AccountingEntryTypeDescriptionInvoice = "Invoice";
-        private const int UserAccountType = 1;
         private const string AccountEntryTypeInvoice = "I";
         private const string AccountingEntryTypeDescriptionMpPayment = "MP Payment";
         private const string AccountEntryTypePayment = "P";
@@ -23,7 +22,7 @@ namespace Doppler.BillingUser.Mappers
             _paymentAmountService = paymentAmountService;
         }
 
-        public async Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, UserBillingInformation user, UserTypePlanInformation newPlan, CreditCardPayment payment)
+        public async Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, UserBillingInformation user, UserTypePlanInformation newPlan, CreditCardPayment payment, AccountTypeEnum accountType)
         {
             decimal rate = 1;
             decimal invoiceTaxes = 0;
@@ -51,14 +50,14 @@ namespace Doppler.BillingUser.Mappers
                 Source = SourceTypeHelper.SourceTypeEnumMapper(newPlan),
                 AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
                 InvoiceNumber = 0,
-                IdAccountType = UserAccountType,
+                IdAccountType = (int)accountType,
                 IdInvoiceBillingType = (int)InvoiceBillingTypeEnum.MERCADOPAGO,
                 AuthorizationNumber = payment.AuthorizationNumber,
                 AccountEntryType = AccountEntryTypeInvoice
             };
         }
 
-        public async Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, int idUser, SourceTypeEnum source, CreditCardPayment payment)
+        public async Task<AccountingEntry> MapToInvoiceAccountingEntry(decimal total, int idUser, SourceTypeEnum source, CreditCardPayment payment, AccountTypeEnum accountType)
         {
             decimal rate = 1;
             decimal invoiceTaxes = 0;
@@ -86,7 +85,7 @@ namespace Doppler.BillingUser.Mappers
                 Source = source,
                 AccountingTypeDescription = AccountingEntryTypeDescriptionInvoice,
                 InvoiceNumber = 0,
-                IdAccountType = UserAccountType,
+                IdAccountType = (int)accountType,
                 IdInvoiceBillingType = (int)InvoiceBillingTypeEnum.MERCADOPAGO,
                 AuthorizationNumber = payment.AuthorizationNumber,
                 AccountEntryType = AccountEntryTypeInvoice
