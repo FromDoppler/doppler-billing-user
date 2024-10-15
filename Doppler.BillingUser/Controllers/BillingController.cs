@@ -2056,7 +2056,7 @@ namespace Doppler.BillingUser.Controllers
                 var chatPlan = await _chatPlanRepository.GetById(additionalServiceChatPlan.PlanId ?? 0);
                 PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, (int)PlanTypeEnum.Chat, additionalServiceChatPlan.PlanId ?? 0, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
 
-                if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.ConversationQty != chatPlan.ConversationQty))
+                if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.IdPlan != chatPlan.IdChatPlan))
                 {
                     var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
                     if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
