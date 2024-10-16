@@ -39,13 +39,13 @@ WHERE [Email] = @email;
             var user = await connection.QueryFirstOrDefaultAsync<UserBillingInformation>(@"
 SELECT
     U.IdUser,
-    U.PaymentMethod,
-    U.ResponsableIVA,
-    U.PaymentType,
-    U.PaymentWay,
-    U.BankName,
-    U.BankAccount,
-    U.CFDIUse,
+    U.PaymentMethod as PaymentMethod,
+    U.ResponsableIVA as ResponsableIVA,
+    U.PaymentType as PaymentType,
+    U.PaymentWay as PaymentWay,
+    U.BankName as BankName,
+    U.BankAccount as BankAccount,
+    U.CFDIUse as CFDIUse,
     U.Email,
     S.IdCountry as IdBillingCountry,
     U.UTCFirstPayment,
@@ -60,7 +60,7 @@ SELECT
     U.Cbu
 FROM
     [User] U
-    INNER JOIN
+    LEFT JOIN
         State S ON U.IdBillingState = S.IdState
 WHERE
     U.Email = @email;",
@@ -236,7 +236,8 @@ SELECT
     U.IdConsumerType,
     U.BillingEmails,
     BS.IdCountry as IdBillingCountry,
-    U.IsCancelated
+    U.IsCancelated,
+    U.IdClientManager
 FROM
     [User] U
 LEFT JOIN
