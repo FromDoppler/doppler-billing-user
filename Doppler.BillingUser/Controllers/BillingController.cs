@@ -2310,7 +2310,7 @@ namespace Doppler.BillingUser.Controllers
                         var isUpgradeApproved = (paymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                         if (isUpgradeApproved)
                         {
-                            if (currentChatPlan != null && currentChatPlan.ConversationQty < chatPlan.ConversationQty)
+                            if (currentChatPlan != null)
                             {
                                 await _beplicService.UnassignPlanToUser(user.IdUser);
                             }
