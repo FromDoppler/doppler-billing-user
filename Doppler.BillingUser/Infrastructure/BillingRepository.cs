@@ -1688,7 +1688,7 @@ WHERE IdBillingCredit = @idBillingCredit",
         {
             using var connection = _connectionFactory.GetConnection();
             var billingCredit = await connection.QueryFirstOrDefaultAsync<BillingCredit>(@"
-  SELECT
+SELECT
     BC.[IdBillingCredit],
     BC.[Date],
     BC.[IdUser],
