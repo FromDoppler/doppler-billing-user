@@ -789,7 +789,7 @@ namespace Doppler.BillingUser.Controllers
                     await _slackService.SendNotification(messageError);
                     return new BadRequestObjectResult("Invalid payment method");
                 }
-                
+
                 if (user.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == user.IdBillingCountry))
                 {
                     var messageErrorTransference = $"Failed at creating new agreement for user {accountname}, payment method {user.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
@@ -1207,7 +1207,7 @@ namespace Doppler.BillingUser.Controllers
                     await _slackService.SendNotification(messageError);
                     return new BadRequestObjectResult("Invalid payment method");
                 }
-                
+
                 if (clientManager.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == clientManager.IdBillingCountry))
                 {
                     var messageErrorTransference = $"Failed at creating new agreement for user {accountname}, payment method {clientManager.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
