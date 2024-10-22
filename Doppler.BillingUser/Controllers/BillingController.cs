@@ -1365,7 +1365,8 @@ namespace Doppler.BillingUser.Controllers
                             ConversationQty = conversationPlan.ConversationQty,
                             IsUpSelling = isUpSelling,
                             Type = AdditionalServiceTypeEnum.Chat,
-                            IsCustom = additionalService.IsCustom
+                            IsCustom = additionalService.IsCustom,
+                            UserId = billingCredit.IdUser
                         };
 
                         sapAdditionalServices.Add(sapAdditionalServiceDto);

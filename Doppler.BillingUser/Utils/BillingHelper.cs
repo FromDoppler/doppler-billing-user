@@ -100,6 +100,7 @@ namespace Doppler.BillingUser.Utils
                 AdditionalServices = [
                     new()
                     {
+                        UserId = billingCredit.IdUser,
                         Type = AdditionalServiceTypeEnum.Landing,
                         Charge = (double)total,
                         Discount = billingCredit.DiscountPlanFee,

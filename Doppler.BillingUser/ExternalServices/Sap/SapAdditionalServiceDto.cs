@@ -13,5 +13,6 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         public IList<SapPackDto> Packs { get; set; }
         public AdditionalServiceTypeEnum Type { get; set; }
         public bool IsCustom { get; set; }
+        public int UserId { get; set; }
     }
 }
