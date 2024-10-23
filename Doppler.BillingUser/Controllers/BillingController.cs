@@ -1397,6 +1397,14 @@ namespace Doppler.BillingUser.Controllers
         {
             var user = await _userRepository.GetUserInformation(accountname);
 
+            if (user == null)
+            {
+                var messageError = $"Failed at buy a landing plan for user {accountname}, Invalid user";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+                return new NotFoundObjectResult("Invalid user");
+            }
+
             if (!user.IdClientManager.HasValue)
             {
                 return await BuyLandingPlansForUser(accountname, buyLandingPlans);
