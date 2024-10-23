@@ -1937,6 +1937,8 @@ namespace Doppler.BillingUser.Controllers
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
             {
+                _logger.LogError($"accountname: {accountname}, userInformation: {System.Text.Json.JsonSerializer.Serialize(userInformation)}, user: {System.Text.Json.JsonSerializer.Serialize(user)}, newLandingBillingCredit: {System.Text.Json.JsonSerializer.Serialize(newLandingBillingCredit)}");
+
                 await _emailTemplatesService.SendNotificationForUpgradeLandingPlan(
                     accountname,
                     userInformation,
