@@ -1395,6 +1395,20 @@ namespace Doppler.BillingUser.Controllers
         [HttpPost("/accounts/{accountname}/landings/buy")]
         public async Task<ActionResult> BuyLandingPlans(string accountname, [FromBody] BuyLandingPlans buyLandingPlans)
         {
+            var user = await _userRepository.GetUserInformation(accountname);
+
+            if (!user.IdClientManager.HasValue)
+            {
+                return await BuyLandingPlansForUser(accountname, buyLandingPlans);
+            }
+            else
+            {
+                return await BuyLandingPlansForCM(user.IdClientManager.Value, user.IdUser, accountname, buyLandingPlans);
+            }
+        }
+
+        private async Task<ActionResult> BuyLandingPlansForUser(string accountname, BuyLandingPlans buyLandingPlans)
+        {
             var user = await _userRepository.GetUserBillingInformation(accountname);
 
             try
@@ -1604,6 +1618,238 @@ namespace Doppler.BillingUser.Controllers
             await _slackService.SendNotification(message);
 
             return new OkObjectResult($"Successful buy landing plans for: User: {accountname}");
+        }
+
+        private async Task<ActionResult> BuyLandingPlansForCM(int idClientManager, int idUser, string accountname, BuyLandingPlans buyLandingPlans)
+        {
+            var clientManager = await _clientManagerRepository.GetUserBillingInformation(idClientManager);
+
+            try
+            {
+                if (clientManager == null)
+                {
+                    var messageError = $"CM - Failed at buy a landing plan for user {accountname}, Invalid user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new NotFoundObjectResult("Invalid user");
+                }
+
+                if (clientManager.IsCancelated)
+                {
+                    var messageError = $"CM - Failed at buy a landing plan for user {accountname}, Canceled user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult("UserCanceled");
+                }
+
+                if (!AllowedPaymentMethodsForBilling.Any(p => p == clientManager.PaymentMethod))
+                {
+                    var messageError = $"CM - Failed at buy a landing plan for user {accountname}, Invalid payment method {clientManager.PaymentMethod}";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new BadRequestObjectResult("Invalid payment method");
+                }
+
+                if (clientManager.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == clientManager.IdBillingCountry))
+                {
+                    var messageErrorTransference = $"CM - Failed at buy a landing plan for user {accountname}, payment method {clientManager.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
+                    _logger.LogError(messageErrorTransference);
+                    await _slackService.SendNotification(messageErrorTransference);
+                    return new BadRequestObjectResult("Invalid payment method");
+                }
+
+                var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(idUser);
+                if (currentBillingCredit == null || currentBillingCredit.ActivationDate == null)
+                {
+                    var messageErrorTransference = $"CM - Failed at buy a landing plan for user {accountname}. The user has not an active marketing plan";
+                    _logger.LogError(messageErrorTransference);
+                    await _slackService.SendNotification(messageErrorTransference);
+                    return new BadRequestObjectResult("Invalid marketing plan");
+                }
+
+                /* Get current information about landing plans */
+                var currentLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(idUser);
+                IList<LandingPlanUser> currentLandingPlans = [];
+
+                if (currentLandingBillingCredit != null)
+                {
+                    currentLandingPlans = await _landingPlanUserRepository.GetLandingPlansByUserIdAndBillingCreditIdAsync(idUser, currentLandingBillingCredit.IdBillingCredit);
+                }
+
+                PlanAmountDetails amountDetails = null;
+                try
+                {
+                    amountDetails = await _accountPlansService.GetCalculateLandingUpgrade(
+                        accountname,
+                        buyLandingPlans.LandingPlans.Select(x => x.LandingPlanId),
+                        buyLandingPlans.LandingPlans.Select(x => x.PackQty));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"CM - Error to get total landing amount for user {accountname}.(Send Notifications)");
+                }
+
+                var currentLandingAmount = currentLandingPlans.Sum(l => l.PackQty * l.Fee);
+                var newLandingAmount = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
+
+                int invoiceId = 0;
+                string authorizationNumber = string.Empty;
+                CreditCard encryptedCreditCard = null;
+                CreditCardPayment payment = null;
+
+                if (buyLandingPlans.Total.GetValueOrDefault() > 0 &&
+                    (clientManager.PaymentMethod == PaymentMethodEnum.CC || clientManager.PaymentMethod == PaymentMethodEnum.MP))
+                {
+                    encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(idClientManager);
+                    if (encryptedCreditCard == null)
+                    {
+                        var messageError = $"CM - Failed at buy a landing plan for user {accountname}, missing credit card information";
+                        _logger.LogError(messageError);
+                        await _slackService.SendNotification(messageError);
+                        return new ObjectResult("User credit card missing")
+                        {
+                            StatusCode = 500
+                        };
+                    }
+
+                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, clientManager.IdUser, accountname, clientManager.PaymentMethod, false, false, encryptedCreditCard);
+
+                    var accountEntyMapper = GetAccountingEntryMapper(clientManager.PaymentMethod);
+                    AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyLandingPlans.Total.Value, clientManager.IdUser, SourceTypeEnum.BuyLandingId, payment, AccountTypeEnum.CM);
+                    AccountingEntry paymentEntry = null;
+                    authorizationNumber = payment.AuthorizationNumber;
+
+                    if (payment.Status == PaymentStatusEnum.Approved)
+                    {
+                        paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
+                    }
+
+                    invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+                }
+
+                var isPaymentPending = BillingHelper.IsUpgradePending(clientManager, null, payment);
+                var billingCreditType = (newLandingAmount - currentLandingAmount > 0) ?
+                                        clientManager.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Landing_Buyed_CC : BillingCreditTypeEnum.Landing_Request :
+                                        BillingCreditTypeEnum.Downgrade_Between_Landings;
+
+                var billingCreditMapper = GetAddOnBillingCreditMapper(clientManager.PaymentMethod);
+
+                var total = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
+                var userFromCM = await _userRepository.GetUserBillingInformation(accountname);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userFromCM, currentBillingCredit, payment, billingCreditType);
+                var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+
+                /* Save current billing credit in the UserAddOn table */
+                await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(userFromCM.IdUser, (int)AddOnType.Landing, billingCreditId);
+                IList<LandingPlanUser> newLandingPlans = [];
+                foreach (BuyLandingPlanItem landingPlanItem in buyLandingPlans.LandingPlans)
+                {
+                    LandingPlanUser newLandingPlanUser = new LandingPlanUser
+                    {
+                        Created = DateTime.UtcNow,
+                        Fee = landingPlanItem.Fee,
+                        IdBillingCredit = billingCreditId,
+                        IdUser = userFromCM.IdUser,
+                        PackQty = landingPlanItem.PackQty,
+                        IdLandingPlan = landingPlanItem.LandingPlanId
+                    };
+
+                    var idLandingPlanUser = await _landingPlanUserRepository.CreateLandingPlanUserAsync(newLandingPlanUser);
+                    newLandingPlanUser.IdLandingPlanUser = idLandingPlanUser;
+                    newLandingPlans.Add(newLandingPlanUser);
+                }
+
+                //Send lading plan to SAP
+                if (buyLandingPlans.Total.GetValueOrDefault() > 0 &&
+                    ((clientManager.PaymentMethod == PaymentMethodEnum.CC) ||
+                    (clientManager.PaymentMethod == PaymentMethodEnum.MP) ||
+                    (clientManager.PaymentMethod == PaymentMethodEnum.TRANSF && clientManager.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                    (clientManager.PaymentMethod == PaymentMethodEnum.DA)))
+                {
+                    var billingCredit = await _billingRepository.GetBillingCredit(billingCreditId);
+                    var cardNumber = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
+                    var holderName = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
+
+                    var landingsToSendToSap = buyLandingPlans.LandingPlans;
+
+                    foreach (var landingPlan in landingsToSendToSap)
+                    {
+                        var currentLandingPlan = currentLandingPlans.FirstOrDefault(l => l.IdLandingPlan == landingPlan.LandingPlanId);
+                        if (currentLandingPlan != null)
+                        {
+                            landingPlan.PackQty -= currentLandingPlan.PackQty;
+                            landingPlan.Fee = currentLandingPlan.Fee * landingPlan.PackQty;
+                        }
+                    }
+
+                    if (billingCredit != null)
+                    {
+                        var billingSystem = ResponsabileBillingEnum.QBL;
+
+                        switch (clientManager.PaymentMethod)
+                        {
+                            case PaymentMethodEnum.CC:
+                                billingSystem = ResponsabileBillingEnum.QBL;
+                                break;
+                            case PaymentMethodEnum.DA:
+                            case PaymentMethodEnum.TRANSF:
+                                billingSystem = ResponsabileBillingEnum.GBBISIDE;
+                                break;
+                            case PaymentMethodEnum.MP:
+                                billingSystem = ResponsabileBillingEnum.Mercadopago;
+                                break;
+                        }
+
+                        billingCredit.IdUser = clientManager.IdUser;
+                        billingCredit.Cuit = clientManager.Cuit;
+                        billingCredit.IdResponsabileBilling = (int)billingSystem;
+
+                        await _sapService.SendBillingToSap(
+                            BillingHelper.MapLandingsBillingToSapAsync(_sapSettings.Value,
+                                cardNumber,
+                                holderName,
+                                billingCredit,
+                                landingsToSendToSap.Where(l => l.PackQty > 0).ToList(),
+                                authorizationNumber,
+                                invoiceId,
+                                buyLandingPlans.Total),
+                            accountname);
+                    }
+                    else
+                    {
+                        var slackMessage = $"Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                        await _slackService.SendNotification(slackMessage);
+                    }
+                }
+
+                //Send notification
+                SendLandingNotifications(accountname, clientManager, currentLandingPlans, newLandingPlans, amountDetails);
+            }
+            catch (Exception e)
+            {
+                var cardNumber = string.Empty;
+                if (clientManager.PaymentMethod == PaymentMethodEnum.CC)
+                {
+                    var encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(idClientManager);
+                    cardNumber = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number)[^4..] : "";
+                }
+
+                var cardNumberDetails = !string.IsNullOrEmpty(cardNumber) ? "with credit card's last 4 digits: " + cardNumber : "";
+                var messageError = $"CM - Failed at buy landing plans for user {accountname} {cardNumberDetails}. Exception {e.Message}";
+                _logger.LogError(e, messageError);
+                await _slackService.SendNotification(messageError);
+
+                return new ObjectResult("Failed at buying landing")
+                {
+                    StatusCode = 500,
+                    Value = e.Message,
+                };
+            }
+
+            var message = $"Successful buy landing plans for: User: {accountname}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult($"CM - Successful buy landing plans for: User: {accountname}");
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
