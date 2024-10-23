@@ -1812,7 +1812,8 @@ namespace Doppler.BillingUser.Controllers
                                 landingsToSendToSap.Where(l => l.PackQty > 0).ToList(),
                                 authorizationNumber,
                                 invoiceId,
-                                buyLandingPlans.Total),
+                                buyLandingPlans.Total,
+                                userFromCM),
                             accountname);
                     }
                     else
