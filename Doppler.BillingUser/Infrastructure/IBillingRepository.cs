@@ -69,5 +69,7 @@ namespace Doppler.BillingUser.Infrastructure
         Task UpdateBillingCreditType(int idBillingCredit, int billingCreditType);
 
         Task<int> CreateChatPlanUserAsync(ChatPlanUser chatPlanUser);
+
+        Task<BillingCredit> GetCurrentBillingCredit(int idUser);
     }
 }
