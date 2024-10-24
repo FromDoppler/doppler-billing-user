@@ -1857,7 +1857,7 @@ namespace Doppler.BillingUser.Controllers
                 };
             }
 
-            var message = $"Successful buy landing plans for: User: {accountname}";
+            var message = $"CM - Successful buy landing plans for: User: {accountname}";
             await _slackService.SendNotification(message);
 
             return new OkObjectResult($"CM - Successful buy landing plans for: User: {accountname}");
@@ -1958,8 +1958,6 @@ namespace Doppler.BillingUser.Controllers
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
             {
-                _logger.LogError($"accountname: {accountname}, userInformation: {System.Text.Json.JsonSerializer.Serialize(userInformation)}, user: {System.Text.Json.JsonSerializer.Serialize(user)}, newLandingBillingCredit: {System.Text.Json.JsonSerializer.Serialize(newLandingBillingCredit)}");
-
                 await _emailTemplatesService.SendNotificationForUpgradeLandingPlan(
                     accountname,
                     userInformation,
