@@ -1600,7 +1600,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(accountname, user, currentLandingPlans, newLandingPlans, amountDetails);
+                SendLandingNotifications(accountname, user, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.User);
             }
             catch (Exception e)
             {
@@ -1834,7 +1834,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(accountname, clientManager, currentLandingPlans, newLandingPlans, amountDetails);
+                SendLandingNotifications(clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.CM);
             }
             catch (Exception e)
             {
@@ -1938,9 +1938,19 @@ namespace Doppler.BillingUser.Controllers
             UserBillingInformation user,
             IList<LandingPlanUser> currentLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
-            PlanAmountDetails amountDetails)
+            PlanAmountDetails amountDetails,
+            AccountTypeEnum accountType)
         {
-            User userInformation = await _userRepository.GetUserInformation(accountname);
+            User userInformation;
+            if (accountType == AccountTypeEnum.User)
+            {
+                userInformation = await _userRepository.GetUserInformation(accountname);
+            }
+            else
+            {
+                userInformation = await _clientManagerRepository.GetUserInformation(accountname);
+            }
+
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
             BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
 
