@@ -75,7 +75,7 @@ namespace Doppler.BillingUser.Utils
             return sapBilling;
         }
 
-        public static SapBillingDto MapLandingsBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, IList<BuyLandingPlanItem> landings, string authorizationNumber, int invoicedId, decimal? total)
+        public static SapBillingDto MapLandingsBillingToSapAsync(SapSettings timeZoneOffset, string cardNumber, string cardHolderName, BillingCredit billingCredit, IList<BuyLandingPlanItem> landings, string authorizationNumber, int invoicedId, decimal? total, UserBillingInformation user)
         {
             var monthsToPay = billingCredit.TotalMonthPlan - billingCredit.CurrentMonthPlan;
 
@@ -100,6 +100,7 @@ namespace Doppler.BillingUser.Utils
                 AdditionalServices = [
                     new()
                     {
+                        UserEmail = user.Email,
                         Type = AdditionalServiceTypeEnum.Landing,
                         Charge = (double)total,
                         Discount = billingCredit.DiscountPlanFee,

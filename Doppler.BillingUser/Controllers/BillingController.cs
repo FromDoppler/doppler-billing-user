@@ -1283,7 +1283,7 @@ namespace Doppler.BillingUser.Controllers
                     var billingCredit = await _billingRepository.GetBillingCredit(userFromCM.IdCurrentBillingCredit.Value);
                     var cardNumber = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
                     var holderName = clientManager.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
-                    var sapAdditionalServices = await GenerateAdditionalServcies(agreementInformation, clientManager, billingCredit, currentChatPlan);
+                    var sapAdditionalServices = await GenerateAdditionalServcies(agreementInformation, userFromCM, billingCredit, currentChatPlan);
                     var userTypePlanInformation = new UserTypePlanInformation { IdUserType = UserTypeEnum.CM_MONTHLY };
 
                     var totalChatPlan = sapAdditionalServices.Sum(c => c.Charge);
@@ -1365,7 +1365,8 @@ namespace Doppler.BillingUser.Controllers
                             ConversationQty = conversationPlan.ConversationQty,
                             IsUpSelling = isUpSelling,
                             Type = AdditionalServiceTypeEnum.Chat,
-                            IsCustom = additionalService.IsCustom
+                            IsCustom = additionalService.IsCustom,
+                            UserEmail = user.Email
                         };
 
                         sapAdditionalServices.Add(sapAdditionalServiceDto);
@@ -1564,7 +1565,8 @@ namespace Doppler.BillingUser.Controllers
                                 landingsToSendToSap.Where(l => l.PackQty > 0).ToList(),
                                 authorizationNumber,
                                 invoiceId,
-                                buyLandingPlans.Total),
+                                buyLandingPlans.Total,
+                                user),
                             accountname);
                     }
                     else
