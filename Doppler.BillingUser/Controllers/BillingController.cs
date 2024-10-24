@@ -1588,7 +1588,8 @@ namespace Doppler.BillingUser.Controllers
                                 authorizationNumber,
                                 invoiceId,
                                 buyLandingPlans.Total,
-                                user),
+                                user,
+                                AccountTypeEnum.User),
                             accountname);
                     }
                     else
@@ -1821,7 +1822,8 @@ namespace Doppler.BillingUser.Controllers
                                 authorizationNumber,
                                 invoiceId,
                                 buyLandingPlans.Total,
-                                userFromCM),
+                                userFromCM,
+                                AccountTypeEnum.CM),
                             accountname);
                     }
                     else
