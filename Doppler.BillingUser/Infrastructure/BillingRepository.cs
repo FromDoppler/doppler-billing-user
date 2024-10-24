@@ -1683,5 +1683,51 @@ WHERE IdBillingCredit = @idBillingCredit",
                     idBillingCredit
                 });
         }
+
+        public async Task<BillingCredit> GetCurrentBillingCredit(int idUser)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var billingCredit = await connection.QueryFirstOrDefaultAsync<BillingCredit>(@"
+SELECT
+    BC.[IdBillingCredit],
+    BC.[Date],
+    BC.[IdUser],
+    BC.[PlanFee],
+    BC.[CreditsQty],
+    BC.[ActivationDate],
+    BC.[TotalCreditsQty],
+    BC.[IdUserTypePlan],
+    DP.[DiscountPlanFee],
+    BC.[IdResponsabileBilling],
+    BC.[CCIdentificationType],
+    BC.TotalMonthPlan,
+    BC.CUIT As Cuit,
+    BC.DiscountPlanFeeAdmin,
+    BC.DiscountPlanFeePromotion,
+    BC.IdPromotion,
+    BC.[SubscribersQty],
+    BC.[PaymentDate],
+    BC.[IdDiscountPlan],
+    BC.[TotalMonthPlan],
+    BC.[CurrentMonthPlan],
+    BC.[PromotionDuration],
+    BC.[ExtraEmailFee],
+    BC.[Taxes],
+    BC.[IdBillingCreditType],
+    UTP.[IdUserType]
+FROM
+    [dbo].[BillingCredits] BC
+        LEFT JOIN [dbo].[DiscountXPlan] DP
+        ON BC.IdDiscountPlan = DP.IdDiscountPlan
+LEFT JOIN [dbo].[UserTypesPlans] UTP ON UTP.IdUserTypePlan = BC.IdUserTypePlan
+WHERE
+    BC.[IdUser] = @idUser",
+                new
+                {
+                    @idUser = idUser
+                });
+
+            return billingCredit;
+        }
     }
 }

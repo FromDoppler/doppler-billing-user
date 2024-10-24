@@ -74,6 +74,47 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(null as User);
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
+                    services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
+                    services.AddSingleton(userRepositoryMock.Object);
+                });
+
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518);
+
+            // Act
+            var response = await client.PostAsync($"accounts/{accountname}/landings/buy", JsonContent.Create(buyLandingPlans));
+            var messageError = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal("Invalid user", messageError);
+        }
+
+        [Fact]
+        public async Task POST_buy_landings_should_return_not_found_when_regular_user_not_exists()
+        {
+            // Arrange
+            var accountname = "test1@example.com";
+
+            var buyLandingPlans = new BuyLandingPlans
+            {
+                Total = 10,
+                LandingPlans = new List<BuyLandingPlanItem>()
+            };
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(null as UserBillingInformation);
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -86,6 +127,49 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(Mock.Of<IEmailTemplatesService>());
                     services.AddSingleton(Mock.Of<ILandingPlanRepository>());
                     services.AddSingleton(userRepositoryMock.Object);
+                });
+
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518);
+
+            // Act
+            var response = await client.PostAsync($"accounts/{accountname}/landings/buy", JsonContent.Create(buyLandingPlans));
+            var messageError = await response.Content.ReadAsStringAsync();
+
+            // Assert
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Equal("Invalid user", messageError);
+        }
+
+        [Fact]
+        public async Task POST_buy_landings_should_return_not_found_when_cm_user_not_exists()
+        {
+            // Arrange
+            var accountname = "test1@example.com";
+
+            var buyLandingPlans = new BuyLandingPlans
+            {
+                Total = 10,
+                LandingPlans = new List<BuyLandingPlanItem>()
+            };
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            var cmRepositoryMock = new Mock<IClientManagerRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User() { IdClientManager = 1 });
+            cmRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<int>())).ReturnsAsync(null as UserBillingInformation);
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(Mock.Of<IEncryptionService>());
+                    services.AddSingleton(Mock.Of<ISlackService>());
+                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(Mock.Of<IEmailTemplatesService>());
+                    services.AddSingleton(Mock.Of<ILandingPlanRepository>());
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(cmRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -120,6 +204,7 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -167,6 +252,7 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -215,6 +301,7 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -263,6 +350,7 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
@@ -321,6 +409,7 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
@@ -378,6 +467,7 @@ namespace Doppler.BillingUser.Test
             };
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>())).ReturnsAsync(null as Doppler.BillingUser.ExternalServices.FirstData.CreditCard);
 
@@ -448,6 +538,7 @@ namespace Doppler.BillingUser.Test
 
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>())).ReturnsAsync(creditCard);
 
@@ -536,6 +627,7 @@ namespace Doppler.BillingUser.Test
 
 
             var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>())).ReturnsAsync(new User());
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>())).ReturnsAsync(creditCard);
 
