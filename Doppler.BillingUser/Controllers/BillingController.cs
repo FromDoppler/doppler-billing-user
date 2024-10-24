@@ -1600,7 +1600,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(accountname, user, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.User);
+                SendLandingNotifications(user.IdUser, accountname, user, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.User);
             }
             catch (Exception e)
             {
@@ -1834,7 +1834,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.CM);
+                SendLandingNotifications(idUser, clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.CM);
             }
             catch (Exception e)
             {
@@ -1934,6 +1934,7 @@ namespace Doppler.BillingUser.Controllers
         }
 
         private async void SendLandingNotifications(
+            int userId,
             string accountname,
             UserBillingInformation user,
             IList<LandingPlanUser> currentLandingPlans,
@@ -1952,7 +1953,7 @@ namespace Doppler.BillingUser.Controllers
             }
 
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
-            BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(user.IdUser);
+            BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(userId);
 
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
