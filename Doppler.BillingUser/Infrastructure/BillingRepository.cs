@@ -1729,5 +1729,37 @@ WHERE
 
             return billingCredit;
         }
+
+        public async Task<int> CreateOnSitePlanUserAsync(OnSitePlanUser onSitePlanUser)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var result = await connection.QueryAsync<int>(@"
+INSERT INTO [dbo].[OnSitePlanUser]
+    ([IdUser],
+    [IdOnSitePlan],
+    [Activated],
+    [ActivationDate],
+    [IdBillingCredit],
+    [CreatedAt])
+VALUES
+    (@idUser,
+    @idOnSitePlan,
+    @activated,
+    @activationDate,
+    @idBillingCredit,
+    @createdAt);
+SELECT CAST(SCOPE_IDENTITY() AS INT)",
+            new
+            {
+                @idUser = onSitePlanUser.IdUser,
+                @idOnSitePlan = onSitePlanUser.IdOnSitePlan,
+                @activated = onSitePlanUser.Activated,
+                @activationDate = onSitePlanUser.ActivationDate,
+                @idBillingCredit = onSitePlanUser.IdBillingCredit,
+                @createdAt = DateTime.UtcNow
+            });
+
+            return result.FirstOrDefault();
+        }
     }
 }

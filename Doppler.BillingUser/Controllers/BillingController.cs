@@ -19,6 +19,7 @@ using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Mappers;
 using Doppler.BillingUser.Mappers.BillingCredit;
 using Doppler.BillingUser.Mappers.ConversationPlan;
+using Doppler.BillingUser.Mappers.OnSitePlan;
 using Doppler.BillingUser.Mappers.PaymentMethod;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
@@ -26,6 +27,7 @@ using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
+using Doppler.BillingUser.Validators;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -38,6 +40,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Controllers
@@ -79,6 +82,8 @@ namespace Doppler.BillingUser.Controllers
         private readonly IBeplicService _beplicService;
         private readonly IChatPlanUserRepository _chatPlanUserRepository;
         private readonly IClientManagerRepository _clientManagerRepository;
+        private readonly IOnSitePlanUserRepository _onSitePlanUserRepository;
+        private readonly IOnSitePlanRepository _onSitePlanRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -152,7 +157,9 @@ namespace Doppler.BillingUser.Controllers
             IChatPlanRepository chatPlanRepository,
             IBeplicService beplicService,
             IChatPlanUserRepository chatPlanUserRepository,
-            IClientManagerRepository clientManagerRepository)
+            IClientManagerRepository clientManagerRepository,
+            IOnSitePlanUserRepository onSitePlanUserRepository,
+            IOnSitePlanRepository onSitePlanRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -187,6 +194,8 @@ namespace Doppler.BillingUser.Controllers
             _beplicService = beplicService;
             _chatPlanUserRepository = chatPlanUserRepository;
             _clientManagerRepository = clientManagerRepository;
+            _onSitePlanUserRepository = onSitePlanUserRepository;
+            _onSitePlanRepository = onSitePlanRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -1899,6 +1908,214 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/onsite/buy")]
+        public async Task<IActionResult> BuyOnSitePlans(string accountname, [FromBody] BuyOnSitePlan buyOnSitePlan)
+        {
+            var user = await _userRepository.GetUserInformation(accountname);
+            UserBillingInformation userBillingInformation = null;
+
+            try
+            {
+                if (user == null)
+                {
+                    var messageError = $"Failed at buy a onsite plan for user {accountname}, Invalid user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new NotFoundObjectResult("Invalid user");
+                }
+
+                if (!user.IdClientManager.HasValue)
+                {
+                    userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
+
+                    var canProceed = await CanProceedToBuyOnSitePlan(buyOnSitePlan, userBillingInformation, AccountTypeEnum.User);
+                    if (!canProceed.IsValid)
+                    {
+                        _logger.LogError(canProceed.Error.MessageError);
+                        await _slackService.SendNotification(canProceed.Error.MessageError);
+                        return new NotFoundObjectResult(canProceed.Error.ErrorType);
+                    }
+
+                    return await ProceedBuyOnSitePlan(accountname, user, userBillingInformation, buyOnSitePlan, AccountTypeEnum.User);
+                }
+                else
+                {
+                    userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
+                    var canProceed = await CanProceedToBuyOnSitePlan(buyOnSitePlan, userBillingInformation, AccountTypeEnum.CM);
+                    if (!canProceed.IsValid)
+                    {
+                        _logger.LogError(canProceed.Error.MessageError);
+                        await _slackService.SendNotification(canProceed.Error.MessageError);
+                        return new NotFoundObjectResult(canProceed.Error.ErrorType);
+                    }
+
+                    return await ProceedBuyOnSitePlan(accountname, user, userBillingInformation, buyOnSitePlan, AccountTypeEnum.CM);
+                }
+            }
+            catch (Exception e)
+            {
+                if (userBillingInformation != null)
+                {
+                    await CreateUserPaymentHistory(user.IdUser, (int)userBillingInformation.PaymentMethod, buyOnSitePlan.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, Source);
+
+                    var cardNumber = string.Empty;
+                    if (userBillingInformation.PaymentMethod == PaymentMethodEnum.CC)
+                    {
+                        CreditCard encryptedCreditCard = encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                        cardNumber = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number)[^4..] : "";
+                    }
+
+                    var cardNumberDetails = !string.IsNullOrEmpty(cardNumber) ? "with credit card's last 4 digits: " + cardNumber : "";
+                    var messageError = $"Failed at creating new agreement for user {accountname} {cardNumberDetails}. Exception {e.Message}";
+                    _logger.LogError(e, messageError);
+                    await _slackService.SendNotification(messageError);
+                }
+
+                return new ObjectResult("Failed at creating new agreement")
+                {
+                    StatusCode = 500,
+                    Value = e.Message,
+                };
+            }
+
+        }
+
+        private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)
+        {
+            var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
+            if (userBillingInformation == null)
+            {
+                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Invalid user";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid user", MessageError = messageError } };
+            }
+
+            if (userBillingInformation.IdBillingCountry == 0)
+            {
+                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Invalid country";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid country", MessageError = messageError } };
+            }
+
+            if (userBillingInformation.IsCancelated)
+            {
+                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Canceled user";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Canceled user", MessageError = messageError } };
+            }
+
+            if (!AllowedPaymentMethodsForBilling.Any(p => p == userBillingInformation.PaymentMethod))
+            {
+                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Invalid payment method {userBillingInformation.PaymentMethod}";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageError } };
+            }
+
+            if (userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == userBillingInformation.IdBillingCountry))
+            {
+                var messageErrorTransference = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, payment method {userBillingInformation.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageErrorTransference } };
+            }
+
+            var currentBillingCredit = await _billingRepository.GetBillingCredit(userBillingInformation.IdCurrentBillingCredit ?? 0);
+            if (currentBillingCredit == null || currentBillingCredit.ActivationDate == null)
+            {
+                var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The user has not an active marketing plan";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid marketing plan", MessageError = messageErrorTransference } };
+            }
+
+            CreditCard encryptedCreditCard;
+
+            if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
+                (userBillingInformation.PaymentMethod == PaymentMethodEnum.CC || userBillingInformation.PaymentMethod == PaymentMethodEnum.MP))
+            {
+                encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(userBillingInformation.Email);
+                if (encryptedCreditCard == null)
+                {
+                    var messageError = $"Failed at buy a landing plan for user {userBillingInformation.Email}, missing credit card information";
+                    return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "User credit card missing", MessageError = messageError } };
+                }
+            }
+
+            return new ValidationResult { IsValid = true };
+        }
+
+        private async Task<IActionResult> ProceedBuyOnSitePlan(
+            string accountname,
+            User user,
+            UserBillingInformation userOrClientManagerBillingInformation,
+            BuyOnSitePlan buyOnSitePlan,
+            AccountTypeEnum accountType)
+        {
+            CreditCardPayment payment = new CreditCardPayment();
+            string authorizationNumber;
+            int invoiceId;
+            var userId = accountType == AccountTypeEnum.User ? user.IdUser : user.IdClientManager.Value;
+            var userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
+
+            if (accountType == AccountTypeEnum.CM)
+            {
+                userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
+            }
+
+            if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
+                (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC || userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.MP))
+            {
+                CreditCard encryptedCreditCard;
+                if (accountType == AccountTypeEnum.User)
+                {
+                    encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(user.Email);
+                }
+                else
+                {
+                    encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
+                }
+
+                payment = await CreateCreditCardPayment(buyOnSitePlan.Total.Value, userId, accountname, userOrClientManagerBillingInformation.PaymentMethod, false, false, encryptedCreditCard);
+                var accountEntyMapper = GetAccountingEntryMapper(userOrClientManagerBillingInformation.PaymentMethod);
+                AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyOnSitePlan.Total.Value, userId, SourceTypeEnum.BuyOnSite, payment, accountType);
+                AccountingEntry paymentEntry = null;
+                authorizationNumber = payment.AuthorizationNumber;
+
+                if (payment.Status == PaymentStatusEnum.Approved)
+                {
+                    paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
+                }
+
+                invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+            }
+
+            var currentBillingCredit = await _billingRepository.GetBillingCredit(userOrClientManagerBillingInformation.IdCurrentBillingCredit ?? 0);
+            var currentOnSitePlan = await _onSitePlanUserRepository.GetCurrentPlan(user.Email);
+            var onSitePlan = await _onSitePlanRepository.GetById(buyOnSitePlan.PlanId);
+            PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, (int)PlanTypeEnum.OnSite, onSitePlan.IdOnSitePlan, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
+
+            if (currentOnSitePlan == null || (currentOnSitePlan != null && currentOnSitePlan.IdPlan != onSitePlan.IdOnSitePlan))
+            {
+                var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.OnSite_Buyed_CC : BillingCreditTypeEnum.OnSite_Request;
+                if (currentOnSitePlan != null && currentOnSitePlan.PrintQty > onSitePlan.PrintQty)
+                {
+                    billingCreditType = BillingCreditTypeEnum.Downgrade_Between_OnSite;
+                }
+
+                var billingCreditMapper = GetAddOnBillingCreditMapper(userOrClientManagerBillingInformation.PaymentMethod);
+
+                var total = onSitePlan.Fee;
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType);
+                var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
+
+                var onSitePlanUserMapper = GetOnSitePlanUserMapper(userOrClientManagerBillingInformation.PaymentMethod);
+                var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, onSitePlan.IdOnSitePlan, billingCreditId);
+                await _billingRepository.CreateOnSitePlanUserAsync(onSitePlanUser);
+
+                /* Save current billing credit in the UserAddOn table */
+                await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.OnSite, billingCreditId);
+            }
+
+            var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
+            var message = $"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyOnSitePlan.PlanId}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult($"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyOnSitePlan.PlanId}");
+        }
+
         private async void SendConversationNotifications(
             string accountname,
             UserBillingInformation user,
@@ -2626,6 +2843,21 @@ namespace Doppler.BillingUser.Controllers
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Conversation_Canceled);
                     await _beplicService.UnassignPlanToUser(user.IdUser);
                 }
+            }
+        }
+
+        private IOnSitePlanUserMapper GetOnSitePlanUserMapper(PaymentMethodEnum paymentMethod)
+        {
+            switch (paymentMethod)
+            {
+                case PaymentMethodEnum.CC:
+                case PaymentMethodEnum.MP:
+                case PaymentMethodEnum.TRANSF:
+                case PaymentMethodEnum.DA:
+                    return new OnSitePlanUserMapper();
+                default:
+                    _logger.LogError($"The paymentMethod '{paymentMethod}' does not have a mapper.");
+                    throw new ArgumentException($"The paymentMethod '{paymentMethod}' does not have a mapper.");
             }
         }
     }

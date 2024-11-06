@@ -71,5 +71,6 @@ namespace Doppler.BillingUser.Infrastructure
         Task<int> CreateChatPlanUserAsync(ChatPlanUser chatPlanUser);
 
         Task<BillingCredit> GetCurrentBillingCredit(int idUser);
+        Task<int> CreateOnSitePlanUserAsync(OnSitePlanUser onSitePlanUser);
     }
 }

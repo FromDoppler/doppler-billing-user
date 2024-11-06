@@ -129,6 +129,8 @@ namespace Doppler.BillingUser
             services.AddScoped<IChatPlanRepository, ChatPlanRepository>();
             services.AddScoped<IChatPlanUserRepository, ChatPlanUserRepository>();
             services.AddScoped<IClientManagerRepository, ClientManagerRepository>();
+            services.AddScoped<IOnSitePlanUserRepository, OnSitePlanUserRepository>();
+            services.AddScoped<IOnSitePlanRepository, OnSitePlanRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
