@@ -2048,11 +2048,15 @@ namespace Doppler.BillingUser.Controllers
             string authorizationNumber;
             int invoiceId;
             var userId = accountType == AccountTypeEnum.User ? user.IdUser : user.IdClientManager.Value;
-            var userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
+            UserBillingInformation userBillingInformation;
 
             if (accountType == AccountTypeEnum.CM)
             {
                 userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
+            }
+            else
+            {
+                userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
             }
 
             if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
@@ -2109,11 +2113,49 @@ namespace Doppler.BillingUser.Controllers
                 await _userAddOnRepository.SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(user.IdUser, (int)AddOnType.OnSite, billingCreditId);
             }
 
+            //Send notifications
+            var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
+            SendOnSiteNotifications(userBillingInformation.Email, userBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
+
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
             var message = $"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyOnSitePlan.PlanId}";
             await _slackService.SendNotification(message);
 
             return new OkObjectResult($"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyOnSitePlan.PlanId}");
+        }
+
+        private async void SendOnSiteNotifications(
+            string accountname,
+            UserBillingInformation user,
+            OnSitePlan newPlan,
+            CurrentPlan currentPlan,
+            CreditCardPayment payment,
+            PlanDiscountInformation planDiscountInformation,
+            PlanAmountDetails amountDetails,
+            AccountTypeEnum accountType)
+        {
+            User userInformation;
+            if (accountType == AccountTypeEnum.User)
+            {
+                userInformation = await _userRepository.GetUserInformation(accountname);
+            }
+            else
+            {
+                userInformation = await _clientManagerRepository.GetUserInformation(accountname);
+            }
+
+            bool isUpgradeApproved;
+
+
+            if (currentPlan == null)
+            {
+                isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                await _emailTemplatesService.SendNotificationForUpgradeOnSitePlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true);
+            }
+            else
+            {
+                await _emailTemplatesService.SendNotificationForUpdateOnSitePlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan);
+            }
         }
 
         private async void SendConversationNotifications(
