@@ -1934,7 +1934,7 @@ namespace Doppler.BillingUser.Controllers
                     {
                         _logger.LogError(canProceed.Error.MessageError);
                         await _slackService.SendNotification(canProceed.Error.MessageError);
-                        return new NotFoundObjectResult(canProceed.Error.ErrorType);
+                        return new BadRequestObjectResult(canProceed.Error.ErrorType);
                     }
 
                     return await ProceedBuyOnSitePlan(accountname, user, userBillingInformation, buyOnSitePlan, AccountTypeEnum.User);
@@ -1947,7 +1947,7 @@ namespace Doppler.BillingUser.Controllers
                     {
                         _logger.LogError(canProceed.Error.MessageError);
                         await _slackService.SendNotification(canProceed.Error.MessageError);
-                        return new NotFoundObjectResult(canProceed.Error.ErrorType);
+                        return new BadRequestObjectResult(canProceed.Error.ErrorType);
                     }
 
                     return await ProceedBuyOnSitePlan(accountname, user, userBillingInformation, buyOnSitePlan, AccountTypeEnum.CM);
@@ -1967,12 +1967,12 @@ namespace Doppler.BillingUser.Controllers
                     }
 
                     var cardNumberDetails = !string.IsNullOrEmpty(cardNumber) ? "with credit card's last 4 digits: " + cardNumber : "";
-                    var messageError = $"Failed at creating new agreement for user {accountname} {cardNumberDetails}. Exception {e.Message}";
+                    var messageError = $"Failed at buy a onsite plan for user {accountname} {cardNumberDetails}. Exception {e.Message}";
                     _logger.LogError(e, messageError);
                     await _slackService.SendNotification(messageError);
                 }
 
-                return new ObjectResult("Failed at creating new agreement")
+                return new ObjectResult("Failed at buy a onsite plan")
                 {
                     StatusCode = 500,
                     Value = e.Message,
@@ -1986,31 +1986,31 @@ namespace Doppler.BillingUser.Controllers
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
             if (userBillingInformation == null)
             {
-                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Invalid user";
+                var messageError = $"{userType} - Failed at buy a onsite plan, Invalid user";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid user", MessageError = messageError } };
-            }
-
-            if (userBillingInformation.IdBillingCountry == 0)
-            {
-                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Invalid country";
-                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid country", MessageError = messageError } };
             }
 
             if (userBillingInformation.IsCancelated)
             {
-                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Canceled user";
+                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, Canceled user";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Canceled user", MessageError = messageError } };
+            }
+
+            if (userBillingInformation.IdBillingCountry == 0)
+            {
+                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, Invalid country";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid country", MessageError = messageError } };
             }
 
             if (!AllowedPaymentMethodsForBilling.Any(p => p == userBillingInformation.PaymentMethod))
             {
-                var messageError = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, Invalid payment method {userBillingInformation.PaymentMethod}";
+                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, Invalid payment method {userBillingInformation.PaymentMethod}";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageError } };
             }
 
             if (userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == userBillingInformation.IdBillingCountry))
             {
-                var messageErrorTransference = $"{userType} - Failed at creating new agreement for user {userBillingInformation.Email}, payment method {userBillingInformation.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
+                var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, payment method {userBillingInformation.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageErrorTransference } };
             }
 
@@ -2019,6 +2019,13 @@ namespace Doppler.BillingUser.Controllers
             {
                 var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The user has not an active marketing plan";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid marketing plan", MessageError = messageErrorTransference } };
+            }
+
+            var newOnSitePlan = await _onSitePlanRepository.GetById(buyOnSitePlan.PlanId);
+            if (newOnSitePlan == null)
+            {
+                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The plan {buyOnSitePlan.PlanId} not exist";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid onsite plan", MessageError = messageError } };
             }
 
             CreditCard encryptedCreditCard;
