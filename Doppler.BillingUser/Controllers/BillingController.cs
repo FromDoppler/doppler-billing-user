@@ -1981,6 +1981,53 @@ namespace Doppler.BillingUser.Controllers
 
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPut("/accounts/{accountname}/onsite/cancel")]
+        public async Task<IActionResult> CancenlCurrentOnSitePlan(string accountname)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            var userType = !user.IdClientManager.HasValue ? "REG" : "CM";
+
+            try
+            {
+                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)AddOnType.OnSite);
+
+                if (userAddOn == null)
+                {
+                    return new NotFoundObjectResult("The user does not have any onsite plan");
+                }
+
+                var currentOnSitePlanBillingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
+                if (currentOnSitePlanBillingCredit != null && currentOnSitePlanBillingCredit.IdBillingCreditType != (int)BillingCreditTypeEnum.OnSite_Canceled)
+                {
+                    await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.OnSite_Canceled);
+                }
+
+                var message = $"{userType} - Successful cancel onsite plan for: User: {accountname}";
+                _logger.LogError(message);
+                await _slackService.SendNotification(message);
+
+                return new OkObjectResult(message);
+            }
+            catch
+            {
+                var message = $"{userType} - Failed at canceling onsite plan for: User: {accountname}";
+                _logger.LogError(message);
+                await _slackService.SendNotification(message);
+
+                return new ObjectResult(message)
+                {
+                    StatusCode = 500,
+                };
+            }
+        }
+
         private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)
         {
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
