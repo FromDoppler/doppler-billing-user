@@ -723,6 +723,9 @@ namespace Doppler.BillingUser.Controllers
                 case (int)PlanTypeEnum.Chat:
                     currentPlan = await _chatPlanUserRepository.GetCurrentPlan(accountname);
                     break;
+                case (int)PlanTypeEnum.OnSite:
+                    currentPlan = await _onSitePlanUserRepository.GetCurrentPlan(accountname);
+                    break;
             }
 
             if (currentPlan == null)
