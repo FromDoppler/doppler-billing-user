@@ -2101,11 +2101,13 @@ namespace Doppler.BillingUser.Controllers
             BuyOnSitePlan buyOnSitePlan,
             AccountTypeEnum accountType)
         {
-            CreditCardPayment payment = new CreditCardPayment();
-            string authorizationNumber;
-            int invoiceId;
+            CreditCardPayment payment = new();
+            string authorizationNumber = string.Empty;
+            int invoiceId = 0;
             var userId = accountType == AccountTypeEnum.User ? user.IdUser : user.IdClientManager.Value;
             UserBillingInformation userBillingInformation;
+            CreditCard encryptedCreditCard = new();
+            var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
 
             if (accountType == AccountTypeEnum.CM)
             {
@@ -2119,7 +2121,6 @@ namespace Doppler.BillingUser.Controllers
             if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
                 (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC || userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.MP))
             {
-                CreditCard encryptedCreditCard;
                 if (accountType == AccountTypeEnum.User)
                 {
                     encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(user.Email);
@@ -2174,7 +2175,59 @@ namespace Doppler.BillingUser.Controllers
             var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
             SendOnSiteNotifications(userBillingInformation.Email, userBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
 
-            var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
+            if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
+                    ((userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC) ||
+                    (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.MP) ||
+                    (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF && userOrClientManagerBillingInformation.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                    (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.DA)))
+            {
+                var billingCredit = await _billingRepository.GetBillingCredit(userBillingInformation.IdCurrentBillingCredit.Value);
+                var cardNumber = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
+                var holderName = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
+
+                if (billingCredit != null)
+                {
+                    var billingSystem = ResponsabileBillingEnum.QBL;
+
+                    switch (userOrClientManagerBillingInformation.PaymentMethod)
+                    {
+                        case PaymentMethodEnum.CC:
+                            billingSystem = ResponsabileBillingEnum.QBL;
+                            break;
+                        case PaymentMethodEnum.DA:
+                        case PaymentMethodEnum.TRANSF:
+                            billingSystem = ResponsabileBillingEnum.GBBISIDE;
+                            break;
+                        case PaymentMethodEnum.MP:
+                            billingSystem = ResponsabileBillingEnum.Mercadopago;
+                            break;
+                    }
+
+                    billingCredit.IdUser = userOrClientManagerBillingInformation.IdUser;
+                    billingCredit.Cuit = userOrClientManagerBillingInformation.Cuit;
+                    billingCredit.IdResponsabileBilling = (int)billingSystem;
+
+                    await _sapService.SendBillingToSap(
+                        BillingHelper.MapOnSiteBillingToSapAsync(_sapSettings.Value,
+                            cardNumber,
+                            holderName,
+                            billingCredit,
+                            authorizationNumber,
+                            invoiceId,
+                            buyOnSitePlan.Total,
+                            userOrClientManagerBillingInformation,
+                            accountType,
+                            onSitePlan,
+                            currentOnSitePlan),
+                        accountname);
+                }
+                else
+                {
+                    var slackMessage = $"{userType} - Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                    await _slackService.SendNotification(slackMessage);
+                }
+            }
+
             var message = $"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyOnSitePlan.PlanId}";
             await _slackService.SendNotification(message);
 
