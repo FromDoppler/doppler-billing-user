@@ -674,7 +674,8 @@ namespace Doppler.BillingUser.Test
                 IdUser = 1,
                 IsCancelated = false,
                 PaymentMethod = Enums.PaymentMethodEnum.CC,
-                IdBillingCountry = 1
+                IdBillingCountry = 1,
+                IdCurrentBillingCredit = 1
             };
 
             var currentBillingCredit = new BillingCredit
@@ -779,7 +780,8 @@ namespace Doppler.BillingUser.Test
                 IdUser = 1,
                 IsCancelated = false,
                 PaymentMethod = Enums.PaymentMethodEnum.CC,
-                IdBillingCountry = 1
+                IdBillingCountry = 1,
+                IdCurrentBillingCredit = 1
             };
 
             var currentBillingCredit = new BillingCredit

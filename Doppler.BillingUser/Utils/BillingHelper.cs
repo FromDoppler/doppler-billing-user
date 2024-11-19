@@ -6,6 +6,7 @@ using Doppler.BillingUser.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace Doppler.BillingUser.Utils
 {
@@ -110,6 +111,57 @@ namespace Doppler.BillingUser.Utils
                             PackId = l.LandingPlanId,
                             Quantity = l.PackQty
                         }).ToList()
+                    }
+                ]
+            };
+
+            return sapBilling;
+        }
+
+        public static SapBillingDto MapOnSiteBillingToSapAsync(
+            SapSettings timeZoneOffset,
+            string cardNumber,
+            string cardHolderName,
+            BillingCredit billingCredit,
+            string authorizationNumber,
+            int invoicedId,
+            decimal? total,
+            UserBillingInformation user,
+            AccountTypeEnum accountType,
+            OnSitePlan onSitePlan,
+            CurrentPlan currentOnSitePlan)
+        {
+            var planFee = (double)onSitePlan.Fee * (billingCredit.TotalMonthPlan ?? 1);
+            var isUpSelling = (currentOnSitePlan != null && currentOnSitePlan.Fee > 0);
+
+            var sapBilling = new SapBillingDto
+            {
+                Id = billingCredit.IdUser,
+                Currency = CurrencyTypeUsd,
+                ExtraEmailsFee = 0,
+                PlanType = accountType == AccountTypeEnum.User ? 9 : 0,
+                CardHolder = cardHolderName,
+                CardType = billingCredit.CCIdentificationType,
+                CardNumber = !string.IsNullOrEmpty(cardNumber) ? cardNumber[^4..] : string.Empty,
+                CardErrorCode = "100",
+                CardErrorDetail = "Successfully approved",
+                TransactionApproved = true,
+                TransferReference = authorizationNumber,
+                InvoiceId = invoicedId,
+                PaymentDate = billingCredit.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
+                InvoiceDate = billingCredit.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
+                BillingSystemId = billingCredit.IdResponsabileBilling,
+                FiscalID = billingCredit.Cuit,
+                AdditionalServices = [
+                    new()
+                    {
+                        Charge = !isUpSelling ? planFee : (double)total,
+                        PrintQty = onSitePlan.PrintQty,
+                        Discount = billingCredit.DiscountPlanFee,
+                        IsUpSelling = isUpSelling,
+                        Type = AdditionalServiceTypeEnum.OnSite,
+                        IsCustom = false,
+                        UserEmail = user.Email
                     }
                 ]
             };
