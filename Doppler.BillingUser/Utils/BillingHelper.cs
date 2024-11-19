@@ -157,7 +157,7 @@ namespace Doppler.BillingUser.Utils
                     {
                         Charge = !isUpSelling ? planFee : (double)total,
                         PrintQty = onSitePlan.PrintQty,
-                        Discount = billingCredit.DiscountPlanFee,
+                        Discount = !isUpSelling ? billingCredit.DiscountPlanFee : 0,
                         IsUpSelling = isUpSelling,
                         Type = AdditionalServiceTypeEnum.OnSite,
                         IsCustom = false,
