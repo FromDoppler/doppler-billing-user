@@ -54,10 +54,14 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
             {
                 Date = now,
                 PaymentDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request ||
-                                billingCreditType == BillingCreditTypeEnum.Conversation_Request) ? !isUpgradePending ? now : null : now,
+                                billingCreditType == BillingCreditTypeEnum.Conversation_Request ||
+                                billingCreditType == BillingCreditTypeEnum.OnSite_Request) ? !isUpgradePending ? now : null : now,
                 ActivationDate = (billingCreditType == BillingCreditTypeEnum.Landing_Request ||
-                                billingCreditType == BillingCreditTypeEnum.Conversation_Request) ? !isUpgradePending ? now : null : now,
-                Approved = (billingCreditType != BillingCreditTypeEnum.Landing_Request && billingCreditType != BillingCreditTypeEnum.Conversation_Request) || !isUpgradePending,
+                                billingCreditType == BillingCreditTypeEnum.Conversation_Request ||
+                                billingCreditType == BillingCreditTypeEnum.OnSite_Request) ? !isUpgradePending ? now : null : now,
+                Approved = (billingCreditType != BillingCreditTypeEnum.Landing_Request &&
+                            billingCreditType != BillingCreditTypeEnum.Conversation_Request &&
+                            billingCreditType != BillingCreditTypeEnum.OnSite_Request) || !isUpgradePending,
                 PlanFee = (double)total,
                 IdBillingCreditType = (int)billingCreditType,
                 TotalMonthPlan = currentBillingCredit.TotalMonthPlan,
