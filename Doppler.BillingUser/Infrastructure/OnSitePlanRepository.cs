@@ -27,5 +27,19 @@ WHERE [IdOnSitePlan] = @onSitePlanid", new { onSitePlanid });
 
             return onSitePlan;
         }
+
+        public async Task<OnSitePlan> GetFreeOnSitePlan()
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var onSitePlan = await connection.QueryFirstOrDefaultAsync<OnSitePlan>(@"
+SELECT [IdOnSitePlan],
+        [Description],
+        [PrintQty],
+        [Fee]
+FROM [dbo].[OnSitePlan]
+WHERE [Fee] = 0");
+
+            return onSitePlan;
+        }
     }
 }
