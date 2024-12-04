@@ -159,9 +159,9 @@ WHERE
             if (result is not { PaymentMethodName: "CC" or "MP" })
                 return result;
 
-            result.CCHolderFullName = _encryptionService.DecryptAES256(result.CCHolderFullName);
-            result.CCNumber = CreditCardHelper.ObfuscateNumber(_encryptionService.DecryptAES256(result.CCNumber));
-            result.CCVerification = CreditCardHelper.ObfuscateVerificationCode(_encryptionService.DecryptAES256(result.CCVerification));
+            result.CCHolderFullName = !string.IsNullOrEmpty(result.CCHolderFullName) ? _encryptionService.DecryptAES256(result.CCHolderFullName) : string.Empty;
+            result.CCNumber = !string.IsNullOrEmpty(result.CCNumber) ? CreditCardHelper.ObfuscateNumber(_encryptionService.DecryptAES256(result.CCNumber)) : string.Empty;
+            result.CCVerification = !string.IsNullOrEmpty(result.CCVerification) ? CreditCardHelper.ObfuscateVerificationCode(_encryptionService.DecryptAES256(result.CCVerification)) : string.Empty;
 
             return result;
         }
