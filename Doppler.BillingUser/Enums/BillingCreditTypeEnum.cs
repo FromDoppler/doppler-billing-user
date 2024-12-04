@@ -24,5 +24,6 @@ namespace Doppler.BillingUser.Enums
         OnSite_Canceled = 36,
         Downgrade_Between_OnSite = 37,
         OnSite_New_Month = 38,
+        OnSite_Free_Trial = 39
     }
 }
