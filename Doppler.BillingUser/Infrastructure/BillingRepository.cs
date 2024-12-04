@@ -121,11 +121,11 @@ WHERE
             var result = await connection.QueryFirstOrDefaultAsync<PaymentMethod>(@"
 
 SELECT
-    U.CCHolderFullName,
-    U.CCNumber,
+    CASE WHEN U.CCHolderFullName IS NOT NULL THEN U.CCHolderFullName ELSE BC.CCHolderFullName END AS CCHolderFullName,
+    CASE WHEN U.CCNumber IS NOT NULL THEN U.CCNumber ELSE BC.CCNumber END AS CCNumber,
     U.CCExpMonth,
     U.CCExpYear,
-    U.CCVerification,
+    CASE WHEN U.CCVerification IS NOT NULL THEN U.CCVerification ELSE BC.CCVerification END AS CCVerification,
     C.[Description] AS CCType,
     P.PaymentMethodName AS PaymentMethodName,
     U.RazonSocial,
@@ -147,6 +147,8 @@ LEFT JOIN
     [CreditCardTypes] C ON C.IdCCType = U.IdCCType
 LEFT JOIN
     [PaymentMethods] P ON P.IdPaymentMethod = U.PaymentMethod
+LEFT JOIN
+    [BillingCredits] BC ON BC.IdBillingCredit = U.IdCurrentBillingCredit
 WHERE
     U.Email = @email;",
                 new
