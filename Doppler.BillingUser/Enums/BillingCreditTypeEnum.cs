@@ -18,11 +18,9 @@ namespace Doppler.BillingUser.Enums
         Conversation_Request = 29,
         Conversation_Canceled = 30,
         Downgrade_Between_Conversation = 31,
-
         OnSite_Buyed_CC = 34,
         OnSite_Request = 35,
         OnSite_Canceled = 36,
-        Downgrade_Between_OnSite = 37,
-        OnSite_New_Month = 38,
+        Downgrade_Between_OnSite = 37
     }
 }

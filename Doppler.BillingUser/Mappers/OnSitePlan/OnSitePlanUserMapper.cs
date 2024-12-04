@@ -5,7 +5,7 @@ namespace Doppler.BillingUser.Mappers.OnSitePlan
 {
     public class OnSitePlanUserMapper : IOnSitePlanUserMapper
     {
-        public OnSitePlanUser MapToOnSitePlanUser(int idUser, int idOnSitePlan, int idBillingCredit)
+        public OnSitePlanUser MapToOnSitePlanUser(int idUser, int idOnSitePlan, int? idBillingCredit)
         {
             DateTime now = DateTime.UtcNow;
 

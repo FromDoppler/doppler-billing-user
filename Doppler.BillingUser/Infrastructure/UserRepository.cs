@@ -237,7 +237,8 @@ SELECT
     U.BillingEmails,
     BS.IdCountry as IdBillingCountry,
     U.IsCancelated,
-    U.IdClientManager
+    U.IdClientManager,
+    U.TrialExpirationDate
 FROM
     [User] U
 LEFT JOIN

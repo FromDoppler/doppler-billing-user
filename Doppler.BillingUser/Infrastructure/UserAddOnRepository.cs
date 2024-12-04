@@ -29,7 +29,7 @@ namespace Doppler.BillingUser.Infrastructure
             return userAddOn;
         }
 
-        public async Task SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(int userId, int addOnType, int billingCreditId)
+        public async Task SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(int userId, int addOnType, int? billingCreditId)
         {
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
