@@ -1741,6 +1741,7 @@ INSERT INTO [dbo].[OnSitePlanUser]
     [IdOnSitePlan],
     [Activated],
     [ActivationDate],
+    [ExperirationDate],
     [IdBillingCredit],
     [CreatedAt])
 VALUES
@@ -1748,6 +1749,7 @@ VALUES
     @idOnSitePlan,
     @activated,
     @activationDate,
+    @experirationDate,
     @idBillingCredit,
     @createdAt);
 SELECT CAST(SCOPE_IDENTITY() AS INT)",
@@ -1757,6 +1759,7 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
                 @idOnSitePlan = onSitePlanUser.IdOnSitePlan,
                 @activated = onSitePlanUser.Activated,
                 @activationDate = onSitePlanUser.ActivationDate,
+                @experirationDate = onSitePlanUser.ExperirationDate,
                 @idBillingCredit = onSitePlanUser.IdBillingCredit,
                 @createdAt = DateTime.UtcNow
             });
