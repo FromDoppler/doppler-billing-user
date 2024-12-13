@@ -6,5 +6,6 @@ namespace Doppler.BillingUser.Infrastructure
     public interface IOnSitePlanRepository
     {
         Task<OnSitePlan> GetById(int onSitePlanid);
+        Task<OnSitePlan> GetFreeOnSitePlan();
     }
 }

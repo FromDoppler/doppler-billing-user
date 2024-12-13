@@ -7,6 +7,6 @@ namespace Doppler.BillingUser.Infrastructure
     {
         Task<UserAddOn> GetByUserIdAndAddOnType(int userId, int addOnType);
 
-        Task SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(int userId, int addOnType, int billingCreditId);
+        Task SaveCurrentBillingCreditByUserIdAndAddOnTypeAsync(int userId, int addOnType, int? billingCreditId);
     }
 }

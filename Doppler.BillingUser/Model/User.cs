@@ -1,3 +1,5 @@
+using System;
+
 namespace Doppler.BillingUser.Model
 {
     public class User
@@ -44,5 +46,6 @@ namespace Doppler.BillingUser.Model
         public string BillingCountryName { get; set; }
         public int IdBillingCountry { get; set; }
         public int? IdClientManager { get; set; }
+        public DateTime? TrialExpirationDate { get; set; }
     }
 }

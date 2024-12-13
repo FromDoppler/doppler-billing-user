@@ -2031,6 +2031,66 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/onsite/activate")]
+        public async Task<IActionResult> ActivateOnSitePlan(string accountname)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            var userType = !user.IdClientManager.HasValue ? "REG" : "CM";
+
+            try
+            {
+                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)AddOnType.OnSite);
+
+                if (userAddOn != null)
+                {
+                    return new BadRequestObjectResult("The user have an onsite plan");
+                }
+
+                var freeOnSitePlan = await _onSitePlanRepository.GetFreeOnSitePlan();
+
+                if (freeOnSitePlan != null)
+                {
+                    var onSitePlanUserMapper = GetOnSitePlanUserMapper(PaymentMethodEnum.CC);
+                    var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, freeOnSitePlan.IdOnSitePlan, null);
+
+                    if (user.IdUserType == (int)UserTypeEnum.FREE)
+                    {
+                        onSitePlanUser.ExperirationDate = user.TrialExpirationDate;
+                    }
+                    else
+                    {
+                        onSitePlanUser.ExperirationDate = DateTime.UtcNow.Date.AddDays(1).AddDays(freeOnSitePlan.FreeDays ?? 0);
+                    }
+
+                    await _billingRepository.CreateOnSitePlanUserAsync(onSitePlanUser);
+                }
+
+                var message = $"{userType} - Successful active onsite plan for: User: {accountname}";
+                _logger.LogError(message);
+                await _slackService.SendNotification(message);
+
+                return new OkObjectResult(message);
+            }
+            catch (Exception e)
+            {
+                var message = $"{userType} - Failed at activating onsite plan for: User: {accountname}";
+                _logger.LogError(e, message);
+                await _slackService.SendNotification(message);
+
+                return new ObjectResult(message)
+                {
+                    StatusCode = 500,
+                };
+            }
+        }
+
         private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)
         {
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
