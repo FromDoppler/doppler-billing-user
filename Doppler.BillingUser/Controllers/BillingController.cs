@@ -1965,7 +1965,17 @@ namespace Doppler.BillingUser.Controllers
                     var cardNumber = string.Empty;
                     if (userBillingInformation.PaymentMethod == PaymentMethodEnum.CC)
                     {
-                        CreditCard encryptedCreditCard = encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                        CreditCard encryptedCreditCard = new();
+
+                        if (!user.IdClientManager.HasValue)
+                        {
+                            encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(user.Email);
+                        }
+                        else
+                        {
+                            encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
+                        }
+
                         cardNumber = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number)[^4..] : "";
                     }
 
@@ -2143,7 +2153,15 @@ namespace Doppler.BillingUser.Controllers
             if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
                 (userBillingInformation.PaymentMethod == PaymentMethodEnum.CC || userBillingInformation.PaymentMethod == PaymentMethodEnum.MP))
             {
-                encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(userBillingInformation.Email);
+                if (accountType == AccountTypeEnum.User)
+                {
+                    encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(userBillingInformation.Email);
+                }
+                else
+                {
+                    encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(userBillingInformation.IdUser);
+                }
+
                 if (encryptedCreditCard == null)
                 {
                     var messageError = $"Failed at buy a landing plan for user {userBillingInformation.Email}, missing credit card information";
@@ -2165,18 +2183,9 @@ namespace Doppler.BillingUser.Controllers
             string authorizationNumber = string.Empty;
             int invoiceId = 0;
             var userId = accountType == AccountTypeEnum.User ? user.IdUser : user.IdClientManager.Value;
-            UserBillingInformation userBillingInformation;
             CreditCard encryptedCreditCard = new();
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
-
-            if (accountType == AccountTypeEnum.CM)
-            {
-                userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
-            }
-            else
-            {
-                userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
-            }
+            var userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
 
             if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
                 (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC || userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.MP))
@@ -2204,7 +2213,7 @@ namespace Doppler.BillingUser.Controllers
                 invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
             }
 
-            var currentBillingCredit = await _billingRepository.GetBillingCredit(userOrClientManagerBillingInformation.IdCurrentBillingCredit ?? 0);
+            var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
             var currentOnSitePlan = await _onSitePlanUserRepository.GetCurrentPlan(user.Email);
             var onSitePlan = await _onSitePlanRepository.GetById(buyOnSitePlan.PlanId);
             PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, (int)PlanTypeEnum.OnSite, onSitePlan.IdOnSitePlan, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
@@ -2233,7 +2242,7 @@ namespace Doppler.BillingUser.Controllers
 
             //Send notifications
             var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
-            SendOnSiteNotifications(userBillingInformation.Email, userBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
+            SendOnSiteNotifications(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
 
             if (buyOnSitePlan.Total.GetValueOrDefault() > 0 &&
                     ((userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC) ||

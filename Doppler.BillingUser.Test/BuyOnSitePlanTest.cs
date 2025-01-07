@@ -468,7 +468,7 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(user);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
-            billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
+            billingRepositoryMock.Setup(x => x.GetCurrentBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
 
             var onSitePlanRepositoryMock = new Mock<IOnSitePlanRepository>();
             onSitePlanRepositoryMock.Setup(x => x.GetById(It.IsAny<int>())).ReturnsAsync(null as OnSitePlan);
@@ -537,7 +537,7 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>())).ReturnsAsync(null as Doppler.BillingUser.ExternalServices.FirstData.CreditCard);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
-            billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
+            billingRepositoryMock.Setup(x => x.GetCurrentBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
             billingRepositoryMock.Setup(x => x.GetCurrentBillingCreditForLanding(It.IsAny<int>())).ReturnsAsync(null as BillingCredit);
 
             var onSitePlanRepositoryMock = new Mock<IOnSitePlanRepository>();
@@ -620,7 +620,7 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>())).ReturnsAsync(creditCard);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
-            billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
+            billingRepositoryMock.Setup(x => x.GetCurrentBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
             billingRepositoryMock.Setup(x => x.GetCurrentBillingCreditForLanding(It.IsAny<int>())).ReturnsAsync(null as BillingCredit);
 
 
@@ -719,6 +719,7 @@ namespace Doppler.BillingUser.Test
             userRepositoryMock.Setup(x => x.GetEncryptedCreditCard(It.IsAny<string>())).ReturnsAsync(creditCard);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
+            billingRepositoryMock.Setup(x => x.GetCurrentBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
             billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
             billingRepositoryMock.Setup(x => x.GetCurrentBillingCreditForLanding(It.IsAny<int>())).ReturnsAsync(null as BillingCredit);
             billingRepositoryMock.Setup(x => x.CreateAccountingEntriesAsync(It.IsAny<AccountingEntry>(), It.IsAny<AccountingEntry>())).ReturnsAsync(1);
@@ -829,6 +830,7 @@ namespace Doppler.BillingUser.Test
             clientManagerRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<int>())).ReturnsAsync(user);
 
             var billingRepositoryMock = new Mock<IBillingRepository>();
+            billingRepositoryMock.Setup(x => x.GetCurrentBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
             billingRepositoryMock.Setup(x => x.GetBillingCredit(It.IsAny<int>())).ReturnsAsync(currentBillingCredit);
             billingRepositoryMock.Setup(x => x.GetCurrentBillingCreditForLanding(It.IsAny<int>())).ReturnsAsync(null as BillingCredit);
             billingRepositoryMock.Setup(x => x.CreateAccountingEntriesAsync(It.IsAny<AccountingEntry>(), It.IsAny<AccountingEntry>())).ReturnsAsync(1);
