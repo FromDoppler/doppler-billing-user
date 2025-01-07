@@ -1932,7 +1932,7 @@ namespace Doppler.BillingUser.Controllers
                 {
                     userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
 
-                    var canProceed = await CanProceedToBuyOnSitePlan(buyOnSitePlan, userBillingInformation, AccountTypeEnum.User);
+                    var canProceed = await CanProceedToBuyOnSitePlan(buyOnSitePlan, user.IdUser, userBillingInformation, AccountTypeEnum.User);
                     if (!canProceed.IsValid)
                     {
                         _logger.LogError(canProceed.Error.MessageError);
@@ -1945,7 +1945,7 @@ namespace Doppler.BillingUser.Controllers
                 else
                 {
                     userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
-                    var canProceed = await CanProceedToBuyOnSitePlan(buyOnSitePlan, userBillingInformation, AccountTypeEnum.CM);
+                    var canProceed = await CanProceedToBuyOnSitePlan(buyOnSitePlan, user.IdUser, userBillingInformation, AccountTypeEnum.CM);
                     if (!canProceed.IsValid)
                     {
                         _logger.LogError(canProceed.Error.MessageError);
@@ -2091,7 +2091,7 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)
+        private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, int userId, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)
         {
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
             if (userBillingInformation == null)
@@ -2124,7 +2124,7 @@ namespace Doppler.BillingUser.Controllers
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageErrorTransference } };
             }
 
-            var currentBillingCredit = await _billingRepository.GetBillingCredit(userBillingInformation.IdCurrentBillingCredit ?? 0);
+            var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(userId);
             if (currentBillingCredit == null || currentBillingCredit.ActivationDate == null)
             {
                 var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The user has not an active marketing plan";
