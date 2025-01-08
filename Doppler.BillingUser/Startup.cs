@@ -28,6 +28,7 @@ using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.ExternalServices.BeplicApi;
+using Doppler.BillingUser.ExternalServices.BinApi;
 
 namespace Doppler.BillingUser
 {
@@ -131,6 +132,8 @@ namespace Doppler.BillingUser
             services.AddScoped<IClientManagerRepository, ClientManagerRepository>();
             services.AddScoped<IOnSitePlanUserRepository, OnSitePlanUserRepository>();
             services.AddScoped<IOnSitePlanRepository, OnSitePlanRepository>();
+            services.Configure<BinSettings>(Configuration.GetSection(nameof(BinSettings)));
+            services.AddScoped<IBinService, BinService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
