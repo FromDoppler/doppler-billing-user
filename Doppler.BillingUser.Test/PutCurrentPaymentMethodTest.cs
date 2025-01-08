@@ -131,7 +131,8 @@ namespace Doppler.BillingUser.Test
                 { new StringContent("13"), "IdSelectedPlan" }
             };
 
-            var requestContent = new StringContent(JsonConvert.SerializeObject(currentPaymentMethod), Encoding.UTF8, "application/json");
+            var encryptedMock = new Mock<IEncryptionService>();
+            encryptedMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("TEST");
 
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
@@ -141,10 +142,6 @@ namespace Doppler.BillingUser.Test
                     PaymentMethod = 1,
                     IsCancelated = false
                 });
-            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation()
-            {
-                IdCurrentBillingCredit = 1
-            });
 
             var binServiceMock = new Mock<IBinService>();
             binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
@@ -154,6 +151,7 @@ namespace Doppler.BillingUser.Test
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddSingleton(encryptedMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(binServiceMock.Object);
                 });
