@@ -1,14 +1,9 @@
 using Doppler.BillingUser.Authorization;
-using Doppler.BillingUser.ExternalServices.BeplicApi;
-using Doppler.BillingUser.ExternalServices.BeplicApi.Responses;
 using Doppler.BillingUser.ExternalServices.BinApi.Responses;
-using Doppler.BillingUser.Model;
 using Flurl.Http;
 using Flurl.Http.Configuration;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Tavis.UriTemplates;
@@ -18,13 +13,11 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
     public class BinService : IBinService
     {
         private readonly IOptions<BinSettings> _options;
-        //private readonly ILogger<BinService> _logger;
         private readonly IFlurlClient _flurlClient;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
         public BinService(
             IOptions<BinSettings> options,
-           /* ILogger<BinService> logger,*/
             IFlurlClientFactory flurlClientFactory,
             IJwtTokenGenerator jwtTokenGenerator)
         {
@@ -57,7 +50,6 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
             {
                 throw;
             }
-
         }
     }
 }
