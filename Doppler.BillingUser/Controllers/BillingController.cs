@@ -317,7 +317,7 @@ namespace Doppler.BillingUser.Controllers
                     {
                         if (!await _binService.IsCreditCard(bin))
                         {
-                            return new BadRequestObjectResult("Only credit cards are valid payment methods");
+                            return new BadRequestObjectResult("IsNotCreditCard");
                         }
                     }
                     catch (CardNotFoundException)
