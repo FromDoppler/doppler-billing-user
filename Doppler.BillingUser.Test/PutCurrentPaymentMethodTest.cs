@@ -21,6 +21,7 @@ using Microsoft.Extensions.Options;
 using Xunit;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Infrastructure;
+using Doppler.BillingUser.ExternalServices.BinApi;
 
 namespace Doppler.BillingUser.Test
 {
@@ -115,6 +116,57 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
+        public async Task PUT_Current_payment_CC_method_should_return_bad_request_when_use_cc_method_and_the_card_is_debit_type()
+        {
+            // Arrange
+            var currentPaymentMethod = new MultipartFormDataContent()
+            {
+                { new StringContent("Test Holder Name"), "CCHolderFullName" },
+                { new StringContent("4444 4444 4444 4444"), "CCNumber" },
+                { new StringContent("222"), "CCVerification" },
+                { new StringContent("12"), "CCExpMonth" },
+                { new StringContent("25"), "CCExpYear" },
+                { new StringContent("Mastercard"), "CCType" },
+                { new StringContent(PaymentMethodEnum.CC.ToString()), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" }
+            };
+
+            var encryptedMock = new Mock<IEncryptionService>();
+            encryptedMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("TEST");
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    PaymentMethod = 1,
+                    IsCancelated = false
+                });
+
+            var binServiceMock = new Mock<IBinService>();
+            binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
+                .ReturnsAsync(false);
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.AddSingleton(encryptedMock.Object);
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(binServiceMock.Object);
+                });
+
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
+
+            // Act
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        [Fact]
         public async Task PUT_Current_payment_CC_method_should_update_right_value_based_on_body_information()
         {
             // Arrange
@@ -163,6 +215,10 @@ namespace Doppler.BillingUser.Test
                 IdCurrentBillingCredit = 1
             });
 
+            var binServiceMock = new Mock<IBinService>();
+            binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
+                .ReturnsAsync(true);
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -172,6 +228,82 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(paymentGatewayMock.Object);
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(binServiceMock.Object);
+                });
+
+            }).CreateClient(new WebApplicationFactoryClientOptions());
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
+
+            // Act
+            var response = await client.PutAsync("accounts/test1@example.com/payment-methods/current", currentPaymentMethod);
+
+            // Assert
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        [Fact]
+        public async Task PUT_Current_payment_CC_method_should_update_right_value_based_on_body_information_when_CardNotFoundException_is_thrown()
+        {
+            // Arrange
+
+            var currentPaymentMethod = new MultipartFormDataContent()
+            {
+                { new StringContent("Test Holder Name"), "CCHolderFullName" },
+                { new StringContent("5555 5555 5555 5555"), "CCNumber" },
+                { new StringContent("222"), "CCVerification" },
+                { new StringContent("12"), "CCExpMonth" },
+                { new StringContent("25"), "CCExpYear" },
+                { new StringContent("Mastercard"), "CCType" },
+                { new StringContent(PaymentMethodEnum.CC.ToString()), "PaymentMethodName" },
+                { new StringContent("13"), "IdSelectedPlan" }
+            };
+
+            var user = new User
+            {
+                SapProperties = "{\"ContractCurrency\" : false,\"GovernmentAccount\" : false,\"Premium\" : false,\"Plus\" : false,\"ComercialPartner\" : false,\"MarketingPartner\" : false,\"OnBoarding\" : false,\"Layout\" : false,\"Datahub\" : false,\"PushNotification\" : false,\"ExclusiveIp\" : false,\"Advisory\" : false,\"Reports\" : false,\"SMS\" : false}"
+            };
+
+            var requestContent = new StringContent(JsonConvert.SerializeObject(currentPaymentMethod), Encoding.UTF8, "application/json");
+
+            var mockConnection = new Mock<DbConnection>();
+            mockConnection.SetupDapperAsync(c => c.QueryFirstOrDefaultAsync<User>(null, null, null, null, null)).ReturnsAsync(user);
+
+            var encryptedMock = new Mock<IEncryptionService>();
+            encryptedMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("TEST");
+
+            var paymentGatewayMock = new Mock<IPaymentGateway>();
+            paymentGatewayMock.Setup(x => x.IsValidCreditCard(It.IsAny<CreditCard>(), It.IsAny<int>(), It.IsAny<bool>())).ReturnsAsync(true);
+
+            var sapServiceMock = new Mock<ISapService>();
+            sapServiceMock.Setup(x => x.SendUserDataToSap(It.IsAny<SapBusinessPartner>(), null));
+
+            var userRepositoryMock = new Mock<IUserRepository>();
+            userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
+                .ReturnsAsync(new User()
+                {
+                    IdUser = 1,
+                    PaymentMethod = 1,
+                    IsCancelated = false
+                });
+            userRepositoryMock.Setup(x => x.GetUserBillingInformation(It.IsAny<string>())).ReturnsAsync(new UserBillingInformation()
+            {
+                IdCurrentBillingCredit = 1
+            });
+
+            var binServiceMock = new Mock<IBinService>();
+            binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
+                .ThrowsAsync(new CardNotFoundException());
+
+            var client = _factory.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.SetupConnectionFactory(mockConnection.Object);
+                    services.AddSingleton(encryptedMock.Object);
+                    services.AddSingleton(paymentGatewayMock.Object);
+                    services.AddSingleton(sapServiceMock.Object);
+                    services.AddSingleton(userRepositoryMock.Object);
+                    services.AddSingleton(binServiceMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
