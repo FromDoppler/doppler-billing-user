@@ -12,7 +12,9 @@ using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Tavis.UriTemplates;
 
@@ -156,6 +158,8 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             using var _ = _timeCollector.StartScope();
             try
             {
+                _logger.LogInformation($"Json request: {JsonConvert.SerializeObject(paymentRequest)}");
+
                 var payment = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + $"/accounts/{accountname}/payment")
                     .Resolve())
                     .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
@@ -166,8 +170,10 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             }
             catch (FlurlHttpException ex)
             {
+                //var lastFourDigits = paymentRequest.CreditCard.CardNumber[^4..];
+
                 var errorReponseBody = await ex.GetResponseJsonAsync<ApiError>();
-                await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, paymentRequest.CreditCard.CardHolderName[^4..]);
+                await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, "1111");
 
                 _logger.LogError(ex, "Unexpected error");
 
