@@ -6,6 +6,7 @@ using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.AccountPlansApi;
 using Doppler.BillingUser.ExternalServices.Aws;
 using Doppler.BillingUser.ExternalServices.BeplicApi;
+using Doppler.BillingUser.ExternalServices.BinApi;
 using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
@@ -84,6 +85,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IClientManagerRepository _clientManagerRepository;
         private readonly IOnSitePlanUserRepository _onSitePlanUserRepository;
         private readonly IOnSitePlanRepository _onSitePlanRepository;
+        private readonly IBinService _binService;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -159,7 +161,8 @@ namespace Doppler.BillingUser.Controllers
             IChatPlanUserRepository chatPlanUserRepository,
             IClientManagerRepository clientManagerRepository,
             IOnSitePlanUserRepository onSitePlanUserRepository,
-            IOnSitePlanRepository onSitePlanRepository)
+            IOnSitePlanRepository onSitePlanRepository,
+            IBinService binService)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -196,6 +199,7 @@ namespace Doppler.BillingUser.Controllers
             _clientManagerRepository = clientManagerRepository;
             _onSitePlanUserRepository = onSitePlanUserRepository;
             _onSitePlanRepository = onSitePlanRepository;
+            _binService = binService;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -302,6 +306,29 @@ namespace Doppler.BillingUser.Controllers
                 if (userInformation.IsCancelated)
                 {
                     return new BadRequestObjectResult("UserCanceled");
+                }
+
+                //Credit Card Validation
+                if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
+                {
+                    var bin = paymentMethod.CCNumber.Replace(" ", "")[..6];
+
+                    try
+                    {
+                        if (!await _binService.IsCreditCard(bin))
+                        {
+                            return new BadRequestObjectResult("IsNotCreditCard");
+                        }
+                    }
+                    catch (CardNotFoundException)
+                    {
+                        _logger.LogInformation("BIN '{bin}' not found", bin);
+                        await _slackService.SendNotification($"BIN '{bin}' not found");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "BIN validation error");
+                    }
                 }
 
                 paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
