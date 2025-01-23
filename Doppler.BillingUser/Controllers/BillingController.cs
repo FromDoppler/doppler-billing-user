@@ -2135,7 +2135,7 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(userId);
-            if (currentBillingCredit == null || currentBillingCredit.ActivationDate == null)
+            if (currentBillingCredit == null)
             {
                 var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The user has not an active marketing plan";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid marketing plan", MessageError = messageErrorTransference } };
