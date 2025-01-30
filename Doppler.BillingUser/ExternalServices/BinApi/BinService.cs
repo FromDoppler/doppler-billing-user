@@ -17,7 +17,7 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
         private readonly IFlurlClient _flurlClient;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
-        private readonly string[] validCreditCard = [ "MASTERCARD", "VISA", "AMERICAN EXPRESS" ];
+        private readonly string[] validCreditCard = ["MASTERCARD", "VISA", "AMERICAN EXPRESS"];
 
         public BinService(
             IOptions<BinSettings> options,
