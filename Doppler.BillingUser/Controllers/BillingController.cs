@@ -315,7 +315,7 @@ namespace Doppler.BillingUser.Controllers
 
                     try
                     {
-                        if (!await _binService.IsCreditCard(bin))
+                        if (!await _binService.IsAllowedCreditCard(bin))
                         {
                             return new BadRequestObjectResult("IsNotCreditCard");
                         }
