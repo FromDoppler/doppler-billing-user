@@ -311,11 +311,13 @@ namespace Doppler.BillingUser.Controllers
                 //Credit Card Validation
                 if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
                 {
-                    var bin = paymentMethod.CCNumber.Replace(" ", "")[..6];
+                    paymentMethod.CCNumber = CreditCardHelper.SanitizeCreditCardNumber(paymentMethod.CCNumber);
+
+                    var bin = paymentMethod.CCNumber[..6];
 
                     try
                     {
-                        if (!await _binService.IsCreditCard(bin))
+                        if (!await _binService.IsAllowedCreditCard(bin))
                         {
                             return new BadRequestObjectResult("IsNotCreditCard");
                         }

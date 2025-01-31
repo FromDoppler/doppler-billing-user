@@ -4,6 +4,7 @@ using Flurl.Http;
 using Flurl.Http.Configuration;
 using Microsoft.Extensions.Options;
 using System;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Tavis.UriTemplates;
@@ -16,6 +17,8 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
         private readonly IFlurlClient _flurlClient;
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
+        private readonly string[] validCreditCard = ["MASTERCARD", "VISA", "AMERICAN EXPRESS"];
+
         public BinService(
             IOptions<BinSettings> options,
             IFlurlClientFactory flurlClientFactory,
@@ -26,7 +29,7 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
             _jwtTokenGenerator = jwtTokenGenerator;
         }
 
-        public async Task<bool> IsCreditCard(string cardNumber)
+        public async Task<bool> IsAllowedCreditCard(string cardNumber)
         {
             try
             {
@@ -43,7 +46,7 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
 
                 var binData = await binApiResponse.GetJsonAsync<BankIdentificationNumberResponse>();
 
-                return binData.Type == "CREDIT";
+                return binData.Type == "CREDIT" && validCreditCard.Contains(binData.Scheme);
 
             }
             catch (Exception)

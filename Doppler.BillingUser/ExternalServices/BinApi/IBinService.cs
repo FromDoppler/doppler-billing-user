@@ -4,6 +4,6 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
 {
     public interface IBinService
     {
-        Task<bool> IsCreditCard(string cardNumber);
+        Task<bool> IsAllowedCreditCard(string cardNumber);
     }
 }

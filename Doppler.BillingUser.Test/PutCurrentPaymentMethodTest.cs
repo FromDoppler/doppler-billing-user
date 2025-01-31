@@ -116,7 +116,7 @@ namespace Doppler.BillingUser.Test
         }
 
         [Fact]
-        public async Task PUT_Current_payment_CC_method_should_return_bad_request_when_use_cc_method_and_the_card_is_debit_type()
+        public async Task PUT_Current_payment_CC_method_should_return_bad_request_when_use_cc_method_and_the_card_is_not_allowed()
         {
             // Arrange
             var currentPaymentMethod = new MultipartFormDataContent()
@@ -144,7 +144,7 @@ namespace Doppler.BillingUser.Test
                 });
 
             var binServiceMock = new Mock<IBinService>();
-            binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
+            binServiceMock.Setup(x => x.IsAllowedCreditCard(It.IsAny<string>()))
                 .ReturnsAsync(false);
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -216,7 +216,7 @@ namespace Doppler.BillingUser.Test
             });
 
             var binServiceMock = new Mock<IBinService>();
-            binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
+            binServiceMock.Setup(x => x.IsAllowedCreditCard(It.IsAny<string>()))
                 .ReturnsAsync(true);
 
             var client = _factory.WithWebHostBuilder(builder =>
@@ -291,7 +291,7 @@ namespace Doppler.BillingUser.Test
             });
 
             var binServiceMock = new Mock<IBinService>();
-            binServiceMock.Setup(x => x.IsCreditCard(It.IsAny<string>()))
+            binServiceMock.Setup(x => x.IsAllowedCreditCard(It.IsAny<string>()))
                 .ThrowsAsync(new CardNotFoundException());
 
             var client = _factory.WithWebHostBuilder(builder =>
