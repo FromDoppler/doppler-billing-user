@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Doppler.BillingUser.Utils
 {
     public static class CreditCardHelper
@@ -12,6 +14,11 @@ namespace Doppler.BillingUser.Utils
         public static string ObfuscateVerificationCode(string code)
         {
             return $"{new string('*', code.Length)}";
+        }
+
+        public static string SanitizeCreditCardNumber(string creditCardNumber)
+        {
+            return Regex.Replace(creditCardNumber, @"\D", string.Empty);
         }
     }
 }

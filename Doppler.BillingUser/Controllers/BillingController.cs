@@ -308,6 +308,8 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("UserCanceled");
                 }
 
+                paymentMethod.CCNumber = CreditCardHelper.SanitizeCreditCardNumber(paymentMethod.CCNumber);
+
                 //Credit Card Validation
                 if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
                 {
