@@ -133,7 +133,7 @@ namespace Doppler.BillingUser.ExternalServices.Clover
             {
                 var errorReponseBody = await ex.GetResponseJsonAsync<ApiError>();
 
-                if (errorReponseBody != null)
+                if (errorReponseBody != null && errorReponseBody.Error?.Code != null && errorReponseBody.Error?.Message != null)
                 {
                     await _emailTemplatesService.SendNotificationForPaymentFailedTransaction(int.Parse(paymentRequest.ClientId), errorReponseBody.Error.Code, errorReponseBody.Error.Message, string.Empty, string.Empty, PaymentMethodEnum.CC, isFreeUser, paymentRequest.CreditCard.CardHolderName, paymentRequest.CreditCard.CardNumber[^4..]);
                     _logger.LogError(ex, "Unexpected error");
