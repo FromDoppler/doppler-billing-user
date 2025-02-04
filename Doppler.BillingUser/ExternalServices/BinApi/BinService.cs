@@ -29,10 +29,12 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
             _jwtTokenGenerator = jwtTokenGenerator;
         }
 
-        public async Task<bool> IsAllowedCreditCard(string cardNumber)
+        public async Task<IsAllowedCreditCardResponse> IsAllowedCreditCard(string cardNumber)
         {
             try
             {
+                var response = new IsAllowedCreditCardResponse { IsValid = true };
+
                 var binApiResponse = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/bincheck")
                                 .Resolve())
                                 .AllowHttpStatus("404")
@@ -46,8 +48,27 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
 
                 var binData = await binApiResponse.GetJsonAsync<BankIdentificationNumberResponse>();
 
-                return binData.Type == "CREDIT" && validCreditCard.Contains(binData.Scheme);
+                if (binData.Type == "DEBIT")
+                {
+                    response = new IsAllowedCreditCardResponse
+                    {
+                        IsValid = false,
+                        ErrorCode = "IsNotCreditCard"
+                    };
+                }
+                else
+                {
+                    if (!validCreditCard.Contains(binData.Scheme))
+                    {
+                        response = new IsAllowedCreditCardResponse
+                        {
+                            IsValid = false,
+                            ErrorCode = "IsNotAllowCreditCard"
+                        };
+                    }
+                }
 
+                return response;
             }
             catch (Exception)
             {

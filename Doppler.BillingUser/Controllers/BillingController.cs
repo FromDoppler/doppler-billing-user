@@ -317,9 +317,11 @@ namespace Doppler.BillingUser.Controllers
 
                     try
                     {
-                        if (!await _binService.IsAllowedCreditCard(bin))
+                        var response = await _binService.IsAllowedCreditCard(bin);
+
+                        if (!response.IsValid)
                         {
-                            return new BadRequestObjectResult("IsNotCreditCard");
+                            return new BadRequestObjectResult(response.ErrorCode);
                         }
                     }
                     catch (CardNotFoundException)
