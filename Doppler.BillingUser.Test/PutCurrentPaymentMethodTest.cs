@@ -22,6 +22,7 @@ using Xunit;
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.ExternalServices.BinApi;
+using Doppler.BillingUser.ExternalServices.BinApi.Responses;
 
 namespace Doppler.BillingUser.Test
 {
@@ -145,7 +146,7 @@ namespace Doppler.BillingUser.Test
 
             var binServiceMock = new Mock<IBinService>();
             binServiceMock.Setup(x => x.IsAllowedCreditCard(It.IsAny<string>()))
-                .ReturnsAsync(false);
+                .ReturnsAsync(new IsAllowedCreditCardResponse { IsValid = false });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -217,7 +218,7 @@ namespace Doppler.BillingUser.Test
 
             var binServiceMock = new Mock<IBinService>();
             binServiceMock.Setup(x => x.IsAllowedCreditCard(It.IsAny<string>()))
-                .ReturnsAsync(true);
+                .ReturnsAsync(new IsAllowedCreditCardResponse { IsValid = true });
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
