@@ -1,6 +1,7 @@
 using Dapper;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.TimeCollector;
+using System;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Infrastructure
@@ -41,13 +42,14 @@ BEGIN
 END
 ELSE BEGIN
     UPDATE [dbo].[UserAddOn]
-    SET [IdCurrentBillingCredit] = @billingCreditId
+    SET [IdCurrentBillingCredit] = @billingCreditId, [LastUpdate] = @lastUpdate
 WHERE [IdUser] = @userId AND [IdAddOnType] = @addOnType
 END", new
             {
                 userId,
                 addOnType,
-                billingCreditId
+                billingCreditId,
+                lastUpdate = DateTime.UtcNow
             });
         }
     }
