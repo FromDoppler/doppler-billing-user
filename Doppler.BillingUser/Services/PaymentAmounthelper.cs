@@ -20,14 +20,14 @@ namespace Doppler.BillingUser.Services
         {
             var currencyRate = await _currencyRepository.GetCurrencyRateAsync((int)from, (int)to, DateTime.UtcNow);
             var totalWithoutTaxes = decimal.Round(fromValue * currencyRate, 2, MidpointRounding.AwayFromZero);
-            var taxesInFromCurrency = decimal.Round(fromValue * _taxRate, 2, MidpointRounding.AwayFromZero);
-            var taxes = decimal.Round(totalWithoutTaxes * _taxRate, 2, MidpointRounding.AwayFromZero);
+            var taxesInFromCurrency = decimal.Round(fromValue * _taxRate, 4, MidpointRounding.AwayFromZero);
+            var taxes = decimal.Round(totalWithoutTaxes * _taxRate, 4, MidpointRounding.AwayFromZero);
 
             return new PaymentAmountDetail
             {
                 Taxes = taxesInFromCurrency,
                 CurrencyRate = currencyRate,
-                Total = totalWithoutTaxes + taxes,
+                Total = decimal.Round(totalWithoutTaxes + taxes, 2, MidpointRounding.AwayFromZero),
             };
         }
     }
