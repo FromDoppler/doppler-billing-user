@@ -74,6 +74,22 @@ namespace Doppler.BillingUser.ExternalServices.Sap
             }
         }
 
+        public async Task SendBillingUpdateToSap(SapBillingUpdateDto sapBillingUpdateDto)
+        {
+            try
+            {
+                await _flurlClient.Request(_options.Value.SapBaseUrl + _options.Value.SapUpdateBillingRequestEndpoint)
+                    .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
+                    .PostJsonAsync(sapBillingUpdateDto);
+
+                _logger.LogInformation($"Billing update request succesfully sent to DopplerSa.");
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Unexpected error sending invoice data to Sap. Exception: {e}");
+            }
+        }
+
         public async Task SendCreditNoteToSapAsync(string accountName, SapCreditNoteDto sapCreditNoteDto)
         {
             using var _ = _timeCollector.StartScope();
