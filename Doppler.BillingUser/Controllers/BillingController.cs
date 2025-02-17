@@ -718,6 +718,27 @@ namespace Doppler.BillingUser.Controllers
                 await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, payment.Status, payment.StatusDetails, invoice.AuthorizationNumber);
                 await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
 
+                try
+                {
+                    var billingUpdate = new SapBillingUpdateDto
+                    {
+                        TransactionApproved = true,
+                        CardErrorCode = "100",
+                        CardErrorDetail = "Successfully approved",
+                        BillingSystemId = user.IdResponsabileBilling,
+                        InvoiceId = invoice.IdAccountingEntry,
+                        PaymentDate = paymentEntry.Date,
+                        TransferReference = invoice.AuthorizationNumber
+                    };
+
+                    await _sapService.SendBillingUpdateToSap(billingUpdate);
+                }
+                catch (Exception ex)
+                {
+                    var messageError = $"Reprocess Invoice - Unexpected error sending invoice data to Sap. Exception: {ex}";
+                    await _slackService.SendNotification(messageError);
+                }
+
                 return new ReprocessInvoicePaymentResult() { Result = payment.Status };
             }
             return new ReprocessInvoicePaymentResult() { Result = PaymentStatusEnum.DeclinedPaymentTransaction, PaymentError = payment.StatusDetails, Amount = invoice.Amount, InvoiceNumber = invoice.InvoiceNumber };
