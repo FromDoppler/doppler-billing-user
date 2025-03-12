@@ -1,30 +1,25 @@
 using Doppler.BillingUser.Encryption;
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
+using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.ExternalServices.Slack;
-using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.ExternalServices.Zoho;
+using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Mappers;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Services;
+using Doppler.BillingUser.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Doppler.BillingUser.Utils;
-using Newtonsoft.Json;
-using static Dapper.SqlMapper;
-using System.Collections.Generic;
-using Microsoft.Extensions.Options;
-using Doppler.BillingUser.ExternalServices.AccountPlansApi;
-using System.Drawing;
-using Doppler.BillingUser.Extensions;
-using Doppler.BillingUser.ExternalServices.Sap;
-using System.Security.AccessControl;
-using System.ServiceModel.Channels;
 
 namespace Doppler.BillingUser.Controllers
 {
@@ -548,7 +543,7 @@ namespace Doppler.BillingUser.Controllers
 
         private async Task UpdateInvoiceStatus(string accountName, AccountingEntry invoice, PaymentStatusEnum status, MercadoPagoPayment payment)
         {
-            await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetail, invoice.AuthorizationNumber);
+            await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, status, payment.StatusDetail, invoice.AuthorizationNumber);
 
             string message = string.Empty;
 
