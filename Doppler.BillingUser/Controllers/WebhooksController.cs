@@ -127,7 +127,7 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult("Successful");
         }
 
-        [HttpPost("/accounts/{accountname}/integration/mercadopagonotification/monthly")]
+        [HttpPost("/accounts/{accountname}/integration/monthly/mercadopagonotification")]
         public async Task<IActionResult> UpdateMercadoPagoMonthlyPaymentStatusAsync([FromRoute] string accountname, [FromBody] MercadoPagoNotification notification)
         {
             _logger.LogInformation($"MercadopagoNotification - Monthly: id_user:{notification.UserId},payment_id: {(notification.Data == null ? 0 : notification.Data.Id)}, action: {notification.Action}");
