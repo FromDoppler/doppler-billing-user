@@ -132,6 +132,40 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult("Successful");
         }
 
+        [HttpPost("/accounts/{accountname}/integration/mercadopagonotification/monthly")]
+        public async Task<IActionResult> UpdateMercadoPagoMonthlyPaymentStatusAsync([FromRoute] string accountname, [FromBody] MercadoPagoNotification notification)
+        {
+            _logger.LogInformation($"MercadopagoNotification - Monthly: id_user:{notification.UserId},payment_id: {(notification.Data == null ? 0 : notification.Data.Id)}, action: {notification.Action}");
+
+            if (notification.Action != PAYMENT_UPDATED)
+            {
+                return new BadRequestResult();
+            }
+
+            var user = await _userRepository.GetUserBillingInformation(accountname);
+            if (user is null)
+            {
+                return new NotFoundObjectResult("Account not found");
+            }
+
+            var invoice = await _billingRepository.GetInvoice(user.IdUser, notification.Data.Id.ToString());
+            if (invoice is null)
+            {
+                _logger.LogError("Invoice with authorization number: {authorizationNumber} was not found.", notification.Data.Id);
+                return new NotFoundObjectResult("Invoice not found");
+            }
+
+            if (invoice.Status == PaymentStatusEnum.Pending)
+            {
+                var payment = await _mercadoPagoService.GetPaymentById(notification.Data.Id, accountname);
+                var status = payment.Status.MapToPaymentStatus();
+
+                await UpdateInvoiceStatus(accountname, invoice, status, payment);
+            }
+
+            return new OkObjectResult("Successful");
+        }
+
         private async Task ApprovePaymentAsync(string accountname, UserBillingInformation user, AccountingEntry invoice, MercadoPagoPayment payment, PaymentStatusEnum status)
         {
             var accountingEntryMapper = new AccountingEntryForMercadopagoMapper(_paymentAmountService);
@@ -510,6 +544,28 @@ namespace Doppler.BillingUser.Controllers
             };
 
             await _userPaymentHistoryRepository.CreateUserPaymentHistoryAsync(userPaymentHistory);
+        }
+
+        private async Task UpdateInvoiceStatus(string accountName, AccountingEntry invoice, PaymentStatusEnum status, MercadoPagoPayment payment)
+        {
+            await _billingRepository.UpdateInvoiceStatus(invoice.IdAccountingEntry, PaymentStatusEnum.Approved, payment.StatusDetail, invoice.AuthorizationNumber);
+
+            string message = string.Empty;
+
+            if (status == PaymentStatusEnum.Approved)
+            {
+                var accountingEntryMapper = new AccountingEntryForMercadopagoMapper(_paymentAmountService);
+                var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountName);
+                var paymentEntry = await accountingEntryMapper.MapToPaymentAccountingEntry(invoice, encryptedCreditCard);
+
+                await _billingRepository.CreatePaymentEntryAsync(invoice.IdAccountingEntry, paymentEntry);
+
+                await _emailTemplatesService.SendNotificationForMercadoPagoPaymentApproved(invoice.IdClient, accountName);
+
+                message = string.Format("Mercadopago UpdatePayment: the invoice status was updated from {0} to {1}", invoice.Status, status.ToString());
+                _logger.LogInformation(message);
+                await _slackService.SendNotification(message);
+            }
         }
     }
 }
