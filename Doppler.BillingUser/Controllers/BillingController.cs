@@ -18,6 +18,9 @@ using Doppler.BillingUser.ExternalServices.Zoho;
 using Doppler.BillingUser.ExternalServices.Zoho.API;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Mappers;
+using Doppler.BillingUser.Mappers.AddOn;
+using Doppler.BillingUser.Mappers.AddOn.OnSite;
+using Doppler.BillingUser.Mappers.AddOn.PushNotification;
 using Doppler.BillingUser.Mappers.BillingCredit;
 using Doppler.BillingUser.Mappers.ConversationPlan;
 using Doppler.BillingUser.Mappers.OnSitePlan;
@@ -85,6 +88,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IClientManagerRepository _clientManagerRepository;
         private readonly IOnSitePlanUserRepository _onSitePlanUserRepository;
         private readonly IOnSitePlanRepository _onSitePlanRepository;
+        private readonly IPushNotificationPlanRepository _pushNotificationPlanRepository;
         private readonly IBinService _binService;
 
         private readonly IFileStorage _fileStorage;
@@ -162,6 +166,7 @@ namespace Doppler.BillingUser.Controllers
             IClientManagerRepository clientManagerRepository,
             IOnSitePlanUserRepository onSitePlanUserRepository,
             IOnSitePlanRepository onSitePlanRepository,
+            IPushNotificationPlanRepository pushNotificationPlanRepository,
             IBinService binService)
         {
             _logger = logger;
@@ -199,6 +204,7 @@ namespace Doppler.BillingUser.Controllers
             _clientManagerRepository = clientManagerRepository;
             _onSitePlanUserRepository = onSitePlanUserRepository;
             _onSitePlanRepository = onSitePlanRepository;
+            _pushNotificationPlanRepository = pushNotificationPlanRepository;
             _binService = binService;
         }
 
@@ -2094,8 +2100,8 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
-        [HttpPost("/accounts/{accountname}/onsite/activate")]
-        public async Task<IActionResult> ActivateOnSitePlan(string accountname)
+        [HttpPost("/accounts/{accountname}/{addOnType}/activate")]
+        public async Task<IActionResult> ActivateOnSitePlan(string accountname, AddOnType addOnType)
         {
             User user = await _userRepository.GetUserInformation(accountname);
 
@@ -2106,35 +2112,39 @@ namespace Doppler.BillingUser.Controllers
 
             var userType = !user.IdClientManager.HasValue ? "REG" : "CM";
 
+            var currentUserType = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
+            var idUserType = currentUserType == null ? (int)UserTypeEnum.FREE : (int)currentUserType.IdUserType;
+
             try
             {
-                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)AddOnType.OnSite);
+                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)addOnType);
 
                 if (userAddOn != null)
                 {
                     return new BadRequestObjectResult("The user have an onsite plan");
                 }
 
-                var freeOnSitePlan = await _onSitePlanRepository.GetFreeOnSitePlan();
+                var addOnMapper = GetAddOnMapper(addOnType);
 
-                if (freeOnSitePlan != null)
+                var freePlan = await addOnMapper.GetAddOnFreePlanAsync();
+
+                if (freePlan != null)
                 {
-                    var onSitePlanUserMapper = GetOnSitePlanUserMapper(PaymentMethodEnum.CC);
-                    var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, freeOnSitePlan.IdOnSitePlan, null);
+                    var addOnPlanUser = addOnMapper.MapToPlanUser(user.IdUser, freePlan.PlanId, null);
 
-                    if (user.IdUserType == (int)UserTypeEnum.FREE)
+                    if (idUserType == (int)UserTypeEnum.FREE)
                     {
-                        onSitePlanUser.ExperirationDate = user.TrialExpirationDate;
+                        addOnPlanUser.ExperirationDate = user.TrialExpirationDate;
                     }
                     else
                     {
-                        onSitePlanUser.ExperirationDate = DateTime.UtcNow.Date.AddDays(1).AddDays(freeOnSitePlan.FreeDays ?? 0);
+                        addOnPlanUser.ExperirationDate = DateTime.UtcNow.Date.AddDays(1).AddDays(freePlan.FreeDays ?? 0);
                     }
 
-                    await _billingRepository.CreateOnSitePlanUserAsync(onSitePlanUser);
+                    await addOnMapper.CreateAddOnPlanUserAsync(addOnPlanUser);
                 }
 
-                var message = $"{userType} - Successful active onsite plan for: User: {accountname}";
+                var message = $"{userType} - Successful active {addOnType} plan for: User: {accountname}";
                 _logger.LogError(message);
                 await _slackService.SendNotification(message);
 
@@ -2142,7 +2152,7 @@ namespace Doppler.BillingUser.Controllers
             }
             catch (Exception e)
             {
-                var message = $"{userType} - Failed at activating onsite plan for: User: {accountname}";
+                var message = $"{userType} - Failed at activating {addOnType} plan for: User: {accountname}";
                 _logger.LogError(e, message);
                 await _slackService.SendNotification(message);
 
@@ -3132,6 +3142,16 @@ namespace Doppler.BillingUser.Controllers
                     _logger.LogError($"The paymentMethod '{paymentMethod}' does not have a mapper.");
                     throw new ArgumentException($"The paymentMethod '{paymentMethod}' does not have a mapper.");
             }
+        }
+
+        private IAddOnMapper GetAddOnMapper(AddOnType addOnType)
+        {
+            return addOnType switch
+            {
+                AddOnType.OnSite => new OnSiteMapper(_onSitePlanRepository, _billingRepository),
+                AddOnType.PushNotification => new PushNotificationMapper(_pushNotificationPlanRepository, _billingRepository),
+                _ => null,
+            };
         }
     }
 }
