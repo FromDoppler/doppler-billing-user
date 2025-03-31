@@ -1766,5 +1766,40 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
             return result.FirstOrDefault();
         }
+
+        public async Task<int> CreatePushNotificationPlanUserAsync(PushNotificationPlanUser pushNotificationPlanUser)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var result = await connection.QueryAsync<int>(@"
+INSERT INTO [dbo].[PushNotificationPlanUser]
+    ([IdUser],
+    [IdPushNotificationPlan],
+    [Activated],
+    [ActivationDate],
+    [ExperirationDate],
+    [IdBillingCredit],
+    [CreatedAt])
+VALUES
+    (@idUser,
+    @idPushNotificationPlan,
+    @activated,
+    @activationDate,
+    @experirationDate,
+    @idBillingCredit,
+    @createdAt);
+SELECT CAST(SCOPE_IDENTITY() AS INT)",
+            new
+            {
+                @idUser = pushNotificationPlanUser.IdUser,
+                @idPushNotificationPlan = pushNotificationPlanUser.IdPushNotificationPlan,
+                @activated = pushNotificationPlanUser.Activated,
+                @activationDate = pushNotificationPlanUser.ActivationDate,
+                @experirationDate = pushNotificationPlanUser.ExperirationDate,
+                @idBillingCredit = pushNotificationPlanUser.IdBillingCredit,
+                @createdAt = DateTime.UtcNow
+            });
+
+            return result.FirstOrDefault();
+        }
     }
 }

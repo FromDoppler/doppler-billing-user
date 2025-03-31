@@ -4,6 +4,7 @@ namespace Doppler.BillingUser.Enums
     {
         Landing = 1,
         Chat = 2,
-        OnSite = 3
+        OnSite = 3,
+        PushNotification = 4
     }
 }
