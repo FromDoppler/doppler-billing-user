@@ -269,7 +269,14 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/billing-information/invoice-recipients")]
         public async Task<IActionResult> UpdateInvoiceRecipients(string accountname, [FromBody] InvoiceRecipients invoiceRecipients)
         {
-            await _billingRepository.UpdateInvoiceRecipients(accountname, invoiceRecipients.Recipients, invoiceRecipients.PlanId);
+            var user = await _userRepository.GetUserInformation(accountname);
+
+            if (user == null)
+            {
+                return new BadRequestObjectResult("The user does not exist");
+            }
+
+            await _billingRepository.UpdateInvoiceRecipients(user.IdUser, accountname, invoiceRecipients.Recipients, invoiceRecipients.PlanId);
 
             return new OkObjectResult("Successfully");
         }
