@@ -1458,7 +1458,14 @@ namespace Doppler.BillingUser.Controllers
         [HttpPut("/accounts/{accountname}/purchase-intention")]
         public async Task<IActionResult> UpdateLastPurchaseIntentionDate(string accountname)
         {
-            var result = await _userRepository.UpdateUserPurchaseIntentionDate(accountname);
+            var user = await _userRepository.GetUserInformation(accountname);
+
+            if (user == null)
+            {
+                return new BadRequestObjectResult("The user does not exist");
+            }
+
+            var result = await _userRepository.UpdateUserPurchaseIntentionDate(user.IdUser);
 
             if (result.Equals(0))
             {

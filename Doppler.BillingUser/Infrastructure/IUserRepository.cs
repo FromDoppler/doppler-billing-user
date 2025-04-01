@@ -14,7 +14,7 @@ namespace Doppler.BillingUser.Infrastructure
         Task<int> UpdateUserBillingCredit(UserBillingInformation user);
         Task<int> GetAvailableCredit(int idUser);
         Task<User> GetUserInformation(string accountName);
-        Task<int> UpdateUserPurchaseIntentionDate(string accountName);
+        Task<int> UpdateUserPurchaseIntentionDate(int idUser);
         Task<int> GetCurrentMonthlyAddedEmailsWithBillingAsync(int idUser);
         Task CancelUser(int idUser, int idAccountCancelationReason, string cancelatedObservation);
         Task<ConversationPlanInformation> GetConversationPlan(int idConversationPlan);
