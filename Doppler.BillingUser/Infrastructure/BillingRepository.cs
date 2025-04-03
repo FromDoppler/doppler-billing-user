@@ -192,7 +192,7 @@ WHERE
             };
         }
 
-        public async Task UpdateInvoiceRecipients(string accountName, string[] emailRecipients, int planId)
+        public async Task UpdateInvoiceRecipients(int idUser, string accountName, string[] emailRecipients, int planId)
         {
             using var connection = _connectionFactory.GetConnection();
 
@@ -202,10 +202,10 @@ UPDATE
 SET
     BillingEmails = @emailRecipients
 WHERE
-    Email = @email;",
+    IdUser = @idUser;",
                 new
                 {
-                    @email = accountName,
+                    @idUser = idUser,
                     @emailRecipients = string.Join(",", emailRecipients)
                 });
 

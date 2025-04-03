@@ -18,7 +18,7 @@ namespace Doppler.BillingUser.Infrastructure
 
         Task<EmailRecipients> GetInvoiceRecipients(string accountName);
 
-        Task UpdateInvoiceRecipients(string accountName, string[] emailRecipients, int planId);
+        Task UpdateInvoiceRecipients(int idUser, string accountName, string[] emailRecipients, int planId);
 
         Task<CurrentPlan> GetCurrentPlan(string accountName);
 

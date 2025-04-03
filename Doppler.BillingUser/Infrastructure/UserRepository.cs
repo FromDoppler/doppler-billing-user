@@ -260,7 +260,7 @@ WHERE
             return user;
         }
 
-        public async Task<int> UpdateUserPurchaseIntentionDate(string accountName)
+        public async Task<int> UpdateUserPurchaseIntentionDate(int idUser)
         {
             using var connection = _connectionFactory.GetConnection();
             var result = await connection.ExecuteAsync(@"
@@ -269,10 +269,10 @@ UPDATE
 SET
     LastPurchaseIntentionDate = @date
 WHERE
-    Email = @accountName;",
+    IdUser = @idUser;",
             new
             {
-                accountName,
+                @idUser = idUser,
                 @date = DateTime.UtcNow
             });
 
