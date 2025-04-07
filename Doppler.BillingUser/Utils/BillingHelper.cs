@@ -128,11 +128,12 @@ namespace Doppler.BillingUser.Utils
             decimal? total,
             UserBillingInformation user,
             AccountTypeEnum accountType,
-            OnSitePlan onSitePlan,
-            CurrentPlan currentOnSitePlan)
+            int quantity,
+            decimal fee,
+            CurrentPlan currentAddOnPlan)
         {
-            var planFee = (double)onSitePlan.Fee * (billingCredit.TotalMonthPlan ?? 1);
-            var isUpSelling = (currentOnSitePlan != null && currentOnSitePlan.Fee > 0);
+            var planFee = (double)fee * (billingCredit.TotalMonthPlan ?? 1);
+            var isUpSelling = (currentAddOnPlan != null && currentAddOnPlan.Fee > 0);
 
             var sapBilling = new SapBillingDto
             {
@@ -156,7 +157,7 @@ namespace Doppler.BillingUser.Utils
                     new()
                     {
                         Charge = !isUpSelling ? planFee : (double)total,
-                        PrintQty = onSitePlan.PrintQty,
+                        PrintQty = quantity,
                         Discount = !isUpSelling ? billingCredit.DiscountPlanFee : 0,
                         IsUpSelling = isUpSelling,
                         Type = AdditionalServiceTypeEnum.OnSite,
