@@ -10,6 +10,7 @@ using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Mappers.BillingCredit.AddOns;
 using Doppler.BillingUser.Mappers.OnSitePlan;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.Utils;
 
 namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
 {
@@ -168,7 +169,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.PushNotification_Buyed_CC : BillingCreditTypeEnum.PushNotification_Request;
                 if (currentPushNotificationPlan != null && currentPushNotificationPlan.Quantity > pushNotificationPlan.Quantity)
                 {
-                    billingCreditType = BillingCreditTypeEnum.Downgrade_Between_OnSite;
+                    billingCreditType = BillingCreditTypeEnum.Downgrade_Between_PushNotification;
                 }
 
                 var total = pushNotificationPlan.Fee;
@@ -195,9 +196,23 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             //SendOnSiteNotifications(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
         }
 
-        public Task<SapBillingDto> MapAddOnBillingToSapAsync(SapSettings sapSettings, User user, BuyAddOnPlan buyAddOnPlan, string cardNumber, string holderName, Model.BillingCredit billingCredit, string authorizationNumber, int invoiceId, UserBillingInformation userOrClientManagerBillingInformation, AccountTypeEnum accountType)
+        public async Task<SapBillingDto> MapAddOnBillingToSapAsync(SapSettings sapSettings, User user, BuyAddOnPlan buyAddOnPlan, string cardNumber, string holderName, Model.BillingCredit billingCredit, string authorizationNumber, int invoiceId, UserBillingInformation userOrClientManagerBillingInformation, AccountTypeEnum accountType)
         {
-            throw new NotImplementedException();
+            var currentPushNotificationPlan = await pushNotificationPlanUserRepository.GetCurrentPlan(user.Email);
+            var pushNotificationPlan = await pushNotificationPlanRepository.GetById(buyAddOnPlan.PlanId);
+
+            return BillingHelper.MapOnSiteBillingToSapAsync(sapSettings,
+                            cardNumber,
+                            holderName,
+                            billingCredit,
+                            authorizationNumber,
+                            invoiceId,
+                            buyAddOnPlan.Total,
+                            userOrClientManagerBillingInformation,
+                            accountType,
+                            pushNotificationPlan.Quantity,
+                            pushNotificationPlan.Fee,
+                            currentPushNotificationPlan);
         }
     }
 }

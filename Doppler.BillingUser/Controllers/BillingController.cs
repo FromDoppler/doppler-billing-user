@@ -2181,7 +2181,7 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
-        [HttpPost("/accounts/{accountname}/{addOnType}/activate")]
+        [HttpPost("/accounts/{accountname}/addon/{addOnType}/activate")]
         public async Task<IActionResult> ActivateAddOnPlan(string accountname, AddOnType addOnType)
         {
             User user = await _userRepository.GetUserInformation(accountname);
@@ -2317,7 +2317,7 @@ namespace Doppler.BillingUser.Controllers
                     }
 
                     var cardNumberDetails = !string.IsNullOrEmpty(cardNumber) ? "with credit card's last 4 digits: " + cardNumber : "";
-                    var messageError = $"Failed at buy a onsite plan for user {accountname} {cardNumberDetails}. Exception {e.Message}";
+                    var messageError = $"Failed at buy a {addOnType} plan for user {accountname} {cardNumberDetails}. Exception {e.Message}";
                     _logger.LogError(e, messageError);
                     await _slackService.SendNotification(messageError);
                 }
@@ -2515,7 +2515,8 @@ namespace Doppler.BillingUser.Controllers
                             buyOnSitePlan.Total,
                             userOrClientManagerBillingInformation,
                             accountType,
-                            onSitePlan,
+                            onSitePlan.PrintQty,
+                            onSitePlan.Fee,
                             currentOnSitePlan),
                         accountname);
                 }
@@ -2564,7 +2565,8 @@ namespace Doppler.BillingUser.Controllers
 
                 payment = await CreateCreditCardPayment(buyAddOnPlan.Total.Value, userId, accountname, userOrClientManagerBillingInformation.PaymentMethod, false, false, encryptedCreditCard);
                 var accountEntyMapper = GetAccountingEntryMapper(userOrClientManagerBillingInformation.PaymentMethod);
-                AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyAddOnPlan.Total.Value, userId, SourceTypeEnum.BuyOnSite, payment, accountType);
+                var sourceType = addOnType == AddOnType.OnSite ? SourceTypeEnum.BuyOnSite : addOnType == AddOnType.PushNotification ? SourceTypeEnum.ByPushNotification : 0;
+                AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyAddOnPlan.Total.Value, userId, sourceType, payment, accountType);
                 AccountingEntry paymentEntry = null;
                 authorizationNumber = payment.AuthorizationNumber;
 
@@ -2634,10 +2636,10 @@ namespace Doppler.BillingUser.Controllers
                 }
             }
 
-            var message = $"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyAddOnPlan.PlanId}";
+            var message = $"{userType} - Successful buy {addOnType} plan for: User: {accountname} - Plan: {buyAddOnPlan.PlanId}";
             await _slackService.SendNotification(message);
 
-            return new OkObjectResult($"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyAddOnPlan.PlanId}");
+            return new OkObjectResult($"{userType} - Successful buy {addOnType} plan for: User: {accountname} - Plan: {buyAddOnPlan.PlanId}");
         }
 
         private async void SendOnSiteNotifications(

@@ -239,7 +239,8 @@ SELECT
     U.IsCancelated,
     U.IdClientManager,
     U.TrialExpirationDate,
-    U.IdResponsabileBilling
+    U.IdResponsabileBilling,
+    U.PaymentMethod
 FROM
     [User] U
 LEFT JOIN

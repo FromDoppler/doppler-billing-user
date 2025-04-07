@@ -229,7 +229,8 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
                             buyAddOnPlan.Total,
                             userOrClientManagerBillingInformation,
                             accountType,
-                            onSitePlan,
+                            onSitePlan.PrintQty,
+                            onSitePlan.Fee,
                             currentOnSitePlan);
         }
 
