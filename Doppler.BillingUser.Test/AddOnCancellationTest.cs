@@ -61,9 +61,9 @@ namespace Doppler.BillingUser.Test
             var userAddOnRepositoryMock = new Mock<IUserAddOnRepository>();
     
             userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
-                              .ReturnsAsync(expectedUser);
+                .ReturnsAsync(expectedUser);
             userAddOnRepositoryMock.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>()))
-                                   .ReturnsAsync((UserAddOn)null);
+                .ReturnsAsync((UserAddOn)null);
     
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -130,11 +130,11 @@ namespace Doppler.BillingUser.Test
             var billingRepositoryMock = new Mock<IBillingRepository>();
     
             userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
-                              .ReturnsAsync(expectedUser);
+                .ReturnsAsync(expectedUser);
             userAddOnRepositoryMock.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>()))
-                                   .ReturnsAsync(expectedUserAddOn);
+                .ReturnsAsync(expectedUserAddOn);
             billingRepositoryMock.Setup(x => x.GetBillingCredit(expectedBillingCredit.IdBillingCredit))
-                                 .ReturnsAsync(expectedBillingCredit);
+                .ReturnsAsync(expectedBillingCredit);
             billingRepositoryMock.Setup(x => x.UpdateBillingCreditType(It.IsAny<int>(), It.IsAny<int>()));
     
             var client = _factory.WithWebHostBuilder(builder =>
@@ -174,7 +174,7 @@ namespace Doppler.BillingUser.Test
             var accountname = "test1@example.com";
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.GetUserInformation(It.IsAny<string>()))
-                              .ReturnsAsync((User)null);
+                .ReturnsAsync((User)null);
     
             var client = _factory.WithWebHostBuilder(builder =>
             {
