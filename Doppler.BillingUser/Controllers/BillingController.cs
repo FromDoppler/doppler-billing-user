@@ -2114,6 +2114,70 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPut("/accounts/{accountname}/addon/{addOnType}/cancel")]
+        public async Task<IActionResult> CancelCurrentAddOnPlan(string accountname, AddOnType addOnType)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            var userType = !user.IdClientManager.HasValue ? "REG" : "CM";
+            string planText = "";
+            int billingCreditCanceledType = 0;
+            try
+            {
+                switch (addOnType)
+                {
+                    case AddOnType.Landing:
+                        return new ObjectResult("Cancellation for Landing not implemented")
+                        { StatusCode = (int)HttpStatusCode.NotImplemented };
+                    case AddOnType.Chat:
+                        return new ObjectResult("Cancellation for Conversation not implemented")
+                        { StatusCode = (int)HttpStatusCode.NotImplemented };
+                    case AddOnType.OnSite:
+                        planText = "onsite";
+                        billingCreditCanceledType = (int)BillingCreditTypeEnum.OnSite_Canceled;
+                        break;
+                    case AddOnType.PushNotification:
+                        planText = "push notification";
+                        billingCreditCanceledType = (int)BillingCreditTypeEnum.PushNotification_Canceled;
+                        break;
+                }
+
+                UserAddOn userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)addOnType);
+                if (userAddOn == null)
+                {
+                    return new NotFoundObjectResult($"The user does not have any {planText} plan");
+                }
+
+                var currentPlanBillingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
+                if (currentPlanBillingCredit != null && currentPlanBillingCredit.IdBillingCreditType != billingCreditCanceledType)
+                {
+                    await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, billingCreditCanceledType);
+                }
+
+                var message = $"{userType} - Successful cancel {planText} plan for: User: {accountname}";
+                _logger.LogError(message);
+                await _slackService.SendNotification(message);
+
+                return new OkObjectResult(message);
+            }
+            catch (Exception ex)
+            {
+                var message = $"{userType} - Failed at canceling {planText} plan for: User: {accountname}";
+                _logger.LogError(message, ex);
+                await _slackService.SendNotification(message);
+
+                return new ObjectResult(message)
+                {
+                    StatusCode = 500,
+                };
+            }
+        }
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
         [HttpPost("/accounts/{accountname}/{addOnType}/activate")]
         public async Task<IActionResult> ActivateOnSitePlan(string accountname, AddOnType addOnType)
         {
