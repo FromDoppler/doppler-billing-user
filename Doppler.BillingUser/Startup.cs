@@ -133,6 +133,7 @@ namespace Doppler.BillingUser
             services.AddScoped<IOnSitePlanUserRepository, OnSitePlanUserRepository>();
             services.AddScoped<IOnSitePlanRepository, OnSitePlanRepository>();
             services.AddScoped<IPushNotificationPlanRepository, PushNotificationPlanRepository>();
+            services.AddScoped<IPushNotificationPlanUserRepository, PushNotificationPlanUserRepository>();
             services.Configure<BinSettings>(Configuration.GetSection(nameof(BinSettings)));
             services.AddScoped<IBinService, BinService>();
         }

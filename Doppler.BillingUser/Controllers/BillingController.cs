@@ -89,6 +89,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IOnSitePlanUserRepository _onSitePlanUserRepository;
         private readonly IOnSitePlanRepository _onSitePlanRepository;
         private readonly IPushNotificationPlanRepository _pushNotificationPlanRepository;
+        private readonly IPushNotificationPlanUserRepository _pushNotificationPlanUserRepository;
         private readonly IBinService _binService;
 
         private readonly IFileStorage _fileStorage;
@@ -167,6 +168,7 @@ namespace Doppler.BillingUser.Controllers
             IOnSitePlanUserRepository onSitePlanUserRepository,
             IOnSitePlanRepository onSitePlanRepository,
             IPushNotificationPlanRepository pushNotificationPlanRepository,
+            IPushNotificationPlanUserRepository pushNotificationPlanUserRepository,
             IBinService binService)
         {
             _logger = logger;
@@ -205,6 +207,7 @@ namespace Doppler.BillingUser.Controllers
             _onSitePlanUserRepository = onSitePlanUserRepository;
             _onSitePlanRepository = onSitePlanRepository;
             _pushNotificationPlanRepository = pushNotificationPlanRepository;
+            _pushNotificationPlanUserRepository = pushNotificationPlanUserRepository;
             _binService = binService;
         }
 
@@ -2178,8 +2181,8 @@ namespace Doppler.BillingUser.Controllers
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
-        [HttpPost("/accounts/{accountname}/{addOnType}/activate")]
-        public async Task<IActionResult> ActivateOnSitePlan(string accountname, AddOnType addOnType)
+        [HttpPost("/accounts/{accountname}/addon/{addOnType}/activate")]
+        public async Task<IActionResult> ActivateAddOnPlan(string accountname, AddOnType addOnType)
         {
             User user = await _userRepository.GetUserInformation(accountname);
 
@@ -2199,10 +2202,12 @@ namespace Doppler.BillingUser.Controllers
 
                 if (userAddOn != null)
                 {
-                    return new BadRequestObjectResult("The user have an onsite plan");
+                    return new BadRequestObjectResult($"The user have an {addOnType} plan");
                 }
 
-                var addOnMapper = GetAddOnMapper(addOnType);
+                var paymentMethod = user.PaymentMethod > 0 ? (PaymentMethodEnum)user.PaymentMethod != PaymentMethodEnum.NONE ? (PaymentMethodEnum)user.PaymentMethod : PaymentMethodEnum.CC : PaymentMethodEnum.CC;
+
+                var addOnMapper = GetAddOnMapper(addOnType, paymentMethod);
 
                 var freePlan = await addOnMapper.GetAddOnFreePlanAsync();
 
@@ -2237,6 +2242,92 @@ namespace Doppler.BillingUser.Controllers
                 return new ObjectResult(message)
                 {
                     StatusCode = 500,
+                };
+            }
+        }
+
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/addon/{addOnType}/buy")]
+        public async Task<IActionResult> BuyAddOnPlan(string accountname, AddOnType addOnType, [FromBody] BuyAddOnPlan buyAddOnPlan)
+        {
+            var user = await _userRepository.GetUserInformation(accountname);
+            UserBillingInformation userBillingInformation = null;
+
+            try
+            {
+                if (user == null)
+                {
+                    var messageError = $"Failed at buy a onsite plan for user {accountname}, Invalid user";
+                    _logger.LogError(messageError);
+                    await _slackService.SendNotification(messageError);
+                    return new NotFoundObjectResult("Invalid user");
+                }
+
+                if (!user.IdClientManager.HasValue)
+                {
+                    userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
+                    var addOnMapper = GetAddOnMapper(addOnType, userBillingInformation != null ? (PaymentMethodEnum)userBillingInformation.PaymentMethod : PaymentMethodEnum.CC);
+
+                    var canProceed = await addOnMapper.CanProceedToBuy(buyAddOnPlan, user.IdUser, userBillingInformation, AccountTypeEnum.User);
+                    if (!canProceed.IsValid)
+                    {
+                        _logger.LogError(canProceed.Error.MessageError);
+                        await _slackService.SendNotification(canProceed.Error.MessageError);
+                        return new BadRequestObjectResult(canProceed.Error.ErrorType);
+                    }
+
+                    return await ProceedBuyAddOnPlan(accountname, user, userBillingInformation, buyAddOnPlan, addOnType, AccountTypeEnum.User);
+                }
+                else
+                {
+                    userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
+                    var addOnMapper = GetAddOnMapper(addOnType, userBillingInformation != null ? (PaymentMethodEnum)userBillingInformation.PaymentMethod : PaymentMethodEnum.CC);
+
+                    var canProceed = await addOnMapper.CanProceedToBuy(buyAddOnPlan, user.IdUser, userBillingInformation, AccountTypeEnum.CM);
+                    if (!canProceed.IsValid)
+                    {
+                        _logger.LogError(canProceed.Error.MessageError);
+                        await _slackService.SendNotification(canProceed.Error.MessageError);
+                        return new BadRequestObjectResult(canProceed.Error.ErrorType);
+                    }
+
+                    return await ProceedBuyAddOnPlan(accountname, user, userBillingInformation, buyAddOnPlan, addOnType, AccountTypeEnum.CM);
+                }
+            }
+            catch (Exception e)
+            {
+                if (userBillingInformation != null)
+                {
+                    await CreateUserPaymentHistory(user.IdUser, (int)userBillingInformation.PaymentMethod, buyAddOnPlan.PlanId, PaymentStatusEnum.DeclinedPaymentTransaction.ToDescription(), 0, e.Message, Source);
+
+                    var cardNumber = string.Empty;
+                    if (userBillingInformation.PaymentMethod == PaymentMethodEnum.CC)
+                    {
+                        CreditCard encryptedCreditCard = new();
+
+                        if (!user.IdClientManager.HasValue)
+                        {
+                            encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(user.Email);
+                        }
+                        else
+                        {
+                            encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
+                        }
+
+                        cardNumber = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number)[^4..] : "";
+                    }
+
+                    var cardNumberDetails = !string.IsNullOrEmpty(cardNumber) ? "with credit card's last 4 digits: " + cardNumber : "";
+                    var messageError = $"Failed at buy a {addOnType} plan for user {accountname} {cardNumberDetails}. Exception {e.Message}";
+                    _logger.LogError(e, messageError);
+                    await _slackService.SendNotification(messageError);
+                }
+
+                return new ObjectResult($"Failed at buy a {addOnType} plan")
+                {
+                    StatusCode = 500,
+                    Value = e.Message,
                 };
             }
         }
@@ -2426,7 +2517,8 @@ namespace Doppler.BillingUser.Controllers
                             buyOnSitePlan.Total,
                             userOrClientManagerBillingInformation,
                             accountType,
-                            onSitePlan,
+                            onSitePlan.PrintQty,
+                            onSitePlan.Fee,
                             currentOnSitePlan),
                         accountname);
                 }
@@ -2441,6 +2533,115 @@ namespace Doppler.BillingUser.Controllers
             await _slackService.SendNotification(message);
 
             return new OkObjectResult($"{userType} - Successful buy on-site plan for: User: {accountname} - Plan: {buyOnSitePlan.PlanId}");
+        }
+
+        private async Task<IActionResult> ProceedBuyAddOnPlan(
+            string accountname,
+            User user,
+            UserBillingInformation userOrClientManagerBillingInformation,
+            BuyAddOnPlan buyAddOnPlan,
+            AddOnType addOnType,
+            AccountTypeEnum accountType)
+        {
+            CreditCardPayment payment = new();
+            string authorizationNumber = string.Empty;
+            int invoiceId = 0;
+            var userId = accountType == AccountTypeEnum.User ? user.IdUser : user.IdClientManager.Value;
+            CreditCard encryptedCreditCard = new();
+            var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
+            var userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
+
+            var addOnMapper = GetAddOnMapper(addOnType, userOrClientManagerBillingInformation.PaymentMethod);
+
+            if (buyAddOnPlan.Total.GetValueOrDefault() > 0 &&
+                (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC || userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.MP))
+            {
+                if (accountType == AccountTypeEnum.User)
+                {
+                    encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(user.Email);
+                }
+                else
+                {
+                    encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
+                }
+
+                payment = await CreateCreditCardPayment(buyAddOnPlan.Total.Value, userId, accountname, userOrClientManagerBillingInformation.PaymentMethod, false, false, encryptedCreditCard);
+                var accountEntyMapper = GetAccountingEntryMapper(userOrClientManagerBillingInformation.PaymentMethod);
+                var sourceType = addOnType == AddOnType.OnSite ? SourceTypeEnum.BuyOnSite : addOnType == AddOnType.PushNotification ? SourceTypeEnum.ByPushNotification : 0;
+                AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyAddOnPlan.Total.Value, userId, sourceType, payment, accountType);
+                AccountingEntry paymentEntry = null;
+                authorizationNumber = payment.AuthorizationNumber;
+
+                if (payment.Status == PaymentStatusEnum.Approved)
+                {
+                    paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
+                }
+
+                invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+            }
+
+            var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
+            var planType = addOnType == AddOnType.OnSite ? (int)PlanTypeEnum.OnSite : addOnType == AddOnType.PushNotification ? (int)PlanTypeEnum.PushNotification : 0;
+            PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, planType, buyAddOnPlan.PlanId, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
+
+            await addOnMapper.ProceedToBuy(user, buyAddOnPlan, userBillingInformation, currentBillingCredit, payment, amountDetails, userOrClientManagerBillingInformation, accountType);
+
+            if (buyAddOnPlan.Total.GetValueOrDefault() > 0 &&
+                    ((userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC) ||
+                    (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.MP) ||
+                    (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF && userOrClientManagerBillingInformation.IdBillingCountry == (int)CountryEnum.Argentina) ||
+                    (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.DA)))
+            {
+                var billingCredit = await _billingRepository.GetBillingCredit(userBillingInformation.IdCurrentBillingCredit.Value);
+                var cardNumber = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
+                var holderName = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
+
+                if (billingCredit != null)
+                {
+                    var billingSystem = ResponsabileBillingEnum.QBL;
+
+                    switch (userOrClientManagerBillingInformation.PaymentMethod)
+                    {
+                        case PaymentMethodEnum.CC:
+                            billingSystem = ResponsabileBillingEnum.QBL;
+                            break;
+                        case PaymentMethodEnum.DA:
+                        case PaymentMethodEnum.TRANSF:
+                            billingSystem = ResponsabileBillingEnum.GBBISIDE;
+                            break;
+                        case PaymentMethodEnum.MP:
+                            billingSystem = ResponsabileBillingEnum.Mercadopago;
+                            break;
+                    }
+
+                    billingCredit.IdUser = userOrClientManagerBillingInformation.IdUser;
+                    billingCredit.Cuit = userOrClientManagerBillingInformation.Cuit;
+                    billingCredit.IdResponsabileBilling = (int)billingSystem;
+
+                    var billingSap = await addOnMapper.MapAddOnBillingToSapAsync(_sapSettings.Value,
+                            user,
+                            buyAddOnPlan,
+                            cardNumber,
+                            holderName,
+                            billingCredit,
+                            authorizationNumber,
+                            invoiceId,
+                            userOrClientManagerBillingInformation,
+                            accountType);
+
+                    await _sapService.SendBillingToSap(billingSap, accountname);
+                }
+                else
+                {
+                    var slackMessage = $"{userType} - Could not send invoice to SAP because the BillingCredit is null, User: {accountname} ";
+                    await _slackService.SendNotification(slackMessage);
+                }
+            }
+
+            var message = $"{userType} - Successful buy {addOnType} plan for: User: {accountname} - Plan: {buyAddOnPlan.PlanId}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult($"{userType} - Successful buy {addOnType} plan for: User: {accountname} - Plan: {buyAddOnPlan.PlanId}");
         }
 
         private async void SendOnSiteNotifications(
@@ -3222,12 +3423,12 @@ namespace Doppler.BillingUser.Controllers
             }
         }
 
-        private IAddOnMapper GetAddOnMapper(AddOnType addOnType)
+        private IAddOnMapper GetAddOnMapper(AddOnType addOnType, PaymentMethodEnum paymentMethod)
         {
             return addOnType switch
             {
-                AddOnType.OnSite => new OnSiteMapper(_onSitePlanRepository, _billingRepository),
-                AddOnType.PushNotification => new PushNotificationMapper(_pushNotificationPlanRepository, _billingRepository),
+                AddOnType.OnSite => new OnSiteMapper(_onSitePlanRepository, _billingRepository, _userRepository, _clientManagerRepository, _userAddOnRepository, _onSitePlanUserRepository, _emailTemplatesService, GetAddOnBillingCreditMapper(paymentMethod)),
+                AddOnType.PushNotification => new PushNotificationMapper(_pushNotificationPlanRepository, _billingRepository, _userRepository, _clientManagerRepository, _userAddOnRepository, _pushNotificationPlanUserRepository, GetAddOnBillingCreditMapper(paymentMethod)),
                 _ => null,
             };
         }

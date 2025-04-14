@@ -5,6 +5,7 @@ namespace Doppler.BillingUser.Enums
         Marketing = 1,
         Chat = 2,
         Landing = 3,
-        OnSite = 4
+        OnSite = 4,
+        PushNotification = 5
     }
 }

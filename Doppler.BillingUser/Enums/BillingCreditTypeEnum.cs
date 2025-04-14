@@ -24,6 +24,8 @@ namespace Doppler.BillingUser.Enums
         Downgrade_Between_OnSite = 37,
 
         PushNotification_Buyed_CC = 40,
+        PushNotification_Request = 41,
         PushNotification_Canceled = 42,
+        Downgrade_Between_PushNotification = 43
     }
 }
