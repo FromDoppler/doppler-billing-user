@@ -132,7 +132,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             if (newPushNotificationPlan == null)
             {
                 var messageError = $"{userType} - Failed at buy a push notifiation plan for user {userBillingInformation.Email}. The plan {buyAddOnPlan.PlanId} not exist";
-                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid push notifiation plan", MessageError = messageError } };
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid PushNotification plan", MessageError = messageError } };
             }
 
             CreditCard encryptedCreditCard;

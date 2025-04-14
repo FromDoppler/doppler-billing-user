@@ -2202,10 +2202,12 @@ namespace Doppler.BillingUser.Controllers
 
                 if (userAddOn != null)
                 {
-                    return new BadRequestObjectResult("The user have an onsite plan");
+                    return new BadRequestObjectResult($"The user have an {addOnType} plan");
                 }
 
-                var addOnMapper = GetAddOnMapper(addOnType, (PaymentMethodEnum)user.PaymentMethod);
+                var paymentMethod = user.PaymentMethod > 0 ? (PaymentMethodEnum)user.PaymentMethod != PaymentMethodEnum.NONE ? (PaymentMethodEnum)user.PaymentMethod : PaymentMethodEnum.CC : PaymentMethodEnum.CC;
+
+                var addOnMapper = GetAddOnMapper(addOnType, paymentMethod);
 
                 var freePlan = await addOnMapper.GetAddOnFreePlanAsync();
 
@@ -2265,7 +2267,7 @@ namespace Doppler.BillingUser.Controllers
                 if (!user.IdClientManager.HasValue)
                 {
                     userBillingInformation = await _userRepository.GetUserBillingInformation(accountname);
-                    var addOnMapper = GetAddOnMapper(addOnType, userBillingInformation.PaymentMethod);
+                    var addOnMapper = GetAddOnMapper(addOnType, userBillingInformation != null ? (PaymentMethodEnum)userBillingInformation.PaymentMethod : PaymentMethodEnum.CC);
 
                     var canProceed = await addOnMapper.CanProceedToBuy(buyAddOnPlan, user.IdUser, userBillingInformation, AccountTypeEnum.User);
                     if (!canProceed.IsValid)
@@ -2280,7 +2282,7 @@ namespace Doppler.BillingUser.Controllers
                 else
                 {
                     userBillingInformation = await _clientManagerRepository.GetUserBillingInformation(user.IdClientManager.Value);
-                    var addOnMapper = GetAddOnMapper(addOnType, userBillingInformation.PaymentMethod);
+                    var addOnMapper = GetAddOnMapper(addOnType, userBillingInformation != null ? (PaymentMethodEnum)userBillingInformation.PaymentMethod : PaymentMethodEnum.CC);
 
                     var canProceed = await addOnMapper.CanProceedToBuy(buyAddOnPlan, user.IdUser, userBillingInformation, AccountTypeEnum.CM);
                     if (!canProceed.IsValid)
@@ -2322,7 +2324,7 @@ namespace Doppler.BillingUser.Controllers
                     await _slackService.SendNotification(messageError);
                 }
 
-                return new ObjectResult("Failed at buy a onsite plan")
+                return new ObjectResult($"Failed at buy a {addOnType} plan")
                 {
                     StatusCode = 500,
                     Value = e.Message,

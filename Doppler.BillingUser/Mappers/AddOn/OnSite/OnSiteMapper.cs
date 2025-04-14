@@ -101,46 +101,46 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             var userType = accountType == AccountTypeEnum.User ? "REG" : "CM";
             if (userBillingInformation == null)
             {
-                var messageError = $"{userType} - Failed at buy a onsite plan, Invalid user";
+                var messageError = $"{userType} - Failed at buy a OnSite plan, Invalid user";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid user", MessageError = messageError } };
             }
 
             if (userBillingInformation.IsCancelated)
             {
-                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, Canceled user";
+                var messageError = $"{userType} - Failed at buy a OnSite plan for user {userBillingInformation.Email}, Canceled user";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Canceled user", MessageError = messageError } };
             }
 
             if (userBillingInformation.IdBillingCountry == 0)
             {
-                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, Invalid country";
+                var messageError = $"{userType} - Failed at buy a OnSite plan for user {userBillingInformation.Email}, Invalid country";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid country", MessageError = messageError } };
             }
 
             if (!AllowedPaymentMethodsForBilling.Any(p => p == userBillingInformation.PaymentMethod))
             {
-                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, Invalid payment method {userBillingInformation.PaymentMethod}";
+                var messageError = $"{userType} - Failed at buy a OnSite plan for user {userBillingInformation.Email}, Invalid payment method {userBillingInformation.PaymentMethod}";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageError } };
             }
 
             if (userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF && !AllowedCountriesForTransfer.Any(p => (int)p == userBillingInformation.IdBillingCountry))
             {
-                var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}, payment method {userBillingInformation.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
+                var messageErrorTransference = $"{userType} - Failed at buy a OnSite plan for user {userBillingInformation.Email}, payment method {userBillingInformation.PaymentMethod} it's only supported for {AllowedCountriesForTransfer.Select(p => p)}";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid payment method", MessageError = messageErrorTransference } };
             }
 
             var currentBillingCredit = await billingRepository.GetCurrentBillingCredit(userId);
             if (currentBillingCredit == null)
             {
-                var messageErrorTransference = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The user has not an active marketing plan";
+                var messageErrorTransference = $"{userType} - Failed at buy a OnSite plan for user {userBillingInformation.Email}. The user has not an active marketing plan";
                 return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid marketing plan", MessageError = messageErrorTransference } };
             }
 
             var newOnSitePlan = await onSitePlanRepository.GetById(buyAddOnPlan.PlanId);
             if (newOnSitePlan == null)
             {
-                var messageError = $"{userType} - Failed at buy a onsite plan for user {userBillingInformation.Email}. The plan {buyAddOnPlan.PlanId} not exist";
-                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid onsite plan", MessageError = messageError } };
+                var messageError = $"{userType} - Failed at buy a OnSite plan for user {userBillingInformation.Email}. The plan {buyAddOnPlan.PlanId} not exist";
+                return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "Invalid OnSite plan", MessageError = messageError } };
             }
 
             CreditCard encryptedCreditCard;
@@ -159,7 +159,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
 
                 if (encryptedCreditCard == null)
                 {
-                    var messageError = $"Failed at buy a landing plan for user {userBillingInformation.Email}, missing credit card information";
+                    var messageError = $"Failed at buy a OnSite plan for user {userBillingInformation.Email}, missing credit card information";
                     return new ValidationResult { IsValid = false, Error = new ValidationError { ErrorType = "User credit card missing", MessageError = messageError } };
                 }
             }
