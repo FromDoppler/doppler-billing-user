@@ -794,6 +794,9 @@ namespace Doppler.BillingUser.Controllers
                 case (int)PlanTypeEnum.OnSite:
                     currentPlan = await _onSitePlanUserRepository.GetCurrentPlan(accountname);
                     break;
+                case (int)PlanTypeEnum.PushNotification:
+                    currentPlan = await _pushNotificationPlanUserRepository.GetCurrentPlan(accountname);
+                    break;
             }
 
             if (currentPlan == null)
