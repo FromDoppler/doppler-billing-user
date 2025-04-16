@@ -14,6 +14,6 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         public AdditionalServiceTypeEnum Type { get; set; }
         public bool IsCustom { get; set; }
         public string UserEmail { get; set; }
-        public int? PrintQty { get; set; }
+        public int? Quantity { get; set; }
     }
 }
