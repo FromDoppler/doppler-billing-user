@@ -175,15 +175,15 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             CreditCardPayment payment,
             PlanAmountDetails amountDetails,
             UserBillingInformation userOrClientManagerBillingInformation,
+            CurrentPlan currentAddOnPlan,
             AccountTypeEnum accountType)
         {
-            var currentOnSitePlan = await onSitePlanUserRepository.GetCurrentPlan(user.Email);
             var onSitePlan = await onSitePlanRepository.GetById(buyAddOnPlan.PlanId);
 
-            if (currentOnSitePlan == null || (currentOnSitePlan != null && currentOnSitePlan.IdPlan != onSitePlan.IdOnSitePlan))
+            if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != onSitePlan.IdOnSitePlan))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.OnSite_Buyed_CC : BillingCreditTypeEnum.OnSite_Request;
-                if (currentOnSitePlan != null && currentOnSitePlan.PrintQty > onSitePlan.PrintQty)
+                if (currentAddOnPlan != null && currentAddOnPlan.PrintQty > onSitePlan.PrintQty)
                 {
                     billingCreditType = BillingCreditTypeEnum.Downgrade_Between_OnSite;
                 }
@@ -202,7 +202,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
 
             //Send notifications
             var planDiscountInformation = await billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
-            SendOnSiteNotifications(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
+            SendOnSiteNotifications(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, onSitePlan, currentAddOnPlan, payment, planDiscountInformation, amountDetails, accountType);
         }
 
         public async Task<SapBillingDto> MapAddOnBillingToSapAsync(
@@ -215,12 +215,12 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             string authorizationNumber,
             int invoiceId,
             UserBillingInformation userOrClientManagerBillingInformation,
+            CurrentPlan currentAddOnPlan,
             AccountTypeEnum accountType)
         {
-            var currentOnSitePlan = await onSitePlanUserRepository.GetCurrentPlan(user.Email);
             var onSitePlan = await onSitePlanRepository.GetById(buyAddOnPlan.PlanId);
 
-            return BillingHelper.MapOnSiteBillingToSapAsync(sapSettings,
+            return BillingHelper.MapAddOnBillingToSapAsync(sapSettings,
                             cardNumber,
                             holderName,
                             billingCredit,
@@ -231,7 +231,16 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
                             accountType,
                             onSitePlan.PrintQty,
                             onSitePlan.Fee,
-                            currentOnSitePlan);
+                            currentAddOnPlan,
+                            AdditionalServiceTypeEnum.OnSite);
+        }
+
+
+        public async Task<CurrentPlan> GetCurrentPlanAsync(string accountname)
+        {
+            var currentOnSitePlan = await onSitePlanUserRepository.GetCurrentPlan(accountname);
+
+            return currentOnSitePlan;
         }
 
         private IOnSitePlanUserMapper GetOnSitePlanUserMapper(PaymentMethodEnum paymentMethod)
