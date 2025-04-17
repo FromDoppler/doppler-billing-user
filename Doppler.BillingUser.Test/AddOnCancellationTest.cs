@@ -45,9 +45,9 @@ namespace Doppler.BillingUser.Test
         }
 
         [Theory]
-        [InlineData("onsite")]
-        [InlineData("pushnotification")]
-        public async Task PUT_cancel_addon_plan_should_return_not_found_when_user_not_have_any_plan(string addOnType)
+        [InlineData(AddOnType.OnSite)]
+        [InlineData(AddOnType.PushNotification)]
+        public async Task PUT_cancel_addon_plan_should_return_not_found_when_user_not_have_any_plan(AddOnType addOnType)
         {
             // Arrange
             var accountname = "test1@example.com";
@@ -72,8 +72,6 @@ namespace Doppler.BillingUser.Test
                 });
             }).CreateClient();
 
-            string planText = addOnType.ToLower() == "onsite" ? "onsite" : "push notification";
-
             var request = new HttpRequestMessage(HttpMethod.Put, $"accounts/{accountname}/addon/{addOnType}/cancel");
             request.Headers.Add("Authorization", $"Bearer {TOKEN_ACCOUNT_123_TEST1_AT_EXAMPLE_DOT_COM_EXPIRE_20330518}");
 
@@ -83,38 +81,32 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-            Assert.Equal($"The user does not have any {planText} plan", messageError);
+            Assert.Equal($"The user does not have any {addOnType} plan", messageError);
 
-            int expectedAddOn = addOnType.ToLower() == "onsite" ? (int)AddOnType.OnSite : (int)AddOnType.PushNotification;
+            int expectedAddOn = (int)addOnType;
             userAddOnRepositoryMock.Verify(x => x.GetByUserIdAndAddOnType(expectedUser.IdUser, expectedAddOn), Times.Once());
         }
 
         [Theory]
-        [InlineData("onsite")]
-        [InlineData("pushnotification")]
-        public async Task PUT_cancel_addon_plan_should_return_ok_when_information_is_correct(string addOnType)
+        [InlineData(AddOnType.OnSite)]
+        [InlineData(AddOnType.PushNotification)]
+        public async Task PUT_cancel_addon_plan_should_return_ok_when_information_is_correct(AddOnType addOnType)
         {
             // Arrange
             var accountname = "test1@example.com";
             var expectedUser = new User() { IdUser = 1 };
             var expectedUserAddOn = new UserAddOn() { IdCurrentBillingCredit = 123 };
 
-            string planText;
-            int expectedAddOn;
             int billingCreditCanceledType;
             int initialBillingCreditType;
 
-            if (addOnType.ToLower() == "onsite")
+            if (addOnType == AddOnType.OnSite)
             {
-                planText = "onsite";
-                expectedAddOn = (int)AddOnType.OnSite;
                 billingCreditCanceledType = (int)BillingCreditTypeEnum.OnSite_Canceled;
                 initialBillingCreditType = (int)BillingCreditTypeEnum.OnSite_Buyed_CC;
             }
             else
             {
-                planText = "push notification";
-                expectedAddOn = (int)AddOnType.PushNotification;
                 billingCreditCanceledType = (int)BillingCreditTypeEnum.PushNotification_Canceled;
                 initialBillingCreditType = (int)BillingCreditTypeEnum.PushNotification_Buyed_CC;
             }
@@ -154,9 +146,9 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal($"REG - Successful cancel {planText} plan for: User: {accountname}", messageResult);
+            Assert.Equal($"REG - Successful cancel {addOnType} plan for: User: {accountname}", messageResult);
 
-            userAddOnRepositoryMock.Verify(x => x.GetByUserIdAndAddOnType(expectedUser.IdUser, expectedAddOn), Times.Once());
+            userAddOnRepositoryMock.Verify(x => x.GetByUserIdAndAddOnType(expectedUser.IdUser, (int)addOnType), Times.Once());
             billingRepositoryMock.Verify(x => x.GetBillingCredit(expectedBillingCredit.IdBillingCredit), Times.Once());
             billingRepositoryMock.Verify(x => x.UpdateBillingCreditType(expectedUserAddOn.IdCurrentBillingCredit, billingCreditCanceledType), Times.Once());
         }
