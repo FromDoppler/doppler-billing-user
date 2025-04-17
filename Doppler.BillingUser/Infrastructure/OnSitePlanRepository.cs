@@ -21,6 +21,7 @@ namespace Doppler.BillingUser.Infrastructure
 SELECT [IdOnSitePlan] as PlanId,
         [Description],
         [PrintQty],
+        [PrintQty] as Quantity,
         [Fee],
         [FreeDays]
 FROM [dbo].[OnSitePlan]
@@ -36,6 +37,7 @@ WHERE [IdOnSitePlan] = @onSitePlanid", new { onSitePlanid });
 SELECT [IdOnSitePlan] as PlanId,
         [Description],
         [PrintQty],
+        [PrintQty] as Quantity,
         [Fee],
         [FreeDays]
 FROM [dbo].[OnSitePlan]
