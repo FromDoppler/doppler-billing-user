@@ -2677,11 +2677,11 @@ namespace Doppler.BillingUser.Controllers
             if (currentPlan == null)
             {
                 isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
-                await _emailTemplatesService.SendNotificationForUpgradeOnSitePlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true);
+                await _emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, new AddOnPlan(newPlan), user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.OnSite);
             }
             else
             {
-                await _emailTemplatesService.SendNotificationForUpdateOnSitePlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan);
+                await _emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, new AddOnPlan(newPlan), user, planDiscountInformation, amountDetails, currentPlan, AddOnType.OnSite);
             }
         }
 
