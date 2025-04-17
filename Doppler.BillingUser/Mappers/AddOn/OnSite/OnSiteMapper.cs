@@ -275,11 +275,11 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             if (currentPlan == null)
             {
                 bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
-                await emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, new AddOnPlan(newPlan), user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.OnSite);
+                await emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.OnSite);
             }
             else
             {
-                await emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, new AddOnPlan(newPlan), user, planDiscountInformation, amountDetails, currentPlan, AddOnType.OnSite);
+                await emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, AddOnType.OnSite);
             }
         }
     }
