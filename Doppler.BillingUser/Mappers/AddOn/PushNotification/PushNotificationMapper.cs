@@ -69,7 +69,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
                 Description = pushNotificationPlan.Description,
                 Fee = pushNotificationPlan.Fee,
                 FreeDays = pushNotificationPlan.FreeDays,
-                PlanId = pushNotificationPlan.IdPushNotificationPlan,
+                PlanId = pushNotificationPlan.PlanId,
                 Quantity = pushNotificationPlan.Quantity,
             };
         }
@@ -172,7 +172,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
         {
             var pushNotificationPlan = await pushNotificationPlanRepository.GetById(buyAddOnPlan.PlanId);
 
-            if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != pushNotificationPlan.IdPushNotificationPlan))
+            if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != pushNotificationPlan.PlanId))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.PushNotification_Buyed_CC : BillingCreditTypeEnum.PushNotification_Request;
                 if (currentAddOnPlan != null && currentAddOnPlan.Quantity > pushNotificationPlan.Quantity)
@@ -189,7 +189,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
                     IdUser = user.IdUser,
                     Activated = true,
                     IdBillingCredit = billingCreditId,
-                    IdPushNotificationPlan = pushNotificationPlan.IdPushNotificationPlan,
+                    IdPushNotificationPlan = pushNotificationPlan.PlanId,
                     ActivationDate = DateTime.UtcNow,
                 };
 

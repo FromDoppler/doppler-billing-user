@@ -2450,9 +2450,9 @@ namespace Doppler.BillingUser.Controllers
             var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
             var currentOnSitePlan = await _onSitePlanUserRepository.GetCurrentPlan(user.Email);
             var onSitePlan = await _onSitePlanRepository.GetById(buyOnSitePlan.PlanId);
-            PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, (int)PlanTypeEnum.OnSite, onSitePlan.IdOnSitePlan, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
+            PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, (int)PlanTypeEnum.OnSite, onSitePlan.PlanId, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
 
-            if (currentOnSitePlan == null || (currentOnSitePlan != null && currentOnSitePlan.IdPlan != onSitePlan.IdOnSitePlan))
+            if (currentOnSitePlan == null || (currentOnSitePlan != null && currentOnSitePlan.IdPlan != onSitePlan.PlanId))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.OnSite_Buyed_CC : BillingCreditTypeEnum.OnSite_Request;
                 if (currentOnSitePlan != null && currentOnSitePlan.PrintQty > onSitePlan.PrintQty)
@@ -2467,7 +2467,7 @@ namespace Doppler.BillingUser.Controllers
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 var onSitePlanUserMapper = GetOnSitePlanUserMapper(userOrClientManagerBillingInformation.PaymentMethod);
-                var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, onSitePlan.IdOnSitePlan, billingCreditId);
+                var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, onSitePlan.PlanId, billingCreditId);
                 await _billingRepository.CreateOnSitePlanUserAsync(onSitePlanUser);
 
                 /* Save current billing credit in the UserAddOn table */
