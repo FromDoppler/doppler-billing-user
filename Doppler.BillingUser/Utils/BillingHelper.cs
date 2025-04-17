@@ -118,7 +118,7 @@ namespace Doppler.BillingUser.Utils
             return sapBilling;
         }
 
-        public static SapBillingDto MapOnSiteBillingToSapAsync(
+        public static SapBillingDto MapAddOnBillingToSapAsync(
             SapSettings timeZoneOffset,
             string cardNumber,
             string cardHolderName,
@@ -130,7 +130,8 @@ namespace Doppler.BillingUser.Utils
             AccountTypeEnum accountType,
             int quantity,
             decimal fee,
-            CurrentPlan currentAddOnPlan)
+            CurrentPlan currentAddOnPlan,
+            AdditionalServiceTypeEnum additionalServiceType)
         {
             var planFee = (double)fee * (billingCredit.TotalMonthPlan ?? 1);
             var isUpSelling = (currentAddOnPlan != null && currentAddOnPlan.Fee > 0);
@@ -157,10 +158,10 @@ namespace Doppler.BillingUser.Utils
                     new()
                     {
                         Charge = !isUpSelling ? planFee : (double)total,
-                        PrintQty = quantity,
+                        Quantity = quantity,
                         Discount = !isUpSelling ? billingCredit.DiscountPlanFee : 0,
                         IsUpSelling = isUpSelling,
-                        Type = AdditionalServiceTypeEnum.OnSite,
+                        Type = additionalServiceType,
                         IsCustom = false,
                         UserEmail = user.Email
                     }

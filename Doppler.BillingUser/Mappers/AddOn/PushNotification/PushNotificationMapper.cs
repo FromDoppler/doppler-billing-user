@@ -159,15 +159,23 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             return new ValidationResult { IsValid = true };
         }
 
-        public async Task ProceedToBuy(User user, BuyAddOnPlan buyAddOnPlan, UserBillingInformation userBillingInformation, Model.BillingCredit currentBillingCredit, CreditCardPayment payment, PlanAmountDetails amountDetails, UserBillingInformation userOrClientManagerBillingInformation, AccountTypeEnum accountType)
+        public async Task ProceedToBuy(
+            User user,
+            BuyAddOnPlan buyAddOnPlan,
+            UserBillingInformation userBillingInformation,
+            Model.BillingCredit currentBillingCredit,
+            CreditCardPayment payment,
+            PlanAmountDetails amountDetails,
+            UserBillingInformation userOrClientManagerBillingInformation,
+            CurrentPlan currentAddOnPlan,
+            AccountTypeEnum accountType)
         {
-            var currentPushNotificationPlan = await pushNotificationPlanUserRepository.GetCurrentPlan(user.Email);
             var pushNotificationPlan = await pushNotificationPlanRepository.GetById(buyAddOnPlan.PlanId);
 
-            if (currentPushNotificationPlan == null || (currentPushNotificationPlan != null && currentPushNotificationPlan.IdPlan != pushNotificationPlan.IdPushNotificationPlan))
+            if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != pushNotificationPlan.IdPushNotificationPlan))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.PushNotification_Buyed_CC : BillingCreditTypeEnum.PushNotification_Request;
-                if (currentPushNotificationPlan != null && currentPushNotificationPlan.Quantity > pushNotificationPlan.Quantity)
+                if (currentAddOnPlan != null && currentAddOnPlan.Quantity > pushNotificationPlan.Quantity)
                 {
                     billingCreditType = BillingCreditTypeEnum.Downgrade_Between_PushNotification;
                 }
@@ -196,12 +204,22 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             //SendOnSiteNotifications(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
         }
 
-        public async Task<SapBillingDto> MapAddOnBillingToSapAsync(SapSettings sapSettings, User user, BuyAddOnPlan buyAddOnPlan, string cardNumber, string holderName, Model.BillingCredit billingCredit, string authorizationNumber, int invoiceId, UserBillingInformation userOrClientManagerBillingInformation, AccountTypeEnum accountType)
+        public async Task<SapBillingDto> MapAddOnBillingToSapAsync(
+            SapSettings sapSettings,
+            User user,
+            BuyAddOnPlan buyAddOnPlan,
+            string cardNumber,
+            string holderName,
+            Model.BillingCredit billingCredit,
+            string authorizationNumber,
+            int invoiceId,
+            UserBillingInformation userOrClientManagerBillingInformation,
+            CurrentPlan currentAddOnPlan,
+            AccountTypeEnum accountType)
         {
-            var currentPushNotificationPlan = await pushNotificationPlanUserRepository.GetCurrentPlan(user.Email);
             var pushNotificationPlan = await pushNotificationPlanRepository.GetById(buyAddOnPlan.PlanId);
 
-            return BillingHelper.MapOnSiteBillingToSapAsync(sapSettings,
+            return BillingHelper.MapAddOnBillingToSapAsync(sapSettings,
                             cardNumber,
                             holderName,
                             billingCredit,
@@ -212,7 +230,15 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
                             accountType,
                             pushNotificationPlan.Quantity,
                             pushNotificationPlan.Fee,
-                            currentPushNotificationPlan);
+                            currentAddOnPlan,
+                            AdditionalServiceTypeEnum.PushNotification);
+        }
+
+        public async Task<CurrentPlan> GetCurrentPlanAsync(string accountname)
+        {
+            var currentPushNotificationPlan = await pushNotificationPlanUserRepository.GetCurrentPlan(accountname);
+
+            return currentPushNotificationPlan;
         }
     }
 }

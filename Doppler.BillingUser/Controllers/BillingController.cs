@@ -2509,7 +2509,7 @@ namespace Doppler.BillingUser.Controllers
                     billingCredit.IdResponsabileBilling = (int)billingSystem;
 
                     await _sapService.SendBillingToSap(
-                        BillingHelper.MapOnSiteBillingToSapAsync(_sapSettings.Value,
+                        BillingHelper.MapAddOnBillingToSapAsync(_sapSettings.Value,
                             cardNumber,
                             holderName,
                             billingCredit,
@@ -2520,7 +2520,8 @@ namespace Doppler.BillingUser.Controllers
                             accountType,
                             onSitePlan.PrintQty,
                             onSitePlan.Fee,
-                            currentOnSitePlan),
+                            currentOnSitePlan,
+                            AdditionalServiceTypeEnum.OnSite),
                         accountname);
                 }
                 else
@@ -2585,7 +2586,9 @@ namespace Doppler.BillingUser.Controllers
             var planType = addOnType == AddOnType.OnSite ? (int)PlanTypeEnum.OnSite : addOnType == AddOnType.PushNotification ? (int)PlanTypeEnum.PushNotification : 0;
             PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, planType, buyAddOnPlan.PlanId, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
 
-            await addOnMapper.ProceedToBuy(user, buyAddOnPlan, userBillingInformation, currentBillingCredit, payment, amountDetails, userOrClientManagerBillingInformation, accountType);
+            var currentAddOnPlan = await addOnMapper.GetCurrentPlanAsync(accountname);
+
+            await addOnMapper.ProceedToBuy(user, buyAddOnPlan, userBillingInformation, currentBillingCredit, payment, amountDetails, userOrClientManagerBillingInformation, currentAddOnPlan, accountType);
 
             if (buyAddOnPlan.Total.GetValueOrDefault() > 0 &&
                     ((userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC) ||
@@ -2628,6 +2631,7 @@ namespace Doppler.BillingUser.Controllers
                             authorizationNumber,
                             invoiceId,
                             userOrClientManagerBillingInformation,
+                            currentAddOnPlan,
                             accountType);
 
                     await _sapService.SendBillingToSap(billingSap, accountname);
