@@ -174,13 +174,13 @@ namespace Doppler.BillingUser.Test
 
             var onSiteFreePlan = new OnSitePlan
             {
-                IdOnSitePlan = 1,
+                PlanId = 1,
                 FreeDays = 5
             };
 
             var pushNotificationFreePlan = new PushNotificationPlan
             {
-                IdPushNotificationPlan = 1,
+                PlanId = 1,
                 FreeDays = 5
             };
 

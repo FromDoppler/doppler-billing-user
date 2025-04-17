@@ -551,13 +551,13 @@ namespace Doppler.BillingUser.Test
 
             var onSitePlan = new OnSitePlan
             {
-                IdOnSitePlan = 1,
+                PlanId = 1,
                 PrintQty = 5
             };
 
             var pushNotificationPlan = new PushNotificationPlan
             {
-                IdPushNotificationPlan = 1,
+                PlanId = 1,
                 Quantity = 5
             };
 
@@ -643,7 +643,7 @@ namespace Doppler.BillingUser.Test
 
             var onSitePlan = new OnSitePlan
             {
-                IdOnSitePlan = 1,
+                PlanId = 1,
                 PrintQty = 5
             };
 
@@ -744,13 +744,13 @@ namespace Doppler.BillingUser.Test
 
             var onSitePlan = new OnSitePlan
             {
-                IdOnSitePlan = 1,
+                PlanId = 1,
                 PrintQty = 5
             };
 
             var pushNotificationPlan = new PushNotificationPlan
             {
-                IdPushNotificationPlan = 1,
+                PlanId = 1,
                 Quantity = 5
             };
 
@@ -831,7 +831,7 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal($"REG - Successful buy {addOnType} plan for: User: {accountname} - Plan: {onSitePlan.IdOnSitePlan}", message);
+            Assert.Equal($"REG - Successful buy {addOnType} plan for: User: {accountname} - Plan: {onSitePlan.PlanId}", message);
         }
 
         [Theory]
@@ -885,13 +885,13 @@ namespace Doppler.BillingUser.Test
 
             var onSitePlan = new OnSitePlan
             {
-                IdOnSitePlan = 1,
+                PlanId = 1,
                 PrintQty = 5
             };
 
             var pushNotificationPlan = new PushNotificationPlan
             {
-                IdPushNotificationPlan = 1,
+                PlanId = 1,
                 Quantity = 5
             };
 
@@ -977,7 +977,7 @@ namespace Doppler.BillingUser.Test
 
             // Assert
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            Assert.Equal($"CM - Successful buy {addOnType} plan for: User: {accountname} - Plan: {onSitePlan.IdOnSitePlan}", message);
+            Assert.Equal($"CM - Successful buy {addOnType} plan for: User: {accountname} - Plan: {onSitePlan.PlanId}", message);
         }
     }
 }
