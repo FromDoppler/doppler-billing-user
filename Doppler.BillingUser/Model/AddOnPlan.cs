@@ -7,6 +7,5 @@ namespace Doppler.BillingUser.Model
         public int Quantity { get; set; }
         public decimal Fee { get; set; }
         public int? FreeDays { get; set; }
-        }
     }
 }
