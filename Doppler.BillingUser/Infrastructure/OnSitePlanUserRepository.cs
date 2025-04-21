@@ -22,6 +22,7 @@ SELECT
     OSP.[IdOnSitePlan] AS IdPlan,
     OSP.[Description],
     OSP.[PrintQty],
+    OSP.[PrintQty] as Quantity,
     OSP.[Fee],
     OSP.[Description],
     BC.IdPaymentMethod AS PaymentMethod
