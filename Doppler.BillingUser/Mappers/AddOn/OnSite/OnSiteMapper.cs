@@ -77,7 +77,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
                 Description = onSitePlan.Description,
                 Fee = onSitePlan.Fee,
                 FreeDays = onSitePlan.FreeDays,
-                PlanId = onSitePlan.IdOnSitePlan,
+                PlanId = onSitePlan.PlanId,
                 Quantity = onSitePlan.PrintQty,
             };
         }
@@ -180,7 +180,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
         {
             var onSitePlan = await onSitePlanRepository.GetById(buyAddOnPlan.PlanId);
 
-            if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != onSitePlan.IdOnSitePlan))
+            if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != onSitePlan.PlanId))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.OnSite_Buyed_CC : BillingCreditTypeEnum.OnSite_Request;
                 if (currentAddOnPlan != null && currentAddOnPlan.PrintQty > onSitePlan.PrintQty)
@@ -193,7 +193,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
                 var billingCreditId = await billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 var onSitePlanUserMapper = GetOnSitePlanUserMapper(userOrClientManagerBillingInformation.PaymentMethod);
-                var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, onSitePlan.IdOnSitePlan, billingCreditId);
+                var onSitePlanUser = onSitePlanUserMapper.MapToOnSitePlanUser(user.IdUser, onSitePlan.PlanId, billingCreditId);
                 await billingRepository.CreateOnSitePlanUserAsync(onSitePlanUser);
 
                 /* Save current billing credit in the UserAddOn table */
@@ -275,11 +275,11 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             if (currentPlan == null)
             {
                 bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
-                await emailTemplatesService.SendNotificationForUpgradeOnSitePlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true);
+                await emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.OnSite);
             }
             else
             {
-                await emailTemplatesService.SendNotificationForUpdateOnSitePlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan);
+                await emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, AddOnType.OnSite);
             }
         }
     }

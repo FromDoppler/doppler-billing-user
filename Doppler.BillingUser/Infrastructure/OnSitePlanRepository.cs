@@ -18,9 +18,10 @@ namespace Doppler.BillingUser.Infrastructure
         {
             using var connection = _connectionFactory.GetConnection();
             var onSitePlan = await connection.QueryFirstOrDefaultAsync<OnSitePlan>(@"
-SELECT [IdOnSitePlan],
+SELECT [IdOnSitePlan] as PlanId,
         [Description],
         [PrintQty],
+        [PrintQty] as Quantity,
         [Fee],
         [FreeDays]
 FROM [dbo].[OnSitePlan]
@@ -33,9 +34,10 @@ WHERE [IdOnSitePlan] = @onSitePlanid", new { onSitePlanid });
         {
             using var connection = _connectionFactory.GetConnection();
             var onSitePlan = await connection.QueryFirstOrDefaultAsync<OnSitePlan>(@"
-SELECT [IdOnSitePlan],
+SELECT [IdOnSitePlan] as PlanId,
         [Description],
         [PrintQty],
+        [PrintQty] as Quantity,
         [Fee],
         [FreeDays]
 FROM [dbo].[OnSitePlan]

@@ -18,7 +18,7 @@ namespace Doppler.BillingUser.Infrastructure
         {
             using var connection = _connectionFactory.GetConnection();
             var pushNotificationPlan = await connection.QueryFirstOrDefaultAsync<PushNotificationPlan>(@"
-SELECT [IdPushNotificationPlan],
+SELECT [IdPushNotificationPlan] AS PlanId,
         [Description],
         [Quantity],
         [Fee],
@@ -33,7 +33,7 @@ WHERE [IdPushNotificationPlan] = @pushNotificationPlanId", new { pushNotificatio
         {
             using var connection = _connectionFactory.GetConnection();
             var pushNotificationPlan = await connection.QueryFirstOrDefaultAsync<PushNotificationPlan>(@"
-SELECT [IdPushNotificationPlan],
+SELECT [IdPushNotificationPlan] AS PlanId,
         [Description],
         [Quantity],
         [Fee],

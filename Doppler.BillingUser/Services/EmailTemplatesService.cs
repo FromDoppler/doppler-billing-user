@@ -917,22 +917,26 @@ namespace Doppler.BillingUser.Services
             return adminEmail;
         }
 
-        public Task SendNotificationForUpdateOnSitePlan(
+        public Task SendNotificationForUpdateAddOnPlan(
             string accountname,
             User userInformation,
-            OnSitePlan newPlan,
+            AddOnPlan newPlan,
             UserBillingInformation user,
             PlanDiscountInformation planDiscountInformation,
             PlanAmountDetails amountDetails,
-            CurrentPlan currentPlan)
+            CurrentPlan currentPlan,
+            AddOnType addOnType)
         {
-            var templateAdmin = _emailSettings.Value.UpdateOnSitePlanAdminTemplateId;
+            var templateAdmin = _emailSettings.Value.UpdateAddOnPlanAdminTemplateId;
 
             var updatePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
                     templateId: templateAdmin,
                     templateModel: new
                     {
                         urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        addOnType = addOnType.ToString(),
+                        currentAddOnIsOnSite = addOnType == AddOnType.OnSite,
+                        currentAddOnIsPushNotification = addOnType == AddOnType.PushNotification,
                         user = accountname,
                         client = $"{userInformation.FirstName} {userInformation.LastName}",
                         address = userInformation.Address,
@@ -961,14 +965,14 @@ namespace Doppler.BillingUser.Services
                         bankAccount = user.BankAccount,
                         taxRegime = user.TaxRegimeDescription,
                         billingEmails = userInformation.BillingEmails,
-                        printQty = newPlan.PrintQty,
+                        quantity = newPlan.Quantity,
                         amount = newPlan.Fee,
                         isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
                         isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
                         isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
                         discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
-                        currentPrintQty = currentPlan.PrintQty,
+                        currentQuantity = currentPlan.Quantity,
                         currentAmount = currentPlan.Fee,
                         currentIsPaymentMethodCC = currentPlan.PaymentMethod == (int)PaymentMethodEnum.CC,
                         currentIsPaymentMethodMP = currentPlan.PaymentMethod == (int)PaymentMethodEnum.MP,
@@ -994,24 +998,28 @@ namespace Doppler.BillingUser.Services
             return updatePlanAdminEmail;
         }
 
-        public Task SendNotificationForUpgradeOnSitePlan(
+        public Task SendNotificationForUpgradeAddOnPlan(
             string accountname,
             User userInformation,
-            OnSitePlan newPlan,
+            AddOnPlan newPlan,
             UserBillingInformation user,
             PlanDiscountInformation planDiscountInformation,
             bool isUpgradePending,
-            bool needSendToBilling)
+            bool needSendToBilling,
+            AddOnType addOnType)
         {
             var templateAdmin = !isUpgradePending ?
-                _emailSettings.Value.UpgradeOnSitePlanAdminTemplateId :
-                _emailSettings.Value.UpgradeOnSitePlanRequestAdminTemplateId;
+                _emailSettings.Value.UpgradeAddOnPlanAdminTemplateId :
+                _emailSettings.Value.UpgradeAddOnPlanRequestAdminTemplateId;
 
             var adminEmail = _emailSender.SafeSendWithTemplateAsync(
                     templateId: templateAdmin,
                     templateModel: new
                     {
                         urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        addOnType = addOnType.ToString(),
+                        currentAddOnIsOnSite = addOnType == AddOnType.OnSite,
+                        currentAddOnIsPushNotification = addOnType == AddOnType.PushNotification,
                         user = accountname,
                         client = $"{userInformation.FirstName} {userInformation.LastName}",
                         address = userInformation.Address,
@@ -1040,7 +1048,7 @@ namespace Doppler.BillingUser.Services
                         bankAccount = user.BankAccount,
                         taxRegime = user.TaxRegimeDescription,
                         billingEmails = userInformation.BillingEmails,
-                        printQty = newPlan.PrintQty,
+                        quantity = newPlan.Quantity,
                         amount = newPlan.Fee,
                         isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
                         isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
