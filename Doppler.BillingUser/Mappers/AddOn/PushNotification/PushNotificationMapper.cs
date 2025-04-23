@@ -11,6 +11,7 @@ using Doppler.BillingUser.Mappers.BillingCredit.AddOns;
 using Doppler.BillingUser.Mappers.OnSitePlan;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.Utils;
+using Doppler.BillingUser.Services;
 
 namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
 {
@@ -21,6 +22,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
         IClientManagerRepository clientManagerRepository,
         IUserAddOnRepository userAddOnRepository,
         IPushNotificationPlanUserRepository pushNotificationPlanUserRepository,
+        IEmailTemplatesService emailTemplatesService,
         IBillingCreditMapper billingCreditMapper) : IAddOnMapper
     {
         private readonly IPushNotificationPlanRepository pushNotificationPlanRepository = pushNotificationPlanRepository;
@@ -30,6 +32,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
         private readonly IClientManagerRepository clientManagerRepository = clientManagerRepository;
         private readonly IUserAddOnRepository userAddOnRepository = userAddOnRepository;
         private readonly IBillingCreditMapper billingCreditMapper = billingCreditMapper;
+        private readonly IEmailTemplatesService emailTemplatesService = emailTemplatesService;
 
         private readonly List<PaymentMethodEnum> AllowedPaymentMethodsForBilling =
         [
@@ -200,8 +203,8 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             }
 
             //Send notifications
-            //var planDiscountInformation = await billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
-            //SendOnSiteNotifications(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, onSitePlan, currentOnSitePlan, payment, planDiscountInformation, amountDetails, accountType);
+            var planDiscountInformation = await billingRepository.GetPlanDiscountInformation(currentBillingCredit.IdDiscountPlan ?? 0);
+            SendNotificationsForPushNotificationPlan(userOrClientManagerBillingInformation.Email, userOrClientManagerBillingInformation, pushNotificationPlan, currentAddOnPlan, payment, planDiscountInformation, amountDetails, accountType);
         }
 
         public async Task<SapBillingDto> MapAddOnBillingToSapAsync(
@@ -239,6 +242,37 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             var currentPushNotificationPlan = await pushNotificationPlanUserRepository.GetCurrentPlan(accountname);
 
             return currentPushNotificationPlan;
+        }
+
+        private async void SendNotificationsForPushNotificationPlan(
+            string accountname,
+            UserBillingInformation user,
+            PushNotificationPlan newPlan,
+            CurrentPlan currentPlan,
+            CreditCardPayment payment,
+            PlanDiscountInformation planDiscountInformation,
+            PlanAmountDetails amountDetails,
+            AccountTypeEnum accountType)
+        {
+            User userInformation;
+            if (accountType == AccountTypeEnum.User)
+            {
+                userInformation = await userRepository.GetUserInformation(accountname);
+            }
+            else
+            {
+                userInformation = await clientManagerRepository.GetUserInformation(accountname);
+            }
+
+            if (currentPlan == null)
+            {
+                bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                await emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.PushNotification);
+            }
+            else
+            {
+                await emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, AddOnType.PushNotification);
+            }
         }
     }
 }
