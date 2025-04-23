@@ -3433,7 +3433,7 @@ namespace Doppler.BillingUser.Controllers
             return addOnType switch
             {
                 AddOnType.OnSite => new OnSiteMapper(_onSitePlanRepository, _billingRepository, _userRepository, _clientManagerRepository, _userAddOnRepository, _onSitePlanUserRepository, _emailTemplatesService, GetAddOnBillingCreditMapper(paymentMethod)),
-                AddOnType.PushNotification => new PushNotificationMapper(_pushNotificationPlanRepository, _billingRepository, _userRepository, _clientManagerRepository, _userAddOnRepository, _pushNotificationPlanUserRepository, GetAddOnBillingCreditMapper(paymentMethod)),
+                AddOnType.PushNotification => new PushNotificationMapper(_pushNotificationPlanRepository, _billingRepository, _userRepository, _clientManagerRepository, _userAddOnRepository, _pushNotificationPlanUserRepository, _emailTemplatesService, GetAddOnBillingCreditMapper(paymentMethod)),
                 _ => null,
             };
         }
