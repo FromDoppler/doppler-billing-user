@@ -799,6 +799,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var userAddOnRepositoryMock = new Mock<IUserAddOnRepository>();
+            userAddOnRepositoryMock.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new UserAddOn { IdCurrentBillingCredit = 1 });
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -814,7 +817,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(pushNotificationPlanRepositoryMock.Object);
                     services.AddSingleton(onSitePlanUserRepositoryMock.Object);
                     services.AddSingleton(pushNotificationPlanUserRepositoryMock.Object);
-                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(userAddOnRepositoryMock.Object);
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
@@ -944,6 +947,9 @@ namespace Doppler.BillingUser.Test
             var encryptionServiceMock = new Mock<IEncryptionService>();
             encryptionServiceMock.Setup(x => x.DecryptAES256(It.IsAny<string>())).Returns("12345");
 
+            var userAddOnRepositoryMock = new Mock<IUserAddOnRepository>();
+            userAddOnRepositoryMock.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new UserAddOn { IdCurrentBillingCredit = 1 });
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -960,7 +966,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(onSitePlanUserRepositoryMock.Object);
                     services.AddSingleton(pushNotificationPlanUserRepositoryMock.Object);
                     services.AddSingleton(clientManagerRepositoryMock.Object);
-                    services.AddSingleton(Mock.Of<IUserAddOnRepository>());
+                    services.AddSingleton(userAddOnRepositoryMock.Object);
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);

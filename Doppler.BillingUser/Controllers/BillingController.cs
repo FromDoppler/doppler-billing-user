@@ -2596,7 +2596,8 @@ namespace Doppler.BillingUser.Controllers
                     (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF && userOrClientManagerBillingInformation.IdBillingCountry == (int)CountryEnum.Argentina) ||
                     (userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.DA)))
             {
-                var billingCredit = await _billingRepository.GetBillingCredit(userBillingInformation.IdCurrentBillingCredit.Value);
+                var userAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType(user.IdUser, (int)addOnType);
+                var billingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
                 var cardNumber = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.Number) : "";
                 var holderName = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? _encryptionService.DecryptAES256(encryptedCreditCard.HolderName) : "";
 
