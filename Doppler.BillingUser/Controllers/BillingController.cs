@@ -360,6 +360,10 @@ namespace Doppler.BillingUser.Controllers
                         {
                             return new BadRequestObjectResult("CbuInvalid");
                         }
+
+                        var bankCode = paymentMethod.Cbu[..3];
+                        var payrollBCRAENtity = await _payrollOfBCRAEntityRepository.GetByBankCode(bankCode);
+                        paymentMethod.BankName = payrollBCRAENtity.BankName;
                     }
                 }
 
@@ -3456,7 +3460,7 @@ namespace Doppler.BillingUser.Controllers
         private async Task<bool> ValidateCbu(string cbu)
         {
             bool isValid = await ValidateBank(cbu[..8]);
-            isValid = isValid & ValidateAccount(cbu.Substring(8, 14));
+            isValid = isValid && ValidateAccount(cbu.Substring(8, 14));
 
             return isValid;
         }
@@ -3469,7 +3473,8 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var bankCode = bank[..3];
-            var isBankCodeValid = await _payrollOfBCRAEntityRepository.IsValidBankCode(bankCode);
+            var payrollBCRAENtity = await _payrollOfBCRAEntityRepository.GetByBankCode(bankCode);
+            var isBankCodeValid = payrollBCRAENtity != null;
             if (!isBankCodeValid)
             {
                 return false;
