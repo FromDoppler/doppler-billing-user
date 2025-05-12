@@ -1,9 +1,10 @@
+using Doppler.BillingUser.Model;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Infrastructure
 {
     public interface IPayrollOfBCRAEntityRepository
     {
-        Task<bool> IsValidBankCode(string bankCode);
+        Task<PayrollOfBCRAEntity> GetByBankCode(string bankCode);
     }
 }
