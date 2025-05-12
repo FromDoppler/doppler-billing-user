@@ -13,7 +13,7 @@ namespace Doppler.BillingUser.Infrastructure
             this.connectionFactory = connectionFactory;
         }
 
-        public async Task<bool> IsValidBankCode(string bankCode)
+        public async Task<PayrollOfBCRAEntity> GetByBankCode(string bankCode)
         {
             using var connection = connectionFactory.GetConnection();
             var payrollOfBCRAEntity = await connection.QueryFirstOrDefaultAsync<PayrollOfBCRAEntity>(@"
@@ -24,7 +24,7 @@ WHERE [BankCode] = @bankCode", new
                 bankCode
             });
 
-            return payrollOfBCRAEntity != null;
+            return payrollOfBCRAEntity;
         }
     }
 }
