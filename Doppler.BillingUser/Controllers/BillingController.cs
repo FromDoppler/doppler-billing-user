@@ -360,6 +360,10 @@ namespace Doppler.BillingUser.Controllers
                         {
                             return new BadRequestObjectResult("CbuInvalid");
                         }
+
+                        var bankCode = paymentMethod.Cbu[..3];
+                        var payrollBCRAENtity = await _payrollOfBCRAEntityRepository.GetByBankCode(bankCode);
+                        paymentMethod.BankName = payrollBCRAENtity.BankName;
                     }
                 }
 
@@ -3469,7 +3473,8 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var bankCode = bank[..3];
-            var isBankCodeValid = await _payrollOfBCRAEntityRepository.IsValidBankCode(bankCode);
+            var payrollBCRAENtity = await _payrollOfBCRAEntityRepository.GetByBankCode(bankCode);
+            var isBankCodeValid = payrollBCRAENtity != null;
             if (!isBankCodeValid)
             {
                 return false;
