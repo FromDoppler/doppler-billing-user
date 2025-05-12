@@ -34,7 +34,6 @@ using Doppler.BillingUser.Utils;
 using Doppler.BillingUser.Validators;
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -44,7 +43,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Controllers
@@ -91,6 +89,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IPushNotificationPlanRepository _pushNotificationPlanRepository;
         private readonly IPushNotificationPlanUserRepository _pushNotificationPlanUserRepository;
         private readonly IBinService _binService;
+        private readonly IPayrollOfBCRAEntityRepository _payrollOfBCRAEntityRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -169,7 +168,8 @@ namespace Doppler.BillingUser.Controllers
             IOnSitePlanRepository onSitePlanRepository,
             IPushNotificationPlanRepository pushNotificationPlanRepository,
             IPushNotificationPlanUserRepository pushNotificationPlanUserRepository,
-            IBinService binService)
+            IBinService binService,
+            IPayrollOfBCRAEntityRepository payrollOfBCRAEntityRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -209,6 +209,7 @@ namespace Doppler.BillingUser.Controllers
             _pushNotificationPlanRepository = pushNotificationPlanRepository;
             _pushNotificationPlanUserRepository = pushNotificationPlanUserRepository;
             _binService = binService;
+            _payrollOfBCRAEntityRepository = payrollOfBCRAEntityRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -350,6 +351,17 @@ namespace Doppler.BillingUser.Controllers
                         _logger.LogError(ex, "BIN validation error");
                     }
                 }
+                else
+                {
+                    if (paymentMethod.PaymentMethodName == PaymentMethodEnum.DA.ToString())
+                    {
+                        var isCbuValid = await ValidateCbu(paymentMethod.Cbu);
+                        if (!isCbuValid)
+                        {
+                            return new BadRequestObjectResult("CbuInvalid");
+                        }
+                    }
+                }
 
                 paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
 
@@ -488,6 +500,7 @@ namespace Doppler.BillingUser.Controllers
                 return new BadRequestObjectResult(e.Message);
             }
         }
+
         [Authorize(Policies.PROVISORY_USER_OR_SUPER_USER)]
         [HttpPost("accounts/{accountname}/payments/reprocess/send-contact-information-notification")]
         public async Task<IActionResult> SendContactInformationForTransfer(string accountname, ReprocessByTransferUserData userData)
@@ -3440,6 +3453,59 @@ namespace Doppler.BillingUser.Controllers
                 AddOnType.PushNotification => new PushNotificationMapper(_pushNotificationPlanRepository, _billingRepository, _userRepository, _clientManagerRepository, _userAddOnRepository, _pushNotificationPlanUserRepository, _emailTemplatesService, GetAddOnBillingCreditMapper(paymentMethod)),
                 _ => null,
             };
+        }
+
+
+        private async Task<bool> ValidateCbu(string cbu)
+        {
+            bool isValid = await ValidateBank(cbu[..8]);
+            isValid = isValid & ValidateAccount(cbu.Substring(8, 14));
+
+            return isValid;
+        }
+
+        private async Task<bool> ValidateBank(string bank)
+        {
+            if (bank.Length != 8)
+            {
+                return false;
+            }
+
+            var bankCode = bank[..3];
+            var isBankCodeValid = await _payrollOfBCRAEntityRepository.IsValidBankCode(bankCode);
+            if (!isBankCodeValid)
+            {
+                return false;
+            }
+
+            var digitalVerifierBank = int.Parse(bank[3].ToString());
+            var subsidiary = bank.Substring(4, 3);
+            var digitalVerifierSubsidiary = int.Parse(bank[7].ToString());
+
+            var sum = int.Parse(bank[0].ToString()) * 7 + int.Parse(bank[1].ToString()) * 1 + int.Parse(bank[2].ToString()) * 3 +
+                    digitalVerifierBank * 9 + int.Parse(subsidiary[0].ToString()) * 7 + int.Parse(subsidiary[1].ToString()) * 1 + int.Parse(subsidiary[2].ToString()) * 3;
+            var difference = 10 - (sum % 10);
+
+            return difference == digitalVerifierSubsidiary;
+        }
+
+        private bool ValidateAccount(string account)
+        {
+            var j = 0;
+            var ponderator = "3971";
+            var sum = 0;
+            var length = account.Length - 2;
+
+            for (var i = 0; i <= length; i++)
+            {
+                sum = sum + (int.Parse(account.Substring(i, 1)) * int.Parse(ponderator.Substring(i % 4, 1)));
+                j++;
+            }
+
+            var digitalVerifier = int.Parse(account[13].ToString());
+            var difference = 10 - (sum % 10);
+
+            return difference == digitalVerifier;
         }
     }
 }
