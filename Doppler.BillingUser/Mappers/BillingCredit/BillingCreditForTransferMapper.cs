@@ -23,6 +23,13 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
         {
             var currentPaymentMethod = await _billingRepository.GetPaymentMethodByUserName(user.Email);
 
+            var promotionDuration = (int?)null;
+
+            if (promotion != null)
+            {
+                promotionDuration = currentBillingCredit != null ? currentBillingCredit.PromotionDuration : promotion.Duration;
+            }
+
             var buyCreditAgreement = new BillingCreditAgreement
             {
                 IdUser = user.IdUser,
@@ -46,7 +53,7 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                 BankName = user.BankName,
                 BankAccount = user.BankAccount,
                 IdPromotion = promotion?.IdPromotion,
-                PromotionDuration = promotion?.Duration
+                PromotionDuration = promotionDuration
             };
 
             DateTime now = DateTime.UtcNow;
