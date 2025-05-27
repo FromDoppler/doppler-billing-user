@@ -3109,6 +3109,9 @@ namespace Doppler.BillingUser.Controllers
 
         private async Task<int> BuyCredits(UserTypePlanInformation currentPlan, UserTypePlanInformation newPlan, UserBillingInformation user, AgreementInformation agreementInformation, Promotion promotion, CreditCardPayment payment)
         {
+            if (newPlan.IdUserTypePlan == 0)
+                return 0;
+
             var isPaymentPending = BillingHelper.IsUpgradePending(user, promotion, payment);
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
             var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Credit_Buyed_CC : BillingCreditTypeEnum.Credit_Request;
