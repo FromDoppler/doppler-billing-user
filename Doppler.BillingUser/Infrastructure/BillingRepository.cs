@@ -1497,7 +1497,7 @@ WHERE
                     @paymentType = (string)null,
                     @paymentWay = (string)null,
                     @bankAccount = (string)null,
-                    @bankName = (string)null,
+                    @bankName = paymentMethod.BankName,
                     @taxRegime = 0,
                     @taxCertificateUrl = paymentMethod.TaxCertificateUrl,
                     @cbu = paymentMethod.Cbu,
