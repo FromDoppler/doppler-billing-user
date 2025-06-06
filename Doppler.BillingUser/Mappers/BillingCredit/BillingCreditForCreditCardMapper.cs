@@ -27,7 +27,7 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
 
             if (promotion != null)
             {
-                promotionDuration = currentBillingCredit != null ? currentBillingCredit.PromotionDuration : promotion.Duration;
+                promotionDuration = currentBillingCredit != null && currentBillingCredit.PromotionDuration != null ? currentBillingCredit.PromotionDuration : promotion.Duration;
             }
 
             var buyCreditAgreement = new BillingCreditAgreement
