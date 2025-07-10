@@ -127,6 +127,29 @@ namespace Doppler.BillingUser.Controllers
             UserTypeEnum.INDIVIDUAL
         };
 
+        private readonly Dictionary<string, string> features = new()
+        {
+            {"features1", "Onboarding personalizado"},
+            {"features2", "Envío y automatización de SMS"},
+            {"features3", "Envíos Transaccionales"},
+            {"features4", "Acompañamiento estratégico"},
+            {"features5", "Servicio de Maquetación"},
+            {"features6", "Pack de Landing Pages"},
+            {"features7", "Acondicionamiento de Listas"},
+            {"features8", "Entorno dedicado"},
+            {"features9", "Conversaciones"},
+            {"features10", "Reportes personalizados"},
+            {"features11", "IP dedicada"}
+        };
+
+        private readonly Dictionary<string, string> sendingVolumes = new()
+        {
+            {"Menos de 500", "Menos de 500K"},
+            {"Entre 500k y 1m", "Entre 500K y 1M"},
+            {"Entre 1m y 10m", "Entre 1M y 10M"},
+            {"Más de 10m", "Más de 10M"}
+        };
+
         private const string Source = "Checkout";
         private const string CancelatedObservation = "Phishing User. AyC";
 
@@ -2348,6 +2371,27 @@ namespace Doppler.BillingUser.Controllers
                     Value = e.Message,
                 };
             }
+        }
+
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountName}/additional-services/request")]
+        public async Task<IActionResult> RequestAdditionalServices(string accountName, [FromBody] AdditionalServicesRequestModel additionalServicesRequestModel)
+        {
+            var featuresFromDictionary = additionalServicesRequestModel.Features.Select(f => features[f]).ToList();
+            var sendingVolumeFromDictionary = sendingVolumes[additionalServicesRequestModel.SendingVolume];
+            additionalServicesRequestModel.Features = featuresFromDictionary;
+            additionalServicesRequestModel.SendingVolume = sendingVolumeFromDictionary;
+
+            await SendRequestAdditionalServices(accountName, additionalServicesRequestModel);
+
+            return new OkObjectResult($"Sending Ok");
+        }
+
+        private async Task SendRequestAdditionalServices(string accountName, AdditionalServicesRequestModel additionalServicesRequestModel)
+        {
+            var user = await _userRepository.GetUserInformation(accountName);
+            await _emailTemplatesService.SendNotificationForRequestAdditionalServices(accountName, user, additionalServicesRequestModel);
         }
 
         private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, int userId, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)
