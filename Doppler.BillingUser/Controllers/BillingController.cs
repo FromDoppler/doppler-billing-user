@@ -2391,7 +2391,11 @@ namespace Doppler.BillingUser.Controllers
         private async Task SendRequestAdditionalServices(string accountName, AdditionalServicesRequestModel additionalServicesRequestModel)
         {
             var user = await _userRepository.GetUserInformation(accountName);
-            await _emailTemplatesService.SendNotificationForRequestAdditionalServices(accountName, user, additionalServicesRequestModel);
+            var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
+            var discountId = currentBillingCredit != null ? currentBillingCredit.IdDiscountPlan ?? 0 : 0;
+            var planDiscountInformation = await _billingRepository.GetPlanDiscountInformation(discountId);
+
+            await _emailTemplatesService.SendNotificationForRequestAdditionalServices(accountName, user, currentBillingCredit, planDiscountInformation, additionalServicesRequestModel);
         }
 
         private async Task<ValidationResult> CanProceedToBuyOnSitePlan(BuyOnSitePlan buyOnSitePlan, int userId, UserBillingInformation userBillingInformation, AccountTypeEnum accountType)

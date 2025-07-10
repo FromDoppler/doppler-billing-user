@@ -1,4 +1,5 @@
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.TimeCollector;
@@ -1067,6 +1068,8 @@ namespace Doppler.BillingUser.Services
         public Task SendNotificationForRequestAdditionalServices(
             string accountname,
             User user,
+            BillingCredit currentBillingCredit,
+            PlanDiscountInformation planDiscountInformation,
             AdditionalServicesRequestModel additionalServicesRequestModel)
         {
             var template = _emailSettings.Value.SendAdditionalServiceRequestTemplateId[user.Language ?? "en"];
@@ -1079,63 +1082,45 @@ namespace Doppler.BillingUser.Services
                         firstName = user.FirstName,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: [accountname]);
 
-            //var templateAdmin = _emailSettings.Value.UpgradeRequestAdminTemplateId;
+            var fee = currentBillingCredit != null ? (decimal?)currentBillingCredit.PlanFee : null;
+            var isIndividualPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.INDIVIDUAL;
+            var isMonthlyPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.MONTHLY;
+            var isSubscribersPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.SUBSCRIBERS;
+            var creditsQty = currentBillingCredit?.CreditsQty;
+            var subscribersQty = currentBillingCredit?.SubscribersQty;
 
-            //var adminEmail = _emailSender.SafeSendWithTemplateAsync(
-            //        templateId: templateAdmin,
-            //        templateModel: new
-            //        {
-            //            urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
-            //            user = accountname,
-            //            client = $"{userInformation.FirstName} {userInformation.LastName}",
-            //            address = userInformation.Address,
-            //            phone = userInformation.PhoneNumber,
-            //            company = userInformation.Company,
-            //            city = userInformation.CityName,
-            //            state = userInformation.BillingStateName,
-            //            zipCode = userInformation.ZipCode,
-            //            language = userInformation.Language,
-            //            country = userInformation.BillingCountryName,
-            //            vendor = userInformation.Vendor,
-            //            promotionCode = promocode,
-            //            promotionCodeDiscount = promotion?.DiscountPercentage,
-            //            promotionCodeExtraCredits = promotion?.ExtraCredits,
-            //            razonSocial = userInformation.RazonSocial,
-            //            cuit = userInformation.CUIT,
-            //            isConsumerCF = userInformation.IdConsumerType == (int)ConsumerTypeEnum.CF,
-            //            isConsumerRFC = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RFC,
-            //            isConsumerRI = userInformation.IdConsumerType == (int)ConsumerTypeEnum.RI,
-            //            isEmptyConsumer = userInformation.IdConsumerType == 0,
-            //            isCfdiUseG03 = user.CFDIUse == "G03",
-            //            isCfdiUseP01 = user.CFDIUse == "P01",
-            //            isPaymentTypePPD = user.PaymentType == "PPD",
-            //            isPaymentTypePUE = user.PaymentType == "PUE",
-            //            isPaymentWayCash = user.PaymentWay == "CASH",
-            //            isPaymentWayCheck = user.PaymentWay == "CHECK",
-            //            isPaymentWayTransfer = user.PaymentWay == "TRANSFER",
-            //            bankName = user.BankName,
-            //            bankAccount = user.BankAccount,
-            //            taxRegime = user.TaxRegimeDescription,
-            //            billingEmails = userInformation.BillingEmails,
-            //            isIndividualPlan = newPlan.IdUserType == UserTypeEnum.INDIVIDUAL,
-            //            isMonthlyPlan = newPlan.IdUserType == UserTypeEnum.MONTHLY,
-            //            isSubscribersPlan = newPlan.IdUserType == UserTypeEnum.SUBSCRIBERS,
-            //            creditsQty = newPlan.EmailQty,
-            //            subscribersQty = newPlan.Subscribers,
-            //            amount = newPlan.Fee,
-            //            isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
-            //            isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
-            //            isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
-            //            isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
-            //            discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
-            //            year = DateTime.UtcNow.Year
-            //        },
-            //        to: needSendToBilling ? new[] { _emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail } : new[] { _emailSettings.Value.AdminEmail },
-            //        replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+            var templateAdmin = _emailSettings.Value.SendAdditionalServiceRequestAdminTemplateId;
+            var sendAdditionalServicesRequestForAdmin = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        email = additionalServicesRequestModel.Email,
+                        firstAndLastName = user.FirstName + " " + user.LastName,
+                        phone = additionalServicesRequestModel.Phone,
+                        contactSchedule = additionalServicesRequestModel.ContactSchedule,
+                        sendingVolume = additionalServicesRequestModel.SendingVolume,
+                        features = additionalServicesRequestModel.Features,
+                        isIndividualPlan,
+                        isMonthlyPlan,
+                        isSubscribersPlan,
+                        creditsQty,
+                        subscribersQty,
+                        amount = fee,
+                        currentPaymentMethod = user.PaymentMethod == (int)PaymentMethodEnum.CC ? "Tarjeta de Crédito"
+                            : user.PaymentMethod == (int)PaymentMethodEnum.MP ? "Mercadopago"
+                            : user.PaymentMethod == (int)PaymentMethodEnum.TRANSF ? "Transferencia"
+                            : null,
+                        hasDiscountMonthPlan = planDiscountInformation != null,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [_emailSettings.Value.AdminEmail],
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return Task.WhenAll(sendAdditionalServicesRequestForUser);
+            return Task.WhenAll(sendAdditionalServicesRequestForUser, sendAdditionalServicesRequestForAdmin);
         }
 
     }
