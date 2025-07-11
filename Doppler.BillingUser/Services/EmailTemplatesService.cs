@@ -1,4 +1,5 @@
 using Doppler.BillingUser.Enums;
+using Doppler.BillingUser.Extensions;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.TimeCollector;
@@ -1061,6 +1062,65 @@ namespace Doppler.BillingUser.Services
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return adminEmail;
+        }
+
+
+        public Task SendNotificationForRequestAdditionalServices(
+            string accountname,
+            User user,
+            BillingCredit currentBillingCredit,
+            PlanDiscountInformation planDiscountInformation,
+            AdditionalServicesRequestModel additionalServicesRequestModel)
+        {
+            var template = _emailSettings.Value.SendAdditionalServiceRequestTemplateId[user.Language ?? "en"];
+
+            var sendAdditionalServicesRequestForUser = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = user.FirstName,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname]);
+
+            var fee = currentBillingCredit != null ? (decimal?)currentBillingCredit.PlanFee : null;
+            var isIndividualPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.INDIVIDUAL;
+            var isMonthlyPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.MONTHLY;
+            var isSubscribersPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.SUBSCRIBERS;
+            var creditsQty = currentBillingCredit?.CreditsQty;
+            var subscribersQty = currentBillingCredit?.SubscribersQty;
+
+            var templateAdmin = _emailSettings.Value.SendAdditionalServiceRequestAdminTemplateId;
+            var sendAdditionalServicesRequestForAdmin = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        email = additionalServicesRequestModel.Email,
+                        firstAndLastName = user.FirstName + " " + user.LastName,
+                        phone = additionalServicesRequestModel.Phone,
+                        contactSchedule = additionalServicesRequestModel.ContactSchedule,
+                        sendingVolume = additionalServicesRequestModel.SendingVolume,
+                        features = additionalServicesRequestModel.Features,
+                        isIndividualPlan,
+                        isMonthlyPlan,
+                        isSubscribersPlan,
+                        creditsQty,
+                        subscribersQty,
+                        amount = fee,
+                        currentPaymentMethod = user.PaymentMethod == (int)PaymentMethodEnum.CC ? "Tarjeta de Crédito"
+                            : user.PaymentMethod == (int)PaymentMethodEnum.MP ? "Mercadopago"
+                            : user.PaymentMethod == (int)PaymentMethodEnum.TRANSF ? "Transferencia"
+                            : null,
+                        hasDiscountMonthPlan = planDiscountInformation != null,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [_emailSettings.Value.AdminEmail],
+                    replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
+
+            return Task.WhenAll(sendAdditionalServicesRequestForUser, sendAdditionalServicesRequestForAdmin);
         }
 
     }
