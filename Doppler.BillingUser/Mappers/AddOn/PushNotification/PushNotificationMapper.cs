@@ -264,14 +264,15 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
                 userInformation = await clientManagerRepository.GetUserInformation(accountname);
             }
 
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+
             if (currentPlan == null)
             {
-                bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                 await emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.PushNotification);
             }
             else
             {
-                await emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, AddOnType.PushNotification);
+                await emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, !isUpgradeApproved, AddOnType.PushNotification);
             }
         }
     }

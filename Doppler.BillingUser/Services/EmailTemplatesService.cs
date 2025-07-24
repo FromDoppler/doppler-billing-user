@@ -787,8 +787,41 @@ namespace Doppler.BillingUser.Services
             UserBillingInformation user,
             PlanDiscountInformation planDiscountInformation,
             PlanAmountDetails amountDetails,
-            CurrentPlan currentPlan)
+            CurrentPlan currentPlan,
+            bool isUpgradePending)
         {
+
+            var template = !isUpgradePending ?
+                _emailSettings.Value.UpgradeAddOnPlanTemplateId[userInformation.Language ?? "en"] :
+                _emailSettings.Value.UpgradeAddOnPlanRequestTemplateId[userInformation.Language ?? "en"];
+
+            var monthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
+
+            var upgradeEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        quantity = newPlan.ConversationQty,
+                        isConversationAddon = true,
+                        isLandingAddon = false,
+                        isOnSiteAddon = false,
+                        isPushNotificationAddon = false,
+                        isDiscountWith1Month = monthPlan == 1,
+                        isDiscountWith3Months = monthPlan == 3,
+                        isDiscountWith6Months = monthPlan == 6,
+                        isDiscountWith12Months = monthPlan == 12,
+                        isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.AdminEmail]);
+
             var templateAdmin = _emailSettings.Value.UpdateConversationPlanAdminTemplateId;
 
             var updatePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
@@ -854,7 +887,7 @@ namespace Doppler.BillingUser.Services
                     to: [_emailSettings.Value.AdminEmail],
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return updatePlanAdminEmail;
+            return Task.WhenAll(upgradeEmail, updatePlanAdminEmail);
         }
 
         public Task SendNotificationForUpgradeConversationPlan(
@@ -866,6 +899,37 @@ namespace Doppler.BillingUser.Services
             bool isUpgradePending,
             bool needSendToBilling)
         {
+            var template = !isUpgradePending ?
+                _emailSettings.Value.UpgradeAddOnPlanTemplateId[userInformation.Language ?? "en"] :
+                _emailSettings.Value.UpgradeAddOnPlanRequestTemplateId[userInformation.Language ?? "en"];
+
+            var monthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
+
+            var upgradeEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        quantity = newPlan.ConversationQty,
+                        isConversationAddon = true,
+                        isLandingAddon = false,
+                        isOnSiteAddon = false,
+                        isPushNotificationAddon = false,
+                        isDiscountWith1Month = monthPlan == 1,
+                        isDiscountWith3Months = monthPlan == 3,
+                        isDiscountWith6Months = monthPlan == 6,
+                        isDiscountWith12Months = monthPlan == 12,
+                        isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.AdminEmail]);
+
             var templateAdmin = !isUpgradePending ?
                 _emailSettings.Value.UpgradeConversationPlanAdminTemplateId :
                 _emailSettings.Value.UpgradeConversationPlanRequestAdminTemplateId;
@@ -915,7 +979,7 @@ namespace Doppler.BillingUser.Services
                     to: needSendToBilling ? [_emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail] : new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return adminEmail;
+            return Task.WhenAll(upgradeEmail, adminEmail);
         }
 
         public Task SendNotificationForUpdateAddOnPlan(
@@ -926,10 +990,41 @@ namespace Doppler.BillingUser.Services
             PlanDiscountInformation planDiscountInformation,
             PlanAmountDetails amountDetails,
             CurrentPlan currentPlan,
+            bool isUpgradePending,
             AddOnType addOnType)
         {
-            var templateAdmin = _emailSettings.Value.UpdateAddOnPlanAdminTemplateId;
+            var template = !isUpgradePending ?
+                _emailSettings.Value.UpgradeAddOnPlanTemplateId[userInformation.Language ?? "en"] :
+                _emailSettings.Value.UpgradeAddOnPlanRequestTemplateId[userInformation.Language ?? "en"];
 
+            var monthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
+
+            var upgradeEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        quantity = newPlan.Quantity,
+                        isConversationAddon = addOnType == AddOnType.Chat,
+                        isLandingAddon = addOnType == AddOnType.Landing,
+                        isOnSiteAddon = addOnType == AddOnType.OnSite,
+                        isPushNotificationAddon = addOnType == AddOnType.PushNotification,
+                        isDiscountWith1Month = monthPlan == 1,
+                        isDiscountWith3Months = monthPlan == 3,
+                        isDiscountWith6Months = monthPlan == 6,
+                        isDiscountWith12Months = monthPlan == 12,
+                        isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.AdminEmail]);
+
+            var templateAdmin = _emailSettings.Value.UpdateAddOnPlanAdminTemplateId;
             var updatePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
                     templateId: templateAdmin,
                     templateModel: new
@@ -996,7 +1091,7 @@ namespace Doppler.BillingUser.Services
                     to: [_emailSettings.Value.AdminEmail],
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return updatePlanAdminEmail;
+            return Task.WhenAll(upgradeEmail, updatePlanAdminEmail);
         }
 
         public Task SendNotificationForUpgradeAddOnPlan(
@@ -1009,6 +1104,37 @@ namespace Doppler.BillingUser.Services
             bool needSendToBilling,
             AddOnType addOnType)
         {
+            var template = !isUpgradePending ?
+                _emailSettings.Value.UpgradeAddOnPlanTemplateId[userInformation.Language ?? "en"] :
+                _emailSettings.Value.UpgradeAddOnPlanRequestTemplateId[userInformation.Language ?? "en"];
+
+            var monthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 1;
+
+            var upgradeEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        quantity = newPlan.Quantity,
+                        isConversationAddon = addOnType == AddOnType.Chat,
+                        isLandingAddon = addOnType == AddOnType.Landing,
+                        isOnSiteAddon = addOnType == AddOnType.OnSite,
+                        isPushNotificationAddon = addOnType == AddOnType.PushNotification,
+                        isDiscountWith1Month = monthPlan == 1,
+                        isDiscountWith3Months = monthPlan == 3,
+                        isDiscountWith6Months = monthPlan == 6,
+                        isDiscountWith12Months = monthPlan == 12,
+                        isPaymentMethodCC = user.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = user.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.AdminEmail]);
+
             var templateAdmin = !isUpgradePending ?
                 _emailSettings.Value.UpgradeAddOnPlanAdminTemplateId :
                 _emailSettings.Value.UpgradeAddOnPlanRequestAdminTemplateId;
@@ -1061,7 +1187,7 @@ namespace Doppler.BillingUser.Services
                     to: needSendToBilling ? [_emailSettings.Value.AdminEmail, _emailSettings.Value.BillingEmail] : new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return adminEmail;
+            return Task.WhenAll(upgradeEmail, adminEmail);
         }
 
 

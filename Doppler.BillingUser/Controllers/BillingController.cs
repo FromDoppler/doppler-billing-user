@@ -2735,17 +2735,17 @@ namespace Doppler.BillingUser.Controllers
                 userInformation = await _clientManagerRepository.GetUserInformation(accountname);
             }
 
-            bool isUpgradeApproved;
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
 
 
             if (currentPlan == null)
             {
-                isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                //isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                 await _emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.OnSite);
             }
             else
             {
-                await _emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, AddOnType.OnSite);
+                await _emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, !isUpgradeApproved, AddOnType.OnSite);
             }
         }
 
@@ -2769,17 +2769,15 @@ namespace Doppler.BillingUser.Controllers
                 userInformation = await _clientManagerRepository.GetUserInformation(accountname);
             }
 
-            bool isUpgradeApproved;
-
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
 
             if (currentPlan == null)
             {
-                isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                 await _emailTemplatesService.SendNotificationForUpgradeConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true);
             }
             else
             {
-                await _emailTemplatesService.SendNotificationForUpdateConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan);
+                await _emailTemplatesService.SendNotificationForUpdateConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, !isUpgradeApproved);
             }
         }
 
