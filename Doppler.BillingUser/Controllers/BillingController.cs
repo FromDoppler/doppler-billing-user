@@ -2017,6 +2017,8 @@ namespace Doppler.BillingUser.Controllers
 
                 await _landingPlanUserRepository.CancelLandingPLanByBillingCreditId(userAddOn.IdCurrentBillingCredit);
 
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(accountname, user, AddOnType.Landing);
+
                 return new OkObjectResult($"Successful cancel landing plan for: User: {accountname}");
 
             }
@@ -2140,6 +2142,8 @@ namespace Doppler.BillingUser.Controllers
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.OnSite_Canceled);
                 }
 
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(accountname, user, AddOnType.OnSite);
+
                 var message = $"{userType} - Successful cancel onsite plan for: User: {accountname}";
                 _logger.LogError(message);
                 await _slackService.SendNotification(message);
@@ -2201,6 +2205,8 @@ namespace Doppler.BillingUser.Controllers
                 {
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, billingCreditCanceledType);
                 }
+
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(accountname, user, addOnType);
 
                 var message = $"{userType} - Successful cancel {addOnType} plan for: User: {accountname}";
                 _logger.LogError(message);
@@ -3470,6 +3476,8 @@ namespace Doppler.BillingUser.Controllers
 
             if (userAddOn != null)
             {
+                User userInformation = await _userRepository.GetUserInformation(user.Email);
+
                 var currentChatPlanBillingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
 
                 if (currentChatPlanBillingCredit != null && currentChatPlanBillingCredit.IdBillingCreditType != (int)BillingCreditTypeEnum.Conversation_Canceled)
@@ -3477,6 +3485,8 @@ namespace Doppler.BillingUser.Controllers
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Conversation_Canceled);
                     await _beplicService.UnassignPlanToUser(user.IdUser);
                 }
+
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(user.Email, userInformation, AddOnType.Chat);
             }
         }
 

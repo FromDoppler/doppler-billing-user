@@ -26,5 +26,6 @@ namespace Doppler.BillingUser.Services
         Task SendNotificationForUpgradeAddOnPlan(string accountname, User userInformation, AddOnPlan newPlan, UserBillingInformation user, PlanDiscountInformation planDiscountInformation, bool isUpgradePending, bool needSendToBilling, AddOnType addOnType);
         Task SendNotificationForUpdateAddOnPlan(string accountname, User userInformation, AddOnPlan newPlan, UserBillingInformation user, PlanDiscountInformation planDiscountInformation, PlanAmountDetails amountDetails, CurrentPlan currentPlan, bool isUpgradePending, AddOnType addOnType);
         Task SendNotificationForRequestAdditionalServices(string accountname, User user, BillingCredit currentBillingCredit, PlanDiscountInformation planDiscountInformation, AdditionalServicesRequestModel additionalServicesRequestModel);
+        Task SendNotificationForCancelAddOnPlan(string accountname, User userInformation, AddOnType addOnType);
     }
 }

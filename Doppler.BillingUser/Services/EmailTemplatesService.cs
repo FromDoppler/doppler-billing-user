@@ -820,7 +820,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
-                    cc: [_emailSettings.Value.AdminEmail]);
+                    cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpdateConversationPlanAdminTemplateId;
 
@@ -928,7 +928,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
-                    cc: [_emailSettings.Value.AdminEmail]);
+                    cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = !isUpgradePending ?
                 _emailSettings.Value.UpgradeConversationPlanAdminTemplateId :
@@ -1022,7 +1022,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
-                    cc: [_emailSettings.Value.AdminEmail]);
+                    cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpdateAddOnPlanAdminTemplateId;
             var updatePlanAdminEmail = _emailSender.SafeSendWithTemplateAsync(
@@ -1133,7 +1133,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
-                    cc: [_emailSettings.Value.AdminEmail]);
+                    cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = !isUpgradePending ?
                 _emailSettings.Value.UpgradeAddOnPlanAdminTemplateId :
@@ -1247,6 +1247,28 @@ namespace Doppler.BillingUser.Services
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
             return Task.WhenAll(sendAdditionalServicesRequestForUser, sendAdditionalServicesRequestForAdmin);
+        }
+
+        public Task SendNotificationForCancelAddOnPlan(string accountname, User userInformation, AddOnType addOnType)
+        {
+            var template = _emailSettings.Value.CancelAddOnPlanTemplateId[userInformation.Language ?? "en"];
+
+            var cancelAddonEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        isConversationAddon = addOnType == AddOnType.Chat,
+                        isLandingAddon = addOnType == AddOnType.Landing,
+                        isOnSiteAddon = addOnType == AddOnType.OnSite,
+                        isPushNotificationAddon = addOnType == AddOnType.PushNotification,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.CustomerExperienceEmail]);
+
+            return cancelAddonEmail;
         }
 
     }
