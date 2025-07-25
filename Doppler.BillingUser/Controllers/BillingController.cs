@@ -1730,7 +1730,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(user.IdUser, accountname, user, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.User);
+                SendLandingNotifications(user.IdUser, accountname, user, currentLandingPlans, newLandingPlans, amountDetails, payment, AccountTypeEnum.User);
             }
             catch (Exception e)
             {
@@ -1964,7 +1964,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(idUser, clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.CM);
+                SendLandingNotifications(idUser, clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, payment, AccountTypeEnum.CM);
             }
             catch (Exception e)
             {
@@ -2794,6 +2794,7 @@ namespace Doppler.BillingUser.Controllers
             IList<LandingPlanUser> currentLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
             PlanAmountDetails amountDetails,
+            CreditCardPayment payment,
             AccountTypeEnum accountType)
         {
             User userInformation;
@@ -2809,6 +2810,8 @@ namespace Doppler.BillingUser.Controllers
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
             BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(userId);
 
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
             {
@@ -2818,7 +2821,8 @@ namespace Doppler.BillingUser.Controllers
                     user,
                     availableLandingPlans,
                     newLandingPlans,
-                    newLandingBillingCredit);
+                    newLandingBillingCredit,
+                    !isUpgradeApproved);
             }
             else //Update landing plan
             {
@@ -2830,7 +2834,8 @@ namespace Doppler.BillingUser.Controllers
                     currentLandingPlans,
                     newLandingPlans,
                     newLandingBillingCredit,
-                    amountDetails);
+                    amountDetails,
+                    !isUpgradeApproved);
             }
         }
 

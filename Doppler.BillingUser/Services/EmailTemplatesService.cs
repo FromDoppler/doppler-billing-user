@@ -624,16 +624,51 @@ namespace Doppler.BillingUser.Services
             UserBillingInformation userBillingInformation,
             IList<LandingPlan> availableLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
-            BillingCredit landingBillingCredit)
+            BillingCredit landingBillingCredit,
+            bool isUpgradePending)
         {
             string newPlanDescription = "";
             decimal newPlanFee = 0;
+            var totalQuantity = 0;
             foreach (LandingPlanUser newPlan in newLandingPlans)
             {
-                string planDescription = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == newPlan.IdLandingPlan).Description;
+                var landingPage = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == newPlan.IdLandingPlan);
+                string planDescription = landingPage.Description;
                 newPlanDescription += $"[{planDescription} x {newPlan.PackQty}]";
                 newPlanFee += newPlan.PackQty * newPlan.Fee;
+                totalQuantity += newPlan.PackQty * landingPage.LandingQty;
             }
+
+            var template = !isUpgradePending ?
+                _emailSettings.Value.UpgradeAddOnPlanTemplateId[userInformation.Language ?? "en"] :
+                _emailSettings.Value.UpgradeAddOnPlanRequestTemplateId[userInformation.Language ?? "en"];
+
+            var monthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan : 1;
+
+            var upgradeEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        quantity = totalQuantity,
+                        isConversationAddon = false,
+                        isLandingAddon = true,
+                        isOnSiteAddon = false,
+                        isPushNotificationAddon = false,
+                        isDiscountWith1Month = monthPlan == 1,
+                        isDiscountWith3Months = monthPlan == 3,
+                        isDiscountWith6Months = monthPlan == 6,
+                        isDiscountWith12Months = monthPlan == 12,
+                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = monthPlan,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpgradeLandingAdminTemplateId;
 
@@ -685,7 +720,7 @@ namespace Doppler.BillingUser.Services
                     to: new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return Task.WhenAll(upgradePlanAdminEmail);
+            return Task.WhenAll(upgradePlanAdminEmail, upgradeEmail);
         }
 
         public Task SendNotificationForUpdateLandingPlan(
@@ -696,10 +731,12 @@ namespace Doppler.BillingUser.Services
             IList<LandingPlanUser> currentLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
             BillingCredit landingBillingCredit,
-            PlanAmountDetails amountDetails)
+            PlanAmountDetails amountDetails,
+            bool isUpgradePending)
         {
             string currentPlanDescription = "";
             decimal currentPlanFee = 0;
+            var totalQuantity = 0;
             foreach (LandingPlanUser currentPlan in currentLandingPlans)
             {
                 string planDescription = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == currentPlan.IdLandingPlan).Description;
@@ -711,10 +748,43 @@ namespace Doppler.BillingUser.Services
             decimal newPlanFee = 0;
             foreach (LandingPlanUser newPlan in newLandingPlans)
             {
-                string planDescription = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == newPlan.IdLandingPlan).Description;
+                var landingPage = availableLandingPlans.FirstOrDefault(x => x.IdLandingPlan == newPlan.IdLandingPlan);
+                string planDescription = landingPage.Description;
                 newPlanDescription += $"[{planDescription} x {newPlan.PackQty}]";
                 newPlanFee += newPlan.PackQty * newPlan.Fee;
+                totalQuantity += newPlan.PackQty * landingPage.LandingQty;
             }
+
+            var template = !isUpgradePending ?
+                _emailSettings.Value.UpgradeAddOnPlanTemplateId[userInformation.Language ?? "en"] :
+                _emailSettings.Value.UpgradeAddOnPlanRequestTemplateId[userInformation.Language ?? "en"];
+
+            var monthPlan = landingBillingCredit.TotalMonthPlan != null ? landingBillingCredit?.TotalMonthPlan : 1;
+
+            var upgradeEmail = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: template,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        quantity = totalQuantity,
+                        isConversationAddon = false,
+                        isLandingAddon = true,
+                        isOnSiteAddon = false,
+                        isPushNotificationAddon = false,
+                        isDiscountWith1Month = monthPlan == 1,
+                        isDiscountWith3Months = monthPlan == 3,
+                        isDiscountWith6Months = monthPlan == 6,
+                        isDiscountWith12Months = monthPlan == 12,
+                        isPaymentMethodCC = userBillingInformation.PaymentMethod == PaymentMethodEnum.CC,
+                        isPaymentMethodMP = userBillingInformation.PaymentMethod == PaymentMethodEnum.MP,
+                        isPaymentMethodTransf = userBillingInformation.PaymentMethod == PaymentMethodEnum.TRANSF,
+                        isPaymentMethodDA = userBillingInformation.PaymentMethod == PaymentMethodEnum.DA,
+                        discountMonthPlan = monthPlan,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname],
+                    cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpdateLandingAdminTemplateId;
 
@@ -777,7 +847,7 @@ namespace Doppler.BillingUser.Services
                     to: new[] { _emailSettings.Value.AdminEmail },
                     replyTo: _emailSettings.Value.InfoDopplerAppsEmail);
 
-            return Task.WhenAll(updatePlanAdminEmail);
+            return Task.WhenAll(updatePlanAdminEmail, upgradeEmail);
         }
 
         public Task SendNotificationForUpdateConversationPlan(
