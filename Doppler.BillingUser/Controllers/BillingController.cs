@@ -1730,7 +1730,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(user.IdUser, accountname, user, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.User);
+                SendLandingNotifications(user.IdUser, accountname, user, currentLandingPlans, newLandingPlans, amountDetails, payment, AccountTypeEnum.User);
             }
             catch (Exception e)
             {
@@ -1964,7 +1964,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 //Send notification
-                SendLandingNotifications(idUser, clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, AccountTypeEnum.CM);
+                SendLandingNotifications(idUser, clientManager.Email, clientManager, currentLandingPlans, newLandingPlans, amountDetails, payment, AccountTypeEnum.CM);
             }
             catch (Exception e)
             {
@@ -2016,6 +2016,8 @@ namespace Doppler.BillingUser.Controllers
                 await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Landing_Canceled);
 
                 await _landingPlanUserRepository.CancelLandingPLanByBillingCreditId(userAddOn.IdCurrentBillingCredit);
+
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(accountname, user, AddOnType.Landing);
 
                 return new OkObjectResult($"Successful cancel landing plan for: User: {accountname}");
 
@@ -2140,6 +2142,8 @@ namespace Doppler.BillingUser.Controllers
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.OnSite_Canceled);
                 }
 
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(accountname, user, AddOnType.OnSite);
+
                 var message = $"{userType} - Successful cancel onsite plan for: User: {accountname}";
                 _logger.LogError(message);
                 await _slackService.SendNotification(message);
@@ -2201,6 +2205,8 @@ namespace Doppler.BillingUser.Controllers
                 {
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, billingCreditCanceledType);
                 }
+
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(accountname, user, addOnType);
 
                 var message = $"{userType} - Successful cancel {addOnType} plan for: User: {accountname}";
                 _logger.LogError(message);
@@ -2735,17 +2741,17 @@ namespace Doppler.BillingUser.Controllers
                 userInformation = await _clientManagerRepository.GetUserInformation(accountname);
             }
 
-            bool isUpgradeApproved;
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
 
 
             if (currentPlan == null)
             {
-                isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+                //isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                 await _emailTemplatesService.SendNotificationForUpgradeAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true, AddOnType.OnSite);
             }
             else
             {
-                await _emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, AddOnType.OnSite);
+                await _emailTemplatesService.SendNotificationForUpdateAddOnPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, !isUpgradeApproved, AddOnType.OnSite);
             }
         }
 
@@ -2769,17 +2775,15 @@ namespace Doppler.BillingUser.Controllers
                 userInformation = await _clientManagerRepository.GetUserInformation(accountname);
             }
 
-            bool isUpgradeApproved;
-
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
 
             if (currentPlan == null)
             {
-                isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
                 await _emailTemplatesService.SendNotificationForUpgradeConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, !isUpgradeApproved, true);
             }
             else
             {
-                await _emailTemplatesService.SendNotificationForUpdateConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan);
+                await _emailTemplatesService.SendNotificationForUpdateConversationPlan(accountname, userInformation, newPlan, user, planDiscountInformation, amountDetails, currentPlan, !isUpgradeApproved);
             }
         }
 
@@ -2790,6 +2794,7 @@ namespace Doppler.BillingUser.Controllers
             IList<LandingPlanUser> currentLandingPlans,
             IList<LandingPlanUser> newLandingPlans,
             PlanAmountDetails amountDetails,
+            CreditCardPayment payment,
             AccountTypeEnum accountType)
         {
             User userInformation;
@@ -2805,6 +2810,8 @@ namespace Doppler.BillingUser.Controllers
             IList<LandingPlan> availableLandingPlans = await _landingPlanRepository.GetAll();
             BillingCredit newLandingBillingCredit = await _billingRepository.GetCurrentBillingCreditForLanding(userId);
 
+            bool isUpgradeApproved = (user.PaymentMethod == PaymentMethodEnum.CC || !BillingHelper.IsUpgradePending(user, null, payment));
+
             //Upgrade landing plan
             if (currentLandingPlans is null || currentLandingPlans.Count == 0)
             {
@@ -2814,7 +2821,8 @@ namespace Doppler.BillingUser.Controllers
                     user,
                     availableLandingPlans,
                     newLandingPlans,
-                    newLandingBillingCredit);
+                    newLandingBillingCredit,
+                    !isUpgradeApproved);
             }
             else //Update landing plan
             {
@@ -2826,7 +2834,8 @@ namespace Doppler.BillingUser.Controllers
                     currentLandingPlans,
                     newLandingPlans,
                     newLandingBillingCredit,
-                    amountDetails);
+                    amountDetails,
+                    !isUpgradeApproved);
             }
         }
 
@@ -3472,6 +3481,8 @@ namespace Doppler.BillingUser.Controllers
 
             if (userAddOn != null)
             {
+                User userInformation = await _userRepository.GetUserInformation(user.Email);
+
                 var currentChatPlanBillingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
 
                 if (currentChatPlanBillingCredit != null && currentChatPlanBillingCredit.IdBillingCreditType != (int)BillingCreditTypeEnum.Conversation_Canceled)
@@ -3479,6 +3490,8 @@ namespace Doppler.BillingUser.Controllers
                     await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, (int)BillingCreditTypeEnum.Conversation_Canceled);
                     await _beplicService.UnassignPlanToUser(user.IdUser);
                 }
+
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(user.Email, userInformation, AddOnType.Chat);
             }
         }
 

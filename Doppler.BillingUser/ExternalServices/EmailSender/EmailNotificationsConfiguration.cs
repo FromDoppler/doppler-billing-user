@@ -7,6 +7,7 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public string AdminEmail { get; set; }
         public string CommercialEmail { get; set; }
         public string BillingEmail { get; set; }
+        public string CustomerExperienceEmail { get; set; }
         public string InfoDopplerAppsEmail { get; set; }
         public Dictionary<string, string> CreditsApprovedTemplateId { get; set; }
         public Dictionary<string, string> UpgradeAccountTemplateId { get; set; }
@@ -45,5 +46,8 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public string UpdateAddOnPlanAdminTemplateId { get; set; }
         public Dictionary<string, string> SendAdditionalServiceRequestTemplateId { get; set; }
         public string SendAdditionalServiceRequestAdminTemplateId { get; set; }
+        public Dictionary<string, string> UpgradeAddOnPlanRequestTemplateId { get; set; }
+        public Dictionary<string, string> UpgradeAddOnPlanTemplateId { get; set; }
+        public Dictionary<string, string> CancelAddOnPlanTemplateId { get; set; }
     }
 }
