@@ -139,7 +139,8 @@ namespace Doppler.BillingUser.Controllers
             {"features8", "Entorno dedicado"},
             {"features9", "Conversaciones"},
             {"features10", "Reportes personalizados"},
-            {"features11", "IP dedicada"}
+            {"features11", "IP dedicada"},
+            {"features12", "Colaboradores"}
         };
 
         private readonly Dictionary<string, string> sendingVolumes = new()
