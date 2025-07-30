@@ -2395,6 +2395,46 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult($"Sending Ok");
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPut("/accounts/{accountname}/addon/cancel/all")]
+        public async Task<IActionResult> CancelAllActiveAddOnPlan(string accountname)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            var userType = !user.IdClientManager.HasValue ? "REG" : "CM";
+
+            try
+            {
+                var userAddOns = await _userAddOnRepository.GetAllByUserIdAsync(user.IdUser);
+
+                foreach (var userAddOn in userAddOns)
+                {
+                    await CancelAddOn(user, userAddOn, false);
+                }
+
+                var message = $"{userType} - Successful cancel all addons plan for: User: {accountname}";
+                _logger.LogError(message);
+                await _slackService.SendNotification(message);
+
+                return new OkObjectResult(message);
+            }
+            catch (Exception ex)
+            {
+                var message = $"{userType} - Failed at canceling all addons plan for: User: {accountname}";
+                _logger.LogError(message, ex);
+                await _slackService.SendNotification(message);
+
+                return new ObjectResult(message)
+                {
+                    StatusCode = 500,
+                };
+            }
+        }
+
         private async Task SendRequestAdditionalServices(string accountName, AdditionalServicesRequestModel additionalServicesRequestModel)
         {
             var user = await _userRepository.GetUserInformation(accountName);
@@ -3573,6 +3613,40 @@ namespace Doppler.BillingUser.Controllers
             var difference = 10 - (sum % 10);
 
             return difference == digitalVerifier;
+        }
+
+        private async Task CancelAddOn(User user, UserAddOn userAddOn, bool sendNotificationEmail)
+        {
+            int billingCreditCanceledType = 0;
+
+            switch ((AddOnType)userAddOn.IdAddOnType)
+            {
+                case AddOnType.Landing:
+                    billingCreditCanceledType = (int)BillingCreditTypeEnum.Landing_Canceled;
+                    await _landingPlanUserRepository.CancelLandingPLanByBillingCreditId(userAddOn.IdCurrentBillingCredit);
+                    break;
+                case AddOnType.Chat:
+                    billingCreditCanceledType = (int)BillingCreditTypeEnum.Conversation_Canceled;
+                    await _beplicService.UnassignPlanToUser(user.IdUser);
+                    break;
+                case AddOnType.OnSite:
+                    billingCreditCanceledType = (int)BillingCreditTypeEnum.OnSite_Canceled;
+                    break;
+                case AddOnType.PushNotification:
+                    billingCreditCanceledType = (int)BillingCreditTypeEnum.PushNotification_Canceled;
+                    break;
+            }
+
+            var currentPlanBillingCredit = await _billingRepository.GetBillingCredit(userAddOn.IdCurrentBillingCredit);
+            if (currentPlanBillingCredit != null && currentPlanBillingCredit.IdBillingCreditType != billingCreditCanceledType)
+            {
+                await _billingRepository.UpdateBillingCreditType(userAddOn.IdCurrentBillingCredit, billingCreditCanceledType);
+            }
+
+            if (sendNotificationEmail)
+            {
+                await _emailTemplatesService.SendNotificationForCancelAddOnPlan(user.Email, user, (AddOnType)userAddOn.IdAddOnType);
+            }
         }
     }
 }
