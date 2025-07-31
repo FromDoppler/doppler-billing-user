@@ -1,7 +1,10 @@
 using Dapper;
+using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.TimeCollector;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Infrastructure
@@ -15,6 +18,19 @@ namespace Doppler.BillingUser.Infrastructure
         {
             _connectionFactory = connectionFactory;
             _timeCollector = timeCollector;
+        }
+
+        public async Task<IList<UserAddOn>> GetAllByUserIdAsync(int userId)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var userAddOns = await connection.QueryAsync<UserAddOn>(@"SELECT [IdUserAddOn]
+        ,[IdUser]
+        ,[IdAddOnType]
+        ,[IdCurrentBillingCredit]
+    FROM [dbo].[UserAddOn]
+    WHERE IdUser = @userId", new { userId });
+
+            return userAddOns.ToList();
         }
 
         public async Task<UserAddOn> GetByUserIdAndAddOnType(int userId, int addOnType)
