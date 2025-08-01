@@ -27,6 +27,7 @@ using Doppler.BillingUser.Mappers.OnSitePlan;
 using Doppler.BillingUser.Mappers.PaymentMethod;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Request;
 using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.TimeCollector;
@@ -90,6 +91,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IPushNotificationPlanUserRepository _pushNotificationPlanUserRepository;
         private readonly IBinService _binService;
         private readonly IPayrollOfBCRAEntityRepository _payrollOfBCRAEntityRepository;
+        private readonly IOptions<CancellationAccountSettings> _cancellationAccountSettings;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -153,6 +155,7 @@ namespace Doppler.BillingUser.Controllers
 
         private const string Source = "Checkout";
         private const string CancelatedObservation = "Phishing User. AyC";
+        private const string CancelatedObservationFromMyPlan = "User canceled from My Plan";
 
         public BillingController(
             ILogger<BillingController> logger,
@@ -193,7 +196,8 @@ namespace Doppler.BillingUser.Controllers
             IPushNotificationPlanRepository pushNotificationPlanRepository,
             IPushNotificationPlanUserRepository pushNotificationPlanUserRepository,
             IBinService binService,
-            IPayrollOfBCRAEntityRepository payrollOfBCRAEntityRepository)
+            IPayrollOfBCRAEntityRepository payrollOfBCRAEntityRepository,
+            IOptions<CancellationAccountSettings> cancellationAccountSettings)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -234,6 +238,7 @@ namespace Doppler.BillingUser.Controllers
             _pushNotificationPlanUserRepository = pushNotificationPlanUserRepository;
             _binService = binService;
             _payrollOfBCRAEntityRepository = payrollOfBCRAEntityRepository;
+            _cancellationAccountSettings = cancellationAccountSettings;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -2433,6 +2438,50 @@ namespace Doppler.BillingUser.Controllers
                     StatusCode = 500,
                 };
             }
+        }
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/cancel")]
+        public async Task<IActionResult> CancelAccount(string accountname, [FromBody] CancelAccountRequest cancelAccountRequest)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            if (user.IsCancelated)
+            {
+                return new NotFoundObjectResult("The user has already been canceled");
+            }
+
+            var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
+            if (currentPlan != null)
+            {
+                var messageError = $"Failed at cancel user {accountname}. Only free users can be cancelled";
+                _logger.LogError(messageError);
+                await _slackService.SendNotification(messageError);
+                return new BadRequestObjectResult(messageError);
+            }
+
+            //Cancel User
+            await _userRepository.CancelUser(user.IdUser, _cancellationAccountSettings.Value.AccountCancellationReasonForFreeUser, CancelatedObservationFromMyPlan);
+
+            //Cancel Addons
+            var userAddOns = await _userAddOnRepository.GetAllByUserIdAsync(user.IdUser);
+
+            foreach (var userAddOn in userAddOns)
+            {
+                await CancelAddOn(user, userAddOn, false);
+            }
+
+            //Send notification
+            await _emailTemplatesService.SendNotificationForCancelAccount(accountname, user);
+
+            var message = $"Successful at cancel user {accountname}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult(message);
         }
 
         private async Task SendRequestAdditionalServices(string accountName, AdditionalServicesRequestModel additionalServicesRequestModel)
