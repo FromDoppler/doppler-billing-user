@@ -1341,6 +1341,36 @@ namespace Doppler.BillingUser.Services
             return cancelAddonEmail;
         }
 
+        public Task SendNotificationForCancelAccount(string accountname, User userInformation)
+        {
+            var templateForUser = _emailSettings.Value.CancelAccountTemplateId[userInformation.Language ?? "en"];
+            var templateForCustomer = _emailSettings.Value.CancelAccountTemplateId["es"];
+
+            var cancelAddonEmailForUser = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateForUser,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        email = userInformation.Email,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [accountname]);
+
+            var cancelAddonEmailForCustomer = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateForCustomer,
+                    templateModel: new
+                    {
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        firstName = userInformation.FirstName,
+                        email = userInformation.Email,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [_emailSettings.Value.CustomerExperienceEmail]);
+
+            return Task.WhenAll(cancelAddonEmailForUser, cancelAddonEmailForCustomer);
+        }
+
     }
 }
 
