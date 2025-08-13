@@ -92,6 +92,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IBinService _binService;
         private readonly IPayrollOfBCRAEntityRepository _payrollOfBCRAEntityRepository;
         private readonly IOptions<CancellationAccountSettings> _cancellationAccountSettings;
+        private readonly IAccountCancellationReasonRepository _accountCancellationReasonRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -208,7 +209,8 @@ namespace Doppler.BillingUser.Controllers
             IPushNotificationPlanUserRepository pushNotificationPlanUserRepository,
             IBinService binService,
             IPayrollOfBCRAEntityRepository payrollOfBCRAEntityRepository,
-            IOptions<CancellationAccountSettings> cancellationAccountSettings)
+            IOptions<CancellationAccountSettings> cancellationAccountSettings,
+            IAccountCancellationReasonRepository accountCancellationReasonRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -250,6 +252,7 @@ namespace Doppler.BillingUser.Controllers
             _binService = binService;
             _payrollOfBCRAEntityRepository = payrollOfBCRAEntityRepository;
             _cancellationAccountSettings = cancellationAccountSettings;
+            _accountCancellationReasonRepository = accountCancellationReasonRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -2478,8 +2481,15 @@ namespace Doppler.BillingUser.Controllers
             //Cancel User
             CancellationAccountSettings cancellationSettings = _cancellationAccountSettings.Value;
             var cancellationReason = cancellationReasonForFreeUser[cancelAccountRequest.CancellationReason];
+            var accountCancellationReasonId = cancellationSettings.OthersReasonForFreeUser;
 
-            await _userRepository.CancelUser(user.IdUser, cancellationSettings[cancellationReason], CancelatedObservationFromMyPlan);
+            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(cancellationSettings[cancellationReason]);
+            if (cancellationReasonFromDB != null)
+            {
+                accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
+            }
+
+            await _userRepository.CancelUser(user.IdUser, accountCancellationReasonId, CancelatedObservationFromMyPlan);
 
             //Cancel Addons
             var userAddOns = await _userAddOnRepository.GetAllByUserIdAsync(user.IdUser);
