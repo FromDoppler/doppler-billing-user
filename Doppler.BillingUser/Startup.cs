@@ -137,6 +137,8 @@ namespace Doppler.BillingUser
             services.AddScoped<IPayrollOfBCRAEntityRepository, PayrollOfBCRAEntityRepository>();
             services.Configure<BinSettings>(Configuration.GetSection(nameof(BinSettings)));
             services.AddScoped<IBinService, BinService>();
+            services.Configure<CancellationAccountSettings>(Configuration.GetSection(nameof(CancellationAccountSettings)));
+            services.AddScoped<IAccountCancellationReasonRepository, AccountCancellationReasonRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
