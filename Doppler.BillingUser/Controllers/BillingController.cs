@@ -41,6 +41,7 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -93,6 +94,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IPayrollOfBCRAEntityRepository _payrollOfBCRAEntityRepository;
         private readonly IOptions<CancellationAccountSettings> _cancellationAccountSettings;
         private readonly IAccountCancellationReasonRepository _accountCancellationReasonRepository;
+        private readonly IUserAccountCancellationRequestRepository _userAccountCancellationRequestRepository;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -154,7 +156,7 @@ namespace Doppler.BillingUser.Controllers
             {"Más de 10m", "Más de 10M"}
         };
 
-        private readonly Dictionary<string, string> cancellationReasonForFreeUser = new()
+        private readonly Dictionary<string, string> cancellationReason = new()
         {
             {"notAchieveMyExpectedGoals", "NotAchieveMyExpectedGoalsReasonForFreeUser"},
             {"myProjectIsOver", "MyProjectIsOverReasonForFreeUser"},
@@ -163,6 +165,17 @@ namespace Doppler.BillingUser.Controllers
             {"notWorkingProperly", "NotWorkingProperlyReasonForFreeUser"},
             {"registeredByMistake", "RegisteredByMistakeReasonForFreeUser"},
             {"others", "OthersReasonForFreeUser"},
+        };
+
+        private readonly Dictionary<string, string> cancellationReasonDescription = new()
+        {
+            {"notAchieveMyExpectedGoals", "No alcancé los objetivos esperados"},
+            {"myProjectIsOver", "Mi proyecto terminó"},
+            {"expensiveForMyBudget", "Doppler es caro a mi presupuesto"},
+            {"missingFeatures", "A Doppler le falta una o varias Funcionalidades"},
+            {"notWorkingProperly", "Doppler no funciona correctamente"},
+            {"registeredByMistake", "Me registré por error o no era el servicio que buscaba"},
+            {"others", "Otros"},
         };
 
         private const string Source = "Checkout";
@@ -210,7 +223,8 @@ namespace Doppler.BillingUser.Controllers
             IBinService binService,
             IPayrollOfBCRAEntityRepository payrollOfBCRAEntityRepository,
             IOptions<CancellationAccountSettings> cancellationAccountSettings,
-            IAccountCancellationReasonRepository accountCancellationReasonRepository)
+            IAccountCancellationReasonRepository accountCancellationReasonRepository,
+            IUserAccountCancellationRequestRepository userAccountCancellationRequestRepository)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -253,6 +267,7 @@ namespace Doppler.BillingUser.Controllers
             _payrollOfBCRAEntityRepository = payrollOfBCRAEntityRepository;
             _cancellationAccountSettings = cancellationAccountSettings;
             _accountCancellationReasonRepository = accountCancellationReasonRepository;
+            _userAccountCancellationRequestRepository = userAccountCancellationRequestRepository;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -2480,10 +2495,9 @@ namespace Doppler.BillingUser.Controllers
 
             //Cancel User
             CancellationAccountSettings cancellationSettings = _cancellationAccountSettings.Value;
-            var cancellationReason = cancellationReasonForFreeUser[cancelAccountRequest.CancellationReason];
             var accountCancellationReasonId = cancellationSettings.OthersReasonForFreeUser;
 
-            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(cancellationSettings[cancellationReason]);
+            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(cancellationSettings[cancellationReason[cancelAccountRequest.CancellationReason]]);
             if (cancellationReasonFromDB != null)
             {
                 accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
@@ -2506,6 +2520,55 @@ namespace Doppler.BillingUser.Controllers
             await _slackService.SendNotification(message);
 
             return new OkObjectResult(message);
+        }
+
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/save-account-cancellation-request")]
+        public async Task<IActionResult> SaveAccountCancellationRequest(string accountname, [FromBody] CancelAccountRequest cancelAccountRequest)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            if (user.IsCancelated)
+            {
+                return new NotFoundObjectResult("The user has already been canceled");
+            }
+
+            string contactName = cancelAccountRequest.FirstName + " " + cancelAccountRequest.LastName;
+            string accountCancellationReason = cancellationReasonDescription[cancelAccountRequest.CancellationReason];
+            string contactPhone = cancelAccountRequest.Phone;
+            string contactSchedule = cancelAccountRequest.ContactSchedule;
+
+            await _userAccountCancellationRequestRepository.SaveRequestAsync(user.IdUser, contactName, accountCancellationReason, contactPhone, contactSchedule);
+
+            //Send notification
+            await SendAccountCancellationRequestEmail(accountname, contactName, accountCancellationReason, contactPhone, contactSchedule);
+
+            var message = $"Successful at save account cancellation request for the user: {accountname}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult(message);
+        }
+
+        private async Task SendAccountCancellationRequestEmail(
+            string accountName,
+            string contactName,
+            string accountCancellationReason,
+            string contactPhone,
+            string contactSchedule)
+        {
+            var user = await _userRepository.GetUserInformation(accountName);
+            var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
+
+            var planFee = currentBillingCredit?.PlanFee;
+            var userTypeId = currentBillingCredit?.IdUserType;
+            var creditsQty = currentBillingCredit?.CreditsQty;
+            var subscribersQty = currentBillingCredit?.SubscribersQty;
+
+            await _emailTemplatesService.SendNotificationForAccountCancellationRequest(accountName, planFee, userTypeId, creditsQty, subscribersQty, contactName, accountCancellationReason, contactPhone, contactSchedule);
         }
 
         private async Task SendRequestAdditionalServices(string accountName, AdditionalServicesRequestModel additionalServicesRequestModel)

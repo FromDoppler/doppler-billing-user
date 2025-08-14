@@ -50,5 +50,6 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
         public Dictionary<string, string> UpgradeAddOnPlanTemplateId { get; set; }
         public Dictionary<string, string> CancelAddOnPlanTemplateId { get; set; }
         public Dictionary<string, string> CancelAccountTemplateId { get; set; }
+        public string AccountCancellationRequestAdminTemplateId { get; set; }
     }
 }

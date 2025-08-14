@@ -28,5 +28,6 @@ namespace Doppler.BillingUser.Services
         Task SendNotificationForRequestAdditionalServices(string accountname, User user, BillingCredit currentBillingCredit, PlanDiscountInformation planDiscountInformation, AdditionalServicesRequestModel additionalServicesRequestModel);
         Task SendNotificationForCancelAddOnPlan(string accountname, User userInformation, AddOnType addOnType);
         Task SendNotificationForCancelAccount(string accountname, User userInformation);
+        Task SendNotificationForAccountCancellationRequest(string accountname, decimal? planFee, int? userTypeId, int? creditsQty, int? subscribersQty, string contactName, string accountCancellationReason, string contactPhone, string contactSchedule);
     }
 }
