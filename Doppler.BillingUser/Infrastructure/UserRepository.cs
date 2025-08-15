@@ -338,5 +338,19 @@ WHERE
 
             return userTypePlan;
         }
+
+        public async Task SetCancellationRequested(int idUser)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryAsync(@"
+UPDATE [User]
+SET IsCancellationRequested = 1
+WHERE IdUser = @IdUser;", new
+            {
+                idUser
+            }
+            );
+        }
     }
 }

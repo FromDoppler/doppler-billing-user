@@ -1198,7 +1198,7 @@ namespace Doppler.BillingUser.Services
                         urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
                         year = DateTime.UtcNow.Year
                     },
-                    to: [_emailSettings.Value.AdminEmail]);
+                    to: [_emailSettings.Value.CustomerExperienceEmail]);
 
             return sendAccountCancellationRequestForAdmin;
         }
