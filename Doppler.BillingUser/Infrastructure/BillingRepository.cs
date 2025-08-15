@@ -1717,10 +1717,9 @@ SELECT
     BC.[Taxes],
     BC.[IdBillingCreditType],
     UTP.[IdUserType]
-FROM
-    [dbo].[BillingCredits] BC
-        LEFT JOIN [dbo].[DiscountXPlan] DP
-        ON BC.IdDiscountPlan = DP.IdDiscountPlan
+FROM [dbo].[User] U
+INNER JOIN [dbo].[BillingCredits] BC ON Bc.IdBillingCredit = U.IdCurrentBillingCredit
+LEFT JOIN [dbo].[DiscountXPlan] DP ON BC.IdDiscountPlan = DP.IdDiscountPlan
 LEFT JOIN [dbo].[UserTypesPlans] UTP ON UTP.IdUserTypePlan = BC.IdUserTypePlan
 WHERE
     BC.[IdUser] = @idUser",
