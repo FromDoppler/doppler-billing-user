@@ -2537,6 +2537,10 @@ namespace Doppler.BillingUser.Controllers
                 return new NotFoundObjectResult("The user has already been canceled");
             }
 
+            //Set CancellationRequested
+            await _userRepository.SetCancellationRequested(user.IdUser);
+
+            //Save CancellationRequest
             string contactName = cancelAccountRequest.FirstName + " " + cancelAccountRequest.LastName;
             string accountCancellationReason = cancellationReasonDescription[cancelAccountRequest.CancellationReason];
             string contactPhone = cancelAccountRequest.Phone;
