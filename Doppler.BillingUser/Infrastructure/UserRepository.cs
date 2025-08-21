@@ -352,5 +352,19 @@ WHERE IdUser = @IdUser;", new
             }
             );
         }
+
+        public async Task SetHasScheduledCancellation(int idUser)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+            await connection.QueryAsync(@"
+UPDATE [User]
+SET HasScheduledCancellation = 1
+WHERE IdUser = @IdUser;", new
+            {
+                idUser
+            }
+            );
+        }
     }
 }

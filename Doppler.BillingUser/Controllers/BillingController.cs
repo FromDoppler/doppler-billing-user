@@ -2557,6 +2557,30 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult(message);
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/set-scheduled-cancellation")]
+        public async Task<IActionResult> SetHasScheduledCancellation(string accountname, [FromBody] SetHasScheduledCancellationRequest setHasScheduledCancellationRequest)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            if (user.IsCancelated)
+            {
+                return new NotFoundObjectResult("The user has already been canceled");
+            }
+
+            //Set CancellationRequested
+            await _userRepository.SetCancellationRequested(user.IdUser);
+
+            var message = $"Successful at set schedule cancellation flag for the user: {accountname}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult(message);
+        }
+
         private async Task SendAccountCancellationRequestEmail(
             string accountName,
             string contactName,
