@@ -19,5 +19,6 @@ namespace Doppler.BillingUser.Infrastructure
         Task CancelUser(int idUser, int idAccountCancelationReason, string cancelatedObservation);
         Task<ConversationPlanInformation> GetConversationPlan(int idConversationPlan);
         Task SetCancellationRequested(int idUser);
+        Task SetHasScheduledCancellation(int idUser);
     }
 }
