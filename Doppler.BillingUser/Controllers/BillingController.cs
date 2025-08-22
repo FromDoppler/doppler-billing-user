@@ -2485,9 +2485,12 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
-            if (currentPlan != null)
+
+            var userType = currentPlan == null ? UserTypeEnum.FREE : currentPlan.IdUserType;
+
+            if (userType != UserTypeEnum.FREE && userType != UserTypeEnum.INDIVIDUAL)
             {
-                var messageError = $"Failed at cancel user {accountname}. Only free users can be cancelled";
+                var messageError = $"Failed at cancel user {accountname}. Only free or credits users can be cancelled";
                 _logger.LogError(messageError);
                 await _slackService.SendNotification(messageError);
                 return new BadRequestObjectResult(messageError);
