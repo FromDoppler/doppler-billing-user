@@ -156,7 +156,7 @@ namespace Doppler.BillingUser.Controllers
             {"Más de 10m", "Más de 10M"}
         };
 
-        private readonly Dictionary<string, string> cancellationReason = new()
+        private readonly Dictionary<string, string> cancellationReasonForFreeUser = new()
         {
             {"notAchieveMyExpectedGoals", "NotAchieveMyExpectedGoalsReasonForFreeUser"},
             {"myProjectIsOver", "MyProjectIsOverReasonForFreeUser"},
@@ -165,6 +165,17 @@ namespace Doppler.BillingUser.Controllers
             {"notWorkingProperly", "NotWorkingProperlyReasonForFreeUser"},
             {"registeredByMistake", "RegisteredByMistakeReasonForFreeUser"},
             {"others", "OthersReasonForFreeUser"},
+        };
+
+        private readonly Dictionary<string, string> cancellationReasonForPaidUser = new()
+        {
+            {"notAchieveMyExpectedGoals", "NotAchieveMyExpectedGoalsReasonForPaidUser"},
+            {"myProjectIsOver", "MyProjectIsOverReasonForPaidUser"},
+            {"expensiveForMyBudget", "ExpensiveForMyBudgetReasonForPaidUser"},
+            {"missingFeatures", "MissingFeaturesReasonForPaidUser"},
+            {"notWorkingProperly", "NotWorkingProperlyReasonForPaidUser"},
+            {"registeredByMistake", "RegisteredByMistakeReasonForPaidUser"},
+            {"others", "OthersReasonForPaidUser"},
         };
 
         private readonly Dictionary<string, string> cancellationReasonDescription = new()
@@ -2485,25 +2496,24 @@ namespace Doppler.BillingUser.Controllers
             }
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
-
             var userType = currentPlan == null ? UserTypeEnum.FREE : currentPlan.IdUserType;
-
-            if (userType != UserTypeEnum.FREE && userType != UserTypeEnum.INDIVIDUAL)
-            {
-                var messageError = $"Failed at cancel user {accountname}. Only free or credits users can be cancelled";
-                _logger.LogError(messageError);
-                await _slackService.SendNotification(messageError);
-                return new BadRequestObjectResult(messageError);
-            }
 
             //Cancel User
             CancellationAccountSettings cancellationSettings = _cancellationAccountSettings.Value;
-            var accountCancellationReasonId = cancellationSettings.OthersReasonForFreeUser;
+            var accountCancellationReasonId = userType == UserTypeEnum.FREE ?
+                cancellationSettings[cancellationReasonForFreeUser[cancelAccountRequest.CancellationReason]] :
+                cancellationSettings[cancellationReasonForPaidUser[cancelAccountRequest.CancellationReason]];
 
-            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(cancellationSettings[cancellationReason[cancelAccountRequest.CancellationReason]]);
+            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(accountCancellationReasonId);
             if (cancellationReasonFromDB != null)
             {
                 accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
+            }
+            else
+            {
+                accountCancellationReasonId = userType == UserTypeEnum.FREE ?
+                    cancellationSettings.OthersReasonForFreeUser :
+                    cancellationSettings.OthersReasonForPaidUser;
             }
 
             await _userRepository.CancelUser(user.IdUser, accountCancellationReasonId, CancelatedObservationFromMyPlan);
