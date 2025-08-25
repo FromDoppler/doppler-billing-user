@@ -339,16 +339,19 @@ WHERE
             return userTypePlan;
         }
 
-        public async Task SetCancellationRequested(int idUser)
+        public async Task SetCancellationRequested(int idUser, int userAccountCancellationReasonId)
         {
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryAsync(@"
 UPDATE [User]
-SET IsCancellationRequested = 1
+SET IsCancellationRequested = 1,
+    IdUserAccountCancellationReason = @IdUserAccountCancellationReason,
+    UserAccountCancellationReasonText = ''
 WHERE IdUser = @IdUser;", new
             {
-                idUser
+                idUser,
+                IdUserAccountCancellationReason = userAccountCancellationReasonId
             }
             );
         }
@@ -359,7 +362,8 @@ WHERE IdUser = @IdUser;", new
             using var connection = _connectionFactory.GetConnection();
             await connection.QueryAsync(@"
 UPDATE [User]
-SET HasScheduledCancellation = 1
+SET HasScheduledCancellation = 1,
+    IsCancellationRequested = 0
 WHERE IdUser = @IdUser;", new
             {
                 idUser
