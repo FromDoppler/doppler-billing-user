@@ -2618,6 +2618,56 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult(message);
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/send-consulting-offer-notification")]
+        public async Task<IActionResult> SendConsultingOfferNotification(string accountname, [FromBody] SendConsultingOfferNotificationRequest sendConsultingOfferNotificationRequest)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            var userAccountCancellationReasonId = (int)EnumExtension.GetEnumValueFromDescription<UserAccountCancellationReasonEnum>(sendConsultingOfferNotificationRequest.CancellationReason);
+            var cancellationReasonDescription = string.Empty;
+            var userAccountCancellationReason = await _userAccountCancellationReasonRepository.GetById(userAccountCancellationReasonId);
+            if (userAccountCancellationReason != null)
+            {
+                cancellationReasonDescription = userAccountCancellationReason.DescriptionEs;
+            }
+
+            string contactName = sendConsultingOfferNotificationRequest.FirstName + " " + sendConsultingOfferNotificationRequest.LastName;
+            string accountCancellationReason = cancellationReasonDescription;
+            string contactPhone = sendConsultingOfferNotificationRequest.Phone;
+            string contactSchedule = sendConsultingOfferNotificationRequest.ContactSchedule;
+
+            //Send notification
+            await SendConsultingOfferEmail(accountname, contactName, accountCancellationReason, contactPhone, contactSchedule);
+
+            var message = $"Successful at send consulting offer notification for the user: {accountname}";
+            await _slackService.SendNotification(message);
+
+            return new OkObjectResult(message);
+        }
+
+        private async Task SendConsultingOfferEmail(
+            string accountName,
+            string contactName,
+            string accountCancellationReason,
+            string contactPhone,
+            string contactSchedule)
+        {
+            var user = await _userRepository.GetUserInformation(accountName);
+            var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
+
+            var planFee = currentBillingCredit?.PlanFee;
+            var userTypeId = currentBillingCredit?.IdUserType;
+            var creditsQty = currentBillingCredit?.CreditsQty;
+            var subscribersQty = currentBillingCredit?.SubscribersQty;
+
+            await _emailTemplatesService.SendNotificationForConsultingOffer(accountName, planFee, userTypeId, creditsQty, subscribersQty, contactName, accountCancellationReason, contactPhone, contactSchedule);
+        }
+
         private async Task SendScheduledCancellationRequestEmail(
             string accountName,
             string contactName,
