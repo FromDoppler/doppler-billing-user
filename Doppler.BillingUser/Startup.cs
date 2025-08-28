@@ -140,6 +140,7 @@ namespace Doppler.BillingUser
             services.Configure<CancellationAccountSettings>(Configuration.GetSection(nameof(CancellationAccountSettings)));
             services.AddScoped<IAccountCancellationReasonRepository, AccountCancellationReasonRepository>();
             services.AddScoped<IUserAccountCancellationRequestRepository, UserAccountCancellationRequestRepository>();
+            services.AddScoped<IUserAccountCancellationReasonRepository, UserAccountCancellationReasonRepository>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

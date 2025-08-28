@@ -1409,6 +1409,83 @@ namespace Doppler.BillingUser.Services
             return Task.WhenAll(cancelAddonEmailForUser, cancelAddonEmailForCustomer);
         }
 
+        public Task SendNotificationForScheduledCancellationRequest(
+            string accountname,
+            decimal? planFee,
+            int? userTypeId,
+            int? creditsQty,
+            int? subscribersQty,
+            string contactName,
+            string accountCancellationReason,
+            string contactPhone,
+            string contactSchedule)
+        {
+            var isIndividualPlan = userTypeId == (int)UserTypeEnum.INDIVIDUAL;
+            var isMonthlyPlan = userTypeId == (int)UserTypeEnum.MONTHLY;
+            var isSubscribersPlan = userTypeId == (int)UserTypeEnum.SUBSCRIBERS;
+
+            var templateAdmin = _emailSettings.Value.ScheduledCancellationRequestAdminTemplateId;
+            var sendAccountCancellationRequestForAdmin = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        email = accountname,
+                        contactName,
+                        accountCancellationReason,
+                        contactPhone,
+                        contactSchedule,
+                        isIndividualPlan,
+                        isMonthlyPlan,
+                        isSubscribersPlan,
+                        creditsQty,
+                        subscribersQty,
+                        amount = planFee,
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [_emailSettings.Value.CustomerExperienceEmail]);
+
+            return sendAccountCancellationRequestForAdmin;
+        }
+
+        public Task SendNotificationForConsultingOffer(
+            string accountname,
+            decimal? planFee,
+            int? userTypeId,
+            int? creditsQty,
+            int? subscribersQty,
+            string contactName,
+            string accountCancellationReason,
+            string contactPhone,
+            string contactSchedule)
+        {
+            var isIndividualPlan = userTypeId == (int)UserTypeEnum.INDIVIDUAL;
+            var isMonthlyPlan = userTypeId == (int)UserTypeEnum.MONTHLY;
+            var isSubscribersPlan = userTypeId == (int)UserTypeEnum.SUBSCRIBERS;
+
+            var templateAdmin = _emailSettings.Value.ConsultingOfferAdminTemplateId;
+            var sendConsultingOfferNotificationForCustomerExperience = _emailSender.SafeSendWithTemplateAsync(
+                    templateId: templateAdmin,
+                    templateModel: new
+                    {
+                        email = accountname,
+                        contactName,
+                        accountCancellationReason,
+                        contactPhone,
+                        contactSchedule,
+                        isIndividualPlan,
+                        isMonthlyPlan,
+                        isSubscribersPlan,
+                        creditsQty,
+                        subscribersQty,
+                        amount = planFee,
+                        urlImagesBase = _emailSettings.Value.UrlEmailImagesBase,
+                        year = DateTime.UtcNow.Year
+                    },
+                    to: [_emailSettings.Value.CustomerExperienceEmail]);
+
+            return sendConsultingOfferNotificationForCustomerExperience;
+        }
     }
 }
 

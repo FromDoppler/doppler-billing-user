@@ -9,6 +9,13 @@ namespace Doppler.BillingUser.Settings
         public int NotWorkingProperlyReasonForFreeUser { get; set; }
         public int RegisteredByMistakeReasonForFreeUser { get; set; }
         public int OthersReasonForFreeUser { get; set; }
+        public int NotAchieveMyExpectedGoalsReasonForPaidUser { get; set; }
+        public int MyProjectIsOverReasonForPaidUser { get; set; }
+        public int ExpensiveForMyBudgetReasonForPaidUser { get; set; }
+        public int MissingFeaturesReasonForPaidUser { get; set; }
+        public int NotWorkingProperlyReasonForPaidUser { get; set; }
+        public int RegisteredByMistakeReasonPaidUser { get; set; }
+        public int OthersReasonForPaidUser { get; set; }
 
         public int this[string propertyName]
         {
