@@ -2492,20 +2492,35 @@ namespace Doppler.BillingUser.Controllers
 
             //Cancel User
             CancellationAccountSettings cancellationSettings = _cancellationAccountSettings.Value;
-            var accountCancellationReasonId = userType == UserTypeEnum.FREE ?
-                cancellationSettings[cancellationReasonForFreeUser[cancelAccountRequest.CancellationReason]] :
-                cancellationSettings[cancellationReasonForPaidUser[cancelAccountRequest.CancellationReason]];
 
-            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(accountCancellationReasonId);
-            if (cancellationReasonFromDB != null)
+            var cancellationReason = userType == UserTypeEnum.FREE ?
+                cancellationReasonForFreeUser.GetValueOrDefault(cancelAccountRequest.CancellationReason) :
+                cancellationReasonForPaidUser.GetValueOrDefault(cancelAccountRequest.CancellationReason);
+
+            var accountCancellationReasonId = !string.IsNullOrEmpty(cancellationReason) ?
+                cancellationSettings[cancellationReason] :
+                0;
+
+            if (accountCancellationReasonId == 0)
             {
-                accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
-            }
-            else
-            {
-                accountCancellationReasonId = userType == UserTypeEnum.FREE ?
-                    cancellationSettings.OthersReasonForFreeUser :
-                    cancellationSettings.OthersReasonForPaidUser;
+                var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(user.AccountCancellationReasonId ?? 0);
+                if (cancellationReasonFromDB != null)
+                {
+                    accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
+                }
+                else
+                {
+                    if (user.AccountCancellationReasonId.HasValue)
+                    {
+                        accountCancellationReasonId = user.AccountCancellationReasonId.Value;
+                    }
+                    else
+                    {
+                        accountCancellationReasonId = userType == UserTypeEnum.FREE ?
+                            cancellationSettings.OthersReasonForFreeUser :
+                            cancellationSettings.OthersReasonForPaidUser;
+                    }
+                }
             }
 
             await _userRepository.CancelUser(user.IdUser, accountCancellationReasonId, CancelatedObservationFromMyPlan);
@@ -2542,10 +2557,29 @@ namespace Doppler.BillingUser.Controllers
                 return new NotFoundObjectResult("The user has already been canceled");
             }
 
+            CancellationAccountSettings cancellationSettings = _cancellationAccountSettings.Value;
+            var accountCancellationReasonId = cancellationSettings[cancellationReasonForPaidUser[cancelAccountRequest.CancellationReason]];
             var userAccountCancellationReasonId = (int)EnumExtension.GetEnumValueFromDescription<UserAccountCancellationReasonEnum>(cancelAccountRequest.CancellationReason);
 
+            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(accountCancellationReasonId);
+            if (cancellationReasonFromDB != null)
+            {
+                accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
+            }
+            else
+            {
+                if (user.AccountCancellationReasonId.HasValue)
+                {
+                    accountCancellationReasonId = user.AccountCancellationReasonId.Value;
+                }
+                else
+                {
+                    accountCancellationReasonId = cancellationSettings.OthersReasonForPaidUser;
+                }
+            }
+
             //Set CancellationRequested
-            await _userRepository.SetCancellationRequested(user.IdUser, userAccountCancellationReasonId);
+            await _userRepository.SetCancellationRequested(user.IdUser, userAccountCancellationReasonId, accountCancellationReasonId);
 
             //Save CancellationRequest
             var cancellationReasonDescription = string.Empty;
@@ -2586,10 +2620,29 @@ namespace Doppler.BillingUser.Controllers
                 return new NotFoundObjectResult("The user has already been canceled");
             }
 
+            //Set CancellationRequested
+            CancellationAccountSettings cancellationSettings = _cancellationAccountSettings.Value;
+            var accountCancellationReasonId = cancellationSettings[cancellationReasonForPaidUser[setHasScheduledCancellationRequest.CancellationReason]];
             var userAccountCancellationReasonId = (int)EnumExtension.GetEnumValueFromDescription<UserAccountCancellationReasonEnum>(setHasScheduledCancellationRequest.CancellationReason);
 
-            //Set CancellationRequested
-            await _userRepository.SetCancellationRequested(user.IdUser, userAccountCancellationReasonId);
+            var cancellationReasonFromDB = await _accountCancellationReasonRepository.GetById(accountCancellationReasonId);
+            if (cancellationReasonFromDB != null)
+            {
+                accountCancellationReasonId = cancellationReasonFromDB.AccountCancellationReasonId;
+            }
+            else
+            {
+                if (user.AccountCancellationReasonId.HasValue)
+                {
+                    accountCancellationReasonId = user.AccountCancellationReasonId.Value;
+                }
+                else
+                {
+                    accountCancellationReasonId = cancellationSettings.OthersReasonForPaidUser;
+                }
+            }
+
+            await _userRepository.SetCancellationRequested(user.IdUser, userAccountCancellationReasonId, accountCancellationReasonId);
 
             //Save CancellationRequest
             var cancellationReasonDescription = string.Empty;

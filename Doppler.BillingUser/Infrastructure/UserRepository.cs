@@ -240,7 +240,8 @@ SELECT
     U.IdClientManager,
     U.TrialExpirationDate,
     U.IdResponsabileBilling,
-    U.PaymentMethod
+    U.PaymentMethod,
+    U.IdAccountCancellationReason AS AccountCancellationReasonId
 FROM
     [User] U
 LEFT JOIN
@@ -339,7 +340,7 @@ WHERE
             return userTypePlan;
         }
 
-        public async Task SetCancellationRequested(int idUser, int userAccountCancellationReasonId)
+        public async Task SetCancellationRequested(int idUser, int userAccountCancellationReasonId, int accountCancellationReasonId)
         {
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
@@ -347,11 +348,13 @@ WHERE
 UPDATE [User]
 SET IsCancellationRequested = 1,
     IdUserAccountCancellationReason = @IdUserAccountCancellationReason,
-    UserAccountCancellationReasonText = ''
+    UserAccountCancellationReasonText = '',
+    IdAccountCancellationReason =  @IdAccountCancellationReason
 WHERE IdUser = @IdUser;", new
             {
                 idUser,
-                IdUserAccountCancellationReason = userAccountCancellationReasonId
+                IdUserAccountCancellationReason = userAccountCancellationReasonId,
+                IdAccountCancellationReason = accountCancellationReasonId
             }
             );
         }
