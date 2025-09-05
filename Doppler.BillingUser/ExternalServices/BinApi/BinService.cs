@@ -48,17 +48,18 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
 
                 var binData = await binApiResponse.GetJsonAsync<BankIdentificationNumberResponse>();
 
-                if (binData.Type == "DEBIT")
-                {
-                    response = new IsAllowedCreditCardResponse
-                    {
-                        IsValid = false,
-                        ErrorCode = "IsNotCreditCard"
-                    };
-                }
-                else
-                {
-                    if (!validCreditCard.Contains(binData.Scheme))
+                // TODO: Reinstate debit card check when business decision is made.
+                //if (binData.Type == "DEBIT")
+                //{
+                //    response = new IsAllowedCreditCardResponse
+                //    {
+                //        IsValid = false,
+                //        ErrorCode = "IsNotCreditCard"
+                //    };
+                //}
+                //else
+                //{
+                if (!validCreditCard.Contains(binData.Scheme))
                     {
                         response = new IsAllowedCreditCardResponse
                         {
@@ -66,7 +67,7 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
                             ErrorCode = "IsNotAllowCreditCard"
                         };
                     }
-                }
+                //}
 
                 return response;
             }
