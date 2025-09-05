@@ -543,6 +543,11 @@ namespace Doppler.BillingUser.Controllers
 
                     if (billingCreditPaymentInfo != null)
                     {
+                        _logger.LogError("if (billingCreditPaymentInfo != null)");
+                        string userBillingInfoJson = System.Text.Json.JsonSerializer.Serialize(userBillingInfo);
+                        string billingCreditPaymentInfoJson = System.Text.Json.JsonSerializer.Serialize(billingCreditPaymentInfo);
+                        _logger.LogError(userBillingInfoJson);
+                        _logger.LogError(billingCreditPaymentInfoJson);
                         await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit.Value, billingCreditPaymentInfo);
                     }
                 }

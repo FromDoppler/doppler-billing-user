@@ -9,6 +9,7 @@ using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Model;
 using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System;
@@ -16,6 +17,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,6 +32,7 @@ namespace Doppler.BillingUser.Infrastructure
         private readonly IOptions<CloverSettings> _cloverSettings;
         private readonly ICloverService _cloverService;
         private readonly ITimeCollector _timeCollector;
+        private readonly ILogger<BillingRepository> _logger;
 
         private const int InvoiceBillingTypeQBL = 1;
         private const int UserAccountType = 1;
@@ -51,7 +54,8 @@ namespace Doppler.BillingUser.Infrastructure
             ISapService sapService,
             IOptions<CloverSettings> cloverSettings,
             ICloverService cloverService,
-            ITimeCollector timeCollector)
+            ITimeCollector timeCollector,
+            ILogger<BillingRepository> logger)
         {
             _connectionFactory = connectionFactory;
             _encryptionService = encryptionService;
@@ -60,6 +64,7 @@ namespace Doppler.BillingUser.Infrastructure
             _cloverSettings = cloverSettings;
             _cloverService = cloverService;
             _timeCollector = timeCollector;
+            _logger = logger;
         }
         public async Task<BillingInformation> GetBillingInformation(string email)
         {
@@ -1506,6 +1511,12 @@ WHERE
 
         private async Task UpdateUserPaymentMethod(User user, PaymentMethod paymentMethod)
         {
+            string userJson = System.Text.Json.JsonSerializer.Serialize(user);
+            string paymentMethodJson = System.Text.Json.JsonSerializer.Serialize(paymentMethod);
+
+            _logger.LogError("UpdateUserPaymentMethod");
+            _logger.LogError(userJson);
+            _logger.LogError(paymentMethodJson);
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
