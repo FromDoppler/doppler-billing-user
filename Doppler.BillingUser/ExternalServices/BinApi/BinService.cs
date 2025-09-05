@@ -60,13 +60,13 @@ namespace Doppler.BillingUser.ExternalServices.BinApi
                 //else
                 //{
                 if (!validCreditCard.Contains(binData.Scheme))
+                {
+                    response = new IsAllowedCreditCardResponse
                     {
-                        response = new IsAllowedCreditCardResponse
-                        {
-                            IsValid = false,
-                            ErrorCode = "IsNotAllowCreditCard"
-                        };
-                    }
+                        IsValid = false,
+                        ErrorCode = "IsNotAllowCreditCard"
+                    };
+                }
                 //}
 
                 return response;
