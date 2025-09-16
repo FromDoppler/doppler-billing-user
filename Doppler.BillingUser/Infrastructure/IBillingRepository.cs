@@ -73,5 +73,8 @@ namespace Doppler.BillingUser.Infrastructure
         Task<BillingCredit> GetCurrentBillingCredit(int idUser);
         Task<int> CreateOnSitePlanUserAsync(OnSitePlanUser onSitePlanUser);
         Task<int> CreatePushNotificationPlanUserAsync(PushNotificationPlanUser pushNotificationPlanUser);
+        Task<bool> HasDiscountForAdvancePaymentAsync(int idUser);
+        Task<bool> HadDiscountInLastPeriodAsync(int idUser, int numberOfMonthsToCheck);
+        Task SetPromocodeAsync(int billingCreditId, int promotionId, int? promotionDiscount, int? promotionDuration, int? promotionExtraCredits);
     }
 }

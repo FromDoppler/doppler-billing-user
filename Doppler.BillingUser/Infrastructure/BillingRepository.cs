@@ -1800,5 +1800,68 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
 
             return result.FirstOrDefault();
         }
+
+        public async Task<bool> HasDiscountForAdvancePaymentAsync(int idUser)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+            var discountForAdvancePayment = await connection.QueryFirstOrDefaultAsync<int?>(@"
+SELECT CASE WHEN BC.[IdDiscountPlan] IS NULL OR BC.[TotalMonthPlan] = 1 THEN NULL ELSE BC.[IdDiscountPlan] END
+FROM [dbo].[BillingCredits] BC
+INNER JOIN [dbo].[User] U ON U.[IdCurrentBillingCredit] = [IdBillingCredit]
+WHERE BC.[IdUser] = @idUser;",
+                new
+                {
+                    idUser
+                });
+
+            return discountForAdvancePayment != null;
+        }
+
+        public async Task<bool> HadDiscountInLastPeriodAsync(int idUser, int numberOfMonthsToCheck)
+        {
+            var startPeriod = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month - numberOfMonthsToCheck, 1);
+            var endPeriod = DateTime.UtcNow;
+
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+            var discountForAdvancePayment = await connection.QueryFirstOrDefaultAsync<int?>(@"
+SELECT BC.[IdDiscountPlan]
+FROM [dbo].[BillingCredits] BC
+INNER JOIN [dbo].[User] U ON U.[IdCurrentBillingCredit] = [IdBillingCredit]
+WHERE BC.[IdUser] = @idUser AND
+BC.Date BETWEEN @startPeriod AND @endPeriod AND
+((BC.[IdDiscountPlan] IS NOT NULL AND BC.TotalMonthPlan > 1) OR BC.IdPromotion IS NOT NULL OR BC.DiscountPlanFeeAdmin > 0);",
+                new
+                {
+                    idUser,
+                    startPeriod = startPeriod.ToString("yyyy-mm-dd"),
+                    endPeriod = endPeriod.ToString("yyyy-mm-dd")
+                });
+
+            return discountForAdvancePayment != null;
+        }
+
+        public async Task SetPromocodeAsync(int billingCreditId, int promotionId, int? promotionDiscount, int? promotionDuration, int? promotionExtraCredits)
+        {
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE [BillingCredits] SET
+    [IdPromotion] = @promotionId,
+    [DiscountPlanFeePromotion] = @promotionDiscount,
+    [PromotionDuration] = promotionDuration,
+    [ExtraCreditsPromotion] = @promotionExtraCredits
+WHERE
+    [IdBillingCredit] = @billingCreditId;",
+                new
+                {
+                    billingCreditId,
+                    promotionId,
+                    promotionDiscount,
+                    promotionDuration,
+                    promotionExtraCredits
+                });
+        }
     }
 }

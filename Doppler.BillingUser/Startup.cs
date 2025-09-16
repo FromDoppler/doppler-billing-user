@@ -138,6 +138,7 @@ namespace Doppler.BillingUser
             services.Configure<BinSettings>(Configuration.GetSection(nameof(BinSettings)));
             services.AddScoped<IBinService, BinService>();
             services.Configure<CancellationAccountSettings>(Configuration.GetSection(nameof(CancellationAccountSettings)));
+            services.Configure<DiscountOfferSettings>(Configuration.GetSection(nameof(DiscountOfferSettings)));
             services.AddScoped<IAccountCancellationReasonRepository, AccountCancellationReasonRepository>();
             services.AddScoped<IUserAccountCancellationRequestRepository, UserAccountCancellationRequestRepository>();
             services.AddScoped<IUserAccountCancellationReasonRepository, UserAccountCancellationReasonRepository>();

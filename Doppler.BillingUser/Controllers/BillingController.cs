@@ -27,6 +27,7 @@ using Doppler.BillingUser.Mappers.OnSitePlan;
 using Doppler.BillingUser.Mappers.PaymentMethod;
 using Doppler.BillingUser.Mappers.PaymentStatus;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Reponse;
 using Doppler.BillingUser.Request;
 using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Settings;
@@ -45,6 +46,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.ServiceModel.Channels;
 using System.Threading.Tasks;
 
 namespace Doppler.BillingUser.Controllers
@@ -96,6 +98,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IAccountCancellationReasonRepository _accountCancellationReasonRepository;
         private readonly IUserAccountCancellationRequestRepository _userAccountCancellationRequestRepository;
         private readonly IUserAccountCancellationReasonRepository _userAccountCancellationReasonRepository;
+        private readonly IOptions<DiscountOfferSettings> _discountOfferSettings;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -226,7 +229,8 @@ namespace Doppler.BillingUser.Controllers
             IOptions<CancellationAccountSettings> cancellationAccountSettings,
             IAccountCancellationReasonRepository accountCancellationReasonRepository,
             IUserAccountCancellationRequestRepository userAccountCancellationRequestRepository,
-            IUserAccountCancellationReasonRepository userAccountCancellationReasonRepository)
+            IUserAccountCancellationReasonRepository userAccountCancellationReasonRepository,
+            IOptions<DiscountOfferSettings> discountOfferSettings)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -271,6 +275,7 @@ namespace Doppler.BillingUser.Controllers
             _accountCancellationReasonRepository = accountCancellationReasonRepository;
             _userAccountCancellationRequestRepository = userAccountCancellationRequestRepository;
             _userAccountCancellationReasonRepository = userAccountCancellationReasonRepository;
+            _discountOfferSettings = discountOfferSettings;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -2703,6 +2708,65 @@ namespace Doppler.BillingUser.Controllers
             return new OkObjectResult(message);
         }
 
+        [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER)]
+        [HttpPost("/accounts/{accountname}/apply-discount")]
+        public async Task<IActionResult> ApplyDiscount(string accountname)
+        {
+            User user = await _userRepository.GetUserInformation(accountname);
+            if (user == null)
+            {
+                return new NotFoundObjectResult("The user does not exist");
+            }
+
+            var response = new ApplyDiscountResponse();
+
+            /* Check if the user has an active discount */
+            var hasDiscountForAdvancePayment = await _billingRepository.HasDiscountForAdvancePaymentAsync(user.IdUser);
+            if (hasDiscountForAdvancePayment)
+            {
+                response.HaveActiveDiscount = true;
+                return new OkObjectResult(response);
+            }
+
+            /* Check if the user had a discount in the last period */
+            var hadDiscountInLastPeriod = await _billingRepository.HadDiscountInLastPeriodAsync(user.IdUser, _discountOfferSettings.Value.NumberOfMonthsToCheck);
+            if (hadDiscountInLastPeriod)
+            {
+                response.UsedDiscountLastPeriod = true;
+                return new OkObjectResult(response);
+            }
+
+            /* Assign the corresponding promocode dependig of the plan */
+            var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
+            var userType = currentPlan == null ? UserTypeEnum.FREE : currentPlan.IdUserType;
+            var promocode = userType == UserTypeEnum.INDIVIDUAL ?
+                _discountOfferSettings.Value.PromocodeForCreditsPlan :
+                userType == UserTypeEnum.SUBSCRIBERS ?
+                _discountOfferSettings.Value.PromocodeForContactsPlan :
+                string.Empty;
+
+            if (!string.IsNullOrEmpty(promocode))
+            {
+                var encryptedCode = _encryptionService.EncryptAES256(promocode);
+                var promotion = await _promotionRepository.GetPromotionByCode(encryptedCode, (int)userType, currentPlan.IdUserTypePlan);
+
+                if (promotion == null)
+                {
+                    return new NotFoundObjectResult("The promocode does not exist");
+                }
+
+                var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdUser);
+                await _billingRepository.SetPromocodeAsync(currentBillingCredit.IdBillingCredit, promotion.IdPromotion, promotion.DiscountPercentage, promotion.Duration, promotion.ExtraCredits);
+
+                response.CanApplyDiscount = true;
+                return new OkObjectResult(response);
+            }
+            else
+            {
+                return new NotFoundObjectResult("The promocode does not exist");
+            }
+
+        }
         private async Task SendConsultingOfferEmail(
             string accountName,
             string contactName,
