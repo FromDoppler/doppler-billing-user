@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
+using System.Dynamic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,26 +78,30 @@ namespace Doppler.BillingUser.ExternalServices.EmailSender
                 from emailAddress in cc ?? Enumerable.Empty<string>() select new { email = emailAddress, type = "cc" }).Union(
                 from emailAddress in bcc ?? Enumerable.Empty<string>() select new { email = emailAddress, type = "bcc" }).ToArray();
 
+            dynamic postBody = new ExpandoObject();
+            postBody.from_name = fromName ?? _config.FromName;
+            postBody.from_email = fromAddress ?? _config.FromAddress;
+            postBody.recipients = recipients;
+            postBody.attachments = attachments?.Select(x => new
+            {
+                content_type = x.ContentType.ToString(),
+                base64_content = Convert.ToBase64String(x.Content),
+                filename = x.Filename
+            });
+            postBody.model = templateModel;
+
+            if (replyTo is not null)
+            {
+                postBody.reply_to = new { email = replyTo, name = _config.FromName };
+            }
+
             await _flurlClient.Request(new UriTemplate(_config.SendTemplateUrlTemplate)
                     .AddParameter("accountId", _config.AccountId)
                     .AddParameter("accountName", _config.AccountName)
                     .AddParameter("username", _config.Username)
                     .AddParameter("templateId", templateId)
                     .Resolve())
-                .PostJsonAsync(new
-                {
-                    from_name = fromName ?? _config.FromName,
-                    from_email = fromAddress ?? _config.FromAddress,
-                    recipients = recipients,
-                    attachments = attachments?.Select(x => new
-                    {
-                        content_type = x.ContentType.ToString(),
-                        base64_content = Convert.ToBase64String(x.Content),
-                        filename = x.Filename
-                    }),
-                    model = templateModel,
-                    reply_to = new { email = replyTo ?? _config.ReplyToAddress, name = _config.FromName }
-                }, cancellationToken);
+                .PostJsonAsync((object)postBody, cancellationToken);
         }
     }
 }
