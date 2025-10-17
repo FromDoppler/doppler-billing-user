@@ -60,6 +60,7 @@ namespace Doppler.BillingUser.Test
 
             var templateId = "35ef4282-fd2b-45fa-8b9f-aec5082777d9";
             IEnumerable<string> to = new[] { user.Email };
+            string replyTo = "replyTo@example.com";
 
             var userRepository = new Mock<IUserRepository>();
             userRepository
@@ -137,6 +138,14 @@ namespace Doppler.BillingUser.Test
                     Url = "https://hooks.slack.com/services/test"
                 });
 
+            var relayEmailSenderSettingsMock = new Mock<IOptions<RelayEmailSenderSettings>>();
+            relayEmailSenderSettingsMock
+                .Setup(x => x.Value)
+                .Returns(new RelayEmailSenderSettings
+                {
+                    ReplyToAddress = replyTo
+                });
+
             var chatPlanUserRepositoryMock = new Mock<IChatPlanUserRepository>();
             chatPlanUserRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>())).Returns(Task.FromResult((CurrentPlan)null));
 
@@ -152,6 +161,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(paymentGatewayMock.Object);
                     services.AddSingleton(sapServiceMock.Object);
                     services.AddSingleton(slackSettingsMock.Object);
+                    services.AddSingleton(relayEmailSenderSettingsMock.Object);
                     services.AddSingleton(Mock.Of<IUserPaymentHistoryRepository>());
                     services.AddSingleton(chatPlanUserRepositoryMock.Object);
                 });
@@ -184,7 +194,7 @@ namespace Doppler.BillingUser.Test
                     null,
                     null,
                     null,
-                    null,
+                    replyTo,
                     null,
                     default(CancellationToken)),
                 Times.Once());

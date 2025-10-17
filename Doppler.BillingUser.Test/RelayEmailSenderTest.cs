@@ -50,7 +50,8 @@ namespace Doppler.BillingUser.Test
                     templateId,
                     new { demoData = demoData },
                     new[] { toEmail },
-                    bcc: new[] { bccEmail });
+                    bcc: new[] { bccEmail },
+                    replyTo: configuration.ReplyToAddress);
 
                 // Assert
                 httpTest
