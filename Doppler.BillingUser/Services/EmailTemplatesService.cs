@@ -17,10 +17,12 @@ namespace Doppler.BillingUser.Services
         private readonly IOptions<EmailNotificationsConfiguration> _emailSettings;
         private readonly IEmailSender _emailSender;
         private readonly ITimeCollector _timeCollector;
+        private readonly RelayEmailSenderSettings _config;
 
-        public EmailTemplatesService(IOptions<EmailNotificationsConfiguration> emailSettings, IEmailSender emailSender, ITimeCollector timeCollector)
+        public EmailTemplatesService(IOptions<EmailNotificationsConfiguration> emailSettings, IOptions<RelayEmailSenderSettings> config, IEmailSender emailSender, ITimeCollector timeCollector)
         {
             _emailSettings = emailSettings;
+            _config = config.Value;
             _emailSender = emailSender;
             _timeCollector = timeCollector;
         }
@@ -39,7 +41,8 @@ namespace Doppler.BillingUser.Services
                         amount = newPlan.Fee,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { accountname },
+                    replyTo: _config.ReplyToAddress);
         }
 
         public Task<bool> SendActivatedStandByEmail(string language, string fistName, int standByAmount, string sendTo)
@@ -56,7 +59,8 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.Now.Year,
                         isOnlyOneSubscriber = standByAmount == 1,
                     },
-                    to: new[] { sendTo });
+                    to: new[] { sendTo },
+                    replyTo: _config.ReplyToAddress);
         }
 
         public Task SendNotificationForUpgradePlan(string accountname, User userInformation, UserTypePlanInformation newPlan, UserBillingInformation user, Promotion promotion, string promocode, int discountId, PlanDiscountInformation planDiscountInformation, bool isUpgradePending, bool needSendToBilling)
@@ -87,7 +91,8 @@ namespace Doppler.BillingUser.Services
                         isDiscountWith12Months = planDiscountInformation != null ? planDiscountInformation.MonthPlan == 12 : false,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { accountname },
+                    replyTo: _config.ReplyToAddress);
 
             var templateAdmin = !isUpgradePending ?
                 _emailSettings.Value.UpgradeAccountTemplateAdminTemplateId :
@@ -173,7 +178,8 @@ namespace Doppler.BillingUser.Services
                         availableCreditsQty = partialBalance + newPlan.EmailQty + (promotion != null ? promotion.ExtraCredits ?? 0 : 0),
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { accountname },
+                    replyTo: _config.ReplyToAddress);
 
             var templateAdmin = !isUpgradePending ?
                 _emailSettings.Value.CreditsApprovedAdminTemplateId :
@@ -334,7 +340,8 @@ namespace Doppler.BillingUser.Services
                         isDiscountWith12Months = planDiscountInformation != null ? planDiscountInformation.MonthPlan == 12 : false,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { accountname },
+                    replyTo: _config.ReplyToAddress);
 
             var templateAdmin = _emailSettings.Value.UpdatePlanAdminTemplateId;
 
@@ -480,7 +487,8 @@ namespace Doppler.BillingUser.Services
                         firstName = user.FirstName,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { accountname },
+                    replyTo: _config.ReplyToAddress);
 
             var templateAdmin = isUpgradePending ?
                 _emailSettings.Value.DecliendPaymentMercadoPagoUpgradeAdminTemplateId :
@@ -538,7 +546,8 @@ namespace Doppler.BillingUser.Services
                         isDiscountWith12Months = planDiscountInformation != null ? planDiscountInformation.MonthPlan == 12 : false,
                         year = DateTime.UtcNow.Year
                     },
-                    to: new[] { accountname });
+                    to: new[] { accountname },
+                    replyTo: _config.ReplyToAddress);
 
             var templateAdmin = _emailSettings.Value.UpdatePlanCreditsToMontlyOrContactsAdminTemplateId;
 
@@ -668,6 +677,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
+                    replyTo: _config.ReplyToAddress,
                     cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpgradeLandingAdminTemplateId;
@@ -784,6 +794,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
+                    replyTo: _config.ReplyToAddress,
                     cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpdateLandingAdminTemplateId;
@@ -890,6 +901,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
+                    replyTo: _config.ReplyToAddress,
                     cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpdateConversationPlanAdminTemplateId;
@@ -998,6 +1010,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
+                    replyTo: _config.ReplyToAddress,
                     cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = !isUpgradePending ?
@@ -1092,6 +1105,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
+                    replyTo: _config.ReplyToAddress,
                     cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = _emailSettings.Value.UpdateAddOnPlanAdminTemplateId;
@@ -1242,6 +1256,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
+                    replyTo: _config.ReplyToAddress,
                     cc: [_emailSettings.Value.BillingEmail]);
 
             var templateAdmin = !isUpgradePending ?
@@ -1316,7 +1331,8 @@ namespace Doppler.BillingUser.Services
                         firstName = user.FirstName,
                         year = DateTime.UtcNow.Year
                     },
-                    to: [accountname]);
+                    to: [accountname],
+                    replyTo: _config.ReplyToAddress);
 
             var fee = currentBillingCredit != null ? (decimal?)currentBillingCredit.PlanFee : null;
             var isIndividualPlan = currentBillingCredit != null && currentBillingCredit.IdUserType == (int)UserTypeEnum.INDIVIDUAL;
@@ -1374,7 +1390,7 @@ namespace Doppler.BillingUser.Services
                         year = DateTime.UtcNow.Year
                     },
                     to: [accountname],
-                    cc: [_emailSettings.Value.CustomerExperienceEmail]);
+                    replyTo: _config.ReplyToAddress);
 
             return cancelAddonEmail;
         }
@@ -1393,7 +1409,8 @@ namespace Doppler.BillingUser.Services
                         email = userInformation.Email,
                         year = DateTime.UtcNow.Year
                     },
-                    to: [accountname]);
+                    to: [accountname],
+                    replyTo: _config.ReplyToAddress);
 
             var cancelAddonEmailForCustomer = _emailSender.SafeSendWithTemplateAsync(
                     templateId: templateForCustomer,
