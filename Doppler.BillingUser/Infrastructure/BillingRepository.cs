@@ -1850,5 +1850,24 @@ WHERE
                 });
             return invoice;
         }
+
+        public async Task UpdatePromotionInformationAsync(int idBillingCredit, int? idPromotion, int? durationPromotion, int? discountPromotion)
+        {
+            using var connection = _connectionFactory.GetConnection();
+
+            await connection.ExecuteAsync(@"
+UPDATE [dbo].[BillingCredits]
+SET IdPromotion = @idPromotion,
+    PromotionDuration = @durationPromotion,
+    DiscountPlanFeePromotion = @discountPromotion
+WHERE IdBillingCredit = @idBillingCredit",
+                new
+                {
+                    idPromotion,
+                    durationPromotion,
+                    discountPromotion,
+                    idBillingCredit
+                });
+        }
     }
 }

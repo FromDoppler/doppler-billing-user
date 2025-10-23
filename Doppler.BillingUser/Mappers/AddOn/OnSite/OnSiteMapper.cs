@@ -1,9 +1,6 @@
 using Doppler.BillingUser.Enums;
-using Doppler.BillingUser.ExternalServices.AccountPlansApi;
-using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Sap;
-using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Mappers.BillingCredit.AddOns;
 using Doppler.BillingUser.Mappers.OnSitePlan;
@@ -11,8 +8,6 @@ using Doppler.BillingUser.Model;
 using Doppler.BillingUser.Services;
 using Doppler.BillingUser.Utils;
 using Doppler.BillingUser.Validators;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -176,7 +171,8 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             PlanAmountDetails amountDetails,
             UserBillingInformation userOrClientManagerBillingInformation,
             CurrentPlan currentAddOnPlan,
-            AccountTypeEnum accountType)
+            AccountTypeEnum accountType,
+            Promotion currentPromotion)
         {
             var onSitePlan = await onSitePlanRepository.GetById(buyAddOnPlan.PlanId);
 
@@ -189,7 +185,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
                 }
 
                 var total = onSitePlan.Fee;
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType, currentPromotion);
                 var billingCreditId = await billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 var onSitePlanUserMapper = GetOnSitePlanUserMapper(userOrClientManagerBillingInformation.PaymentMethod);

@@ -19,9 +19,12 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
             _billingRepository = billingRepository;
         }
 
-        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(decimal total, UserBillingInformation user, Model.BillingCredit currentBillingCredit, CreditCardPayment payment, BillingCreditTypeEnum billingCreditType)
+        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(decimal total, UserBillingInformation user, Model.BillingCredit currentBillingCredit, CreditCardPayment payment, BillingCreditTypeEnum billingCreditType, Promotion currentPromotion)
         {
             var currentPaymentMethod = await _billingRepository.GetPaymentMethodByUserName(user.Email);
+            var durationPromotion = currentPromotion?.Duration;
+            var idPromotion = currentPromotion?.IdPromotion;
+            var discountPromotion = currentPromotion?.DiscountPercentage;
 
             var buyCreditAgreement = new BillingCreditAgreement
             {
@@ -44,7 +47,9 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
                 PaymentWay = user.PaymentWay,
                 PaymentType = user.PaymentType,
                 BankName = user.BankName,
-                BankAccount = user.BankAccount
+                BankAccount = user.BankAccount,
+                IdPromotion = idPromotion,
+                PromotionDuration = durationPromotion
             };
 
             DateTime now = DateTime.UtcNow;
@@ -69,7 +74,8 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
                 IdBillingCreditType = (int)billingCreditType,
                 TotalMonthPlan = currentBillingCredit.TotalMonthPlan,
                 IdDiscountPlan = currentBillingCredit.IdDiscountPlan,
-                CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan
+                CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan,
+                DiscountPlanFeePromotion = discountPromotion
             };
 
             buyCreditAgreement.BillingCredit.Payed = buyCreditAgreement.BillingCredit.PaymentDate != null;

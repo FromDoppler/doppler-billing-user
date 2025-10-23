@@ -802,6 +802,9 @@ namespace Doppler.BillingUser.Test
             var userAddOnRepositoryMock = new Mock<IUserAddOnRepository>();
             userAddOnRepositoryMock.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new UserAddOn { IdCurrentBillingCredit = 1 });
 
+            var promotionRepositoryMock = new Mock<IPromotionRepository>();
+            promotionRepositoryMock.Setup(x => x.GetById(It.IsAny<int>())).ReturnsAsync((Promotion)null);
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -821,6 +824,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
+                    services.AddSingleton(promotionRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());
@@ -950,6 +954,9 @@ namespace Doppler.BillingUser.Test
             var userAddOnRepositoryMock = new Mock<IUserAddOnRepository>();
             userAddOnRepositoryMock.Setup(x => x.GetByUserIdAndAddOnType(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(new UserAddOn { IdCurrentBillingCredit = 1 });
 
+            var promotionRepositoryMock = new Mock<IPromotionRepository>();
+            promotionRepositoryMock.Setup(x => x.GetById(It.IsAny<int>())).ReturnsAsync((Promotion)null);
+
             var client = _factory.WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
@@ -970,6 +977,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(userRepositoryMock.Object);
                     services.AddSingleton(paymentGatewayMock.Object);
+                    services.AddSingleton(promotionRepositoryMock.Object);
                 });
 
             }).CreateClient(new WebApplicationFactoryClientOptions());

@@ -74,5 +74,6 @@ namespace Doppler.BillingUser.Infrastructure
         Task<int> CreateOnSitePlanUserAsync(OnSitePlanUser onSitePlanUser);
         Task<int> CreatePushNotificationPlanUserAsync(PushNotificationPlanUser pushNotificationPlanUser);
         Task<AccountingEntry> GetInvoiceByInvoiceId(int invoiceId);
+        Task UpdatePromotionInformationAsync(int idBillingCredit, int? idPromotion, int? durationPromotion, int? discountPromotion);
     }
 }

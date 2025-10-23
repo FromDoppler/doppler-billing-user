@@ -19,9 +19,12 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
             _encryptionService = encryptionService;
         }
 
-        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(decimal total, UserBillingInformation user, Model.BillingCredit currentBillingCredit, CreditCardPayment payment, BillingCreditTypeEnum billingCreditType)
+        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(decimal total, UserBillingInformation user, Model.BillingCredit currentBillingCredit, CreditCardPayment payment, BillingCreditTypeEnum billingCreditType, Promotion currentPromotion)
         {
             var currentPaymentMethod = await _billingRepository.GetPaymentMethodByUserName(user.Email);
+            var durationPromotion = currentPromotion?.Duration;
+            var idPromotion = currentPromotion?.IdPromotion;
+            var discountPromotion = currentPromotion?.DiscountPercentage;
 
             var creditCardData = new
             {
@@ -52,7 +55,9 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
                 RazonSocial = currentPaymentMethod.RazonSocial,
                 ResponsableIVA = user.ResponsableIVA,
                 Cuit = currentPaymentMethod.IdentificationNumber,
-                IdResponsabileBilling = (int)ResponsabileBillingEnum.QBL
+                IdResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
+                IdPromotion = idPromotion,
+                PromotionDuration = durationPromotion
             };
 
             DateTime now = DateTime.UtcNow;
@@ -67,7 +72,8 @@ namespace Doppler.BillingUser.Mappers.BillingCredit.AddOns
                 IdBillingCreditType = (int)billingCreditType,
                 TotalMonthPlan = currentBillingCredit.TotalMonthPlan,
                 IdDiscountPlan = currentBillingCredit.IdDiscountPlan,
-                CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan
+                CurrentMonthPlan = currentBillingCredit.CurrentMonthPlan,
+                DiscountPlanFeePromotion = discountPromotion
             };
 
             return buyCreditAgreement;

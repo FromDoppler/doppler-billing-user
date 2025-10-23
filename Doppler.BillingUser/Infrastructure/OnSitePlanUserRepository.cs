@@ -26,7 +26,9 @@ SELECT
     OSP.[Description],
     BC.IdPaymentMethod AS PaymentMethod,
     OSP.AdditionalPrint AS Additional,
-    OSP.Custom
+    OSP.Custom,
+    BC.IdPromotion AS IdPromotion,
+    BC.DiscountPlanFeePromotion AS DiscountPromotion
 FROM [UserAddOn] UA
 INNER JOIN [BillingCredits] BC ON BC.IdBillingCredit = UA.IdCurrentBillingCredit
 INNER JOIN [OnSitePlanUser] OSPU ON OSPU.IdBillingCredit = BC.IdBillingCredit
