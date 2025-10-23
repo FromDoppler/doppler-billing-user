@@ -14,5 +14,8 @@ namespace Doppler.BillingUser.Model
         public int? Quantity { get; set; }
         public decimal? Additional { get; set; }
         public bool Custom { get; set; }
+        public int? IdPromotion { get; set; }
+        public int? DurationPromotion { get; set; }
+        public int? DiscountPromotion { get; set; }
     }
 }

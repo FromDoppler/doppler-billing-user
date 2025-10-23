@@ -19,15 +19,25 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
             _encryptionService = encryptionService;
         }
 
-        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(AgreementInformation agreementInformation, UserBillingInformation user, UserTypePlanInformation newUserTypePlan, Promotion promotion, CreditCardPayment payment, Model.BillingCredit currentBillingCredit, BillingCreditTypeEnum billingCreditType)
+        public async Task<BillingCreditAgreement> MapToBillingCreditAgreement(AgreementInformation agreementInformation, UserBillingInformation user, UserTypePlanInformation newUserTypePlan, Promotion promotion, CreditCardPayment payment, Model.BillingCredit currentBillingCredit, BillingCreditTypeEnum billingCreditType, Promotion currentPromotion)
         {
             var currentPaymentMethod = await _billingRepository.GetPaymentMethodByUserName(user.Email);
 
             var promotionDuration = (int?)null;
+            int? promotionId = null;
 
             if (promotion != null)
             {
-                promotionDuration = currentBillingCredit != null && currentBillingCredit.PromotionDuration != null ? currentBillingCredit.PromotionDuration : promotion.Duration;
+                promotionDuration = promotion.Duration;
+                promotionId = promotion.IdPromotion;
+            }
+            else
+            {
+                if (currentPromotion != null)
+                {
+                    promotionDuration = currentBillingCredit != null && currentBillingCredit.PromotionDuration != null ? currentBillingCredit.PromotionDuration : currentPromotion.Duration;
+                    promotionId = currentPromotion.IdPromotion;
+                }
             }
 
             var buyCreditAgreement = new BillingCreditAgreement
@@ -47,7 +57,7 @@ namespace Doppler.BillingUser.Mappers.BillingCredit
                 RazonSocial = currentPaymentMethod.RazonSocial,
                 ResponsableIVA = user.ResponsableIVA,
                 Cuit = currentPaymentMethod.IdentificationNumber,
-                IdPromotion = promotion?.IdPromotion,
+                IdPromotion = promotionId,
                 PromotionDuration = promotionDuration
             };
 

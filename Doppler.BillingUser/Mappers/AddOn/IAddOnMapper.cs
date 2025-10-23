@@ -14,7 +14,7 @@ namespace Doppler.BillingUser.Mappers.AddOn
         Task<ValidationResult> CanProceedToBuy(BuyAddOnPlan buyAddOnPlan, int userId, UserBillingInformation userBillingInformation, AccountTypeEnum accountType);
         Task ProceedToBuy(User user, BuyAddOnPlan buyAddOnPlan, UserBillingInformation userBillingInformation, Model.BillingCredit currentBillingCredit,
                             CreditCardPayment payment, PlanAmountDetails amountDetails, UserBillingInformation userOrClientManagerBillingInformation,
-                            CurrentPlan currentAddOnPlan, AccountTypeEnum accountType);
+                            CurrentPlan currentAddOnPlan, AccountTypeEnum accountType, Promotion currentPromotion);
         Task<SapBillingDto> MapAddOnBillingToSapAsync(SapSettings sapSettings, User user, BuyAddOnPlan buyAddOnPlan, string cardNumber, string holderName,
                                                         Model.BillingCredit billingCredit, string authorizationNumber, int invoiceId,
                                                         UserBillingInformation userOrClientManagerBillingInformation, CurrentPlan currentAddOnPlan,

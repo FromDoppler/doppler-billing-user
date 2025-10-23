@@ -70,26 +70,34 @@ WHERE [IdPromotion] = @promocodeId", new
             return promotion;
         }
 
-        public async Task<TimesApplyedPromocode> GetHowManyTimesApplyedPromocode(string code, string accountName)
+        public async Task<TimesApplyedPromocode> GetHowManyTimesApplyedPromocode(string code, string accountName, int planType)
         {
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
             var times = await connection.QueryFirstOrDefaultAsync<TimesApplyedPromocode>(@"
 SELECT
+    MAX(MONTH(B.Date)) AS LastMonthApplied,
+    MAX(YEAR(B.Date)) AS LastYearApplied,
     COUNT(DISTINCT MONTH(B.Date)) AS CountApplied
 FROM
-    [BillingCredits] B
-INNER JOIN [User] U ON U.IdUser = B.IdUser
-INNER JOIN [Promotions] P ON  P.IdPromotion = B.IdPromotion
+    [BillingCredits] B  WITH(NOLOCK)
+INNER JOIN [User] U  WITH(NOLOCK) ON U.IdUser = B.IdUser
+INNER JOIN [Promotions] P  WITH(NOLOCK) ON  P.IdPromotion = B.IdPromotion
 WHERE
     U.Email = @email AND
     U.IdCurrentBillingCredit IS NOT NULL AND
     P.Code = @code AND
-    B.DiscountPlanFeePromotion IS NOT NULL",
+    B.DiscountPlanFeePromotion IS NOT NULL AND
+    ((@planType = 1 AND B.IdBillingCreditType IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17)) OR --Email Marketing
+    (@planType = 2 AND B.IdBillingCreditType IN (28, 29, 30, 31, 32)) OR --Chat
+    (@planType = 3 AND B.IdBillingCreditType IN (23, 24, 25, 26, 27)) OR --Landing
+    (@planType = 4 AND B.IdBillingCreditType IN (34, 35, 36, 37, 38)) OR --OnSite
+    (@planType = 5 AND B.IdBillingCreditType IN (40, 41, 42, 43, 44))) --Push Notification",
                 new
                 {
                     code,
-                    email = accountName
+                    email = accountName,
+                    planType
                 });
 
             return times;
@@ -136,6 +144,40 @@ WHERE
                     @individual = (int)UserTypeEnum.INDIVIDUAL,
                     @subscribers = (int)UserTypeEnum.SUBSCRIBERS,
                     @monthly = (int)UserTypeEnum.MONTHLY,
+                    @now = DateTime.Now
+                });
+
+            return promotion;
+        }
+
+        public async Task<Promotion> GetAddOnPromotionByCodeAndAddOnType(string code, int addOnTypeId)
+        {
+            using var _ = _timeCollector.StartScope();
+            using var connection = _connectionFactory.GetConnection();
+
+            var promotion = await connection.QueryFirstOrDefaultAsync<Promotion>(@"
+SELECT
+    AP.[IdPromotion],
+    AP.[CreationDate],
+    [ExpiringDate],
+    [TimesUsed],
+    [TimesToUse],
+    AP.[Code],
+    AP.[Active],
+    AP.Discount as DiscountPercentage,
+    AP.[Duration]
+FROM [AddOnPromotion] AP  WITH(NOLOCK)
+INNER JOIN [Promotions] P WITH(NOLOCK) ON P.IdPromotion = AP.IdPromotion
+WHERE
+    AP.[Code] = @code AND
+    AP.[IdAddOnType] = @addOnTypeId AND
+    (AP.[Active] = 1) AND
+    ([TimesToUse] is null OR [TimesToUse] > [TimesUsed]) AND
+    ([ExpiringDate] is null OR [ExpiringDate] >= @now)",
+                new
+                {
+                    code,
+                    addOnTypeId,
                     @now = DateTime.Now
                 });
 

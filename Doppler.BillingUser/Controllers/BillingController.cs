@@ -39,6 +39,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -1242,7 +1243,7 @@ namespace Doppler.BillingUser.Controllers
                 if (currentPlan == null)
                 {
                     var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-                    var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, null, BillingCreditTypeEnum.UpgradeRequest);
+                    var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, null, BillingCreditTypeEnum.UpgradeRequest, null);
                     marketingBillingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
                     user.IdCurrentBillingCredit = marketingBillingCreditId;
                     user.OriginInbound = agreementInformation.OriginInbound;
@@ -1846,7 +1847,7 @@ namespace Doppler.BillingUser.Controllers
                 var billingCreditMapper = GetAddOnBillingCreditMapper(user.PaymentMethod);
 
                 var total = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType, null);
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 /* Save current billing credit in the UserAddOn table */
@@ -2061,7 +2062,7 @@ namespace Doppler.BillingUser.Controllers
 
                 var total = buyLandingPlans.LandingPlans.Sum(l => l.PackQty * l.Fee);
                 var userFromCM = await _userRepository.GetUserBillingInformation(accountname);
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userFromCM, currentBillingCredit, payment, billingCreditType);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userFromCM, currentBillingCredit, payment, billingCreditType, null);
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 /* Save current billing credit in the UserAddOn table */
@@ -3043,7 +3044,7 @@ namespace Doppler.BillingUser.Controllers
                 var billingCreditMapper = GetAddOnBillingCreditMapper(userOrClientManagerBillingInformation.PaymentMethod);
 
                 var total = onSitePlan.Fee;
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType, null);
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 var onSitePlanUserMapper = GetOnSitePlanUserMapper(userOrClientManagerBillingInformation.PaymentMethod);
@@ -3166,11 +3167,41 @@ namespace Doppler.BillingUser.Controllers
 
             var currentBillingCredit = await _billingRepository.GetCurrentBillingCredit(user.IdUser);
             var planType = addOnType == AddOnType.OnSite ? (int)PlanTypeEnum.OnSite : addOnType == AddOnType.PushNotification ? (int)PlanTypeEnum.PushNotification : 0;
-            PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, planType, buyAddOnPlan.PlanId, currentBillingCredit.IdDiscountPlan ?? 0, string.Empty);
+
+            //var promotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
+            //var promocode = string.Empty;
+
+            //if (promotion != null)
+            //{
+            //    promocode = _encryptionService.DecryptAES256(promotion.Code);
+            //    var timesAppliedPromocode = await _promotionRepository.GetHowManyTimesApplyedPromocode(promotion.Code, user.Email, planType);
+            //    if (promotion.Duration == timesAppliedPromocode.CountApplied)
+            //    {
+            //        promotion = null;
+            //    }
+            //}
+
+            var promocode = string.Empty;
+            Promotion currentPromotion = null;
 
             var currentAddOnPlan = await addOnMapper.GetCurrentPlanAsync(accountname);
+            if (currentAddOnPlan != null && currentAddOnPlan.IdPromotion != null && (!currentAddOnPlan.DurationPromotion.HasValue || currentAddOnPlan.DurationPromotion >= 1))
+            {
+                var promotion = await _promotionRepository.GetById(currentAddOnPlan.IdPromotion.Value);
+                promocode = promotion != null ? _encryptionService.DecryptAES256(promotion.Code) : string.Empty;
+                currentPromotion = new Promotion { DiscountPercentage = currentAddOnPlan.DiscountPromotion, Duration = currentAddOnPlan.DurationPromotion };
+            }
+            else
+            {
+                var promotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
+                var code = promotion != null ? promotion.Code : string.Empty;
+                currentPromotion = await _promotionRepository.GetAddOnPromotionByCodeAndAddOnType(code, (int)addOnType);
+                promocode = promotion != null ? _encryptionService.DecryptAES256(promotion.Code) : string.Empty;
+            }
 
-            await addOnMapper.ProceedToBuy(user, buyAddOnPlan, userBillingInformation, currentBillingCredit, payment, amountDetails, userOrClientManagerBillingInformation, currentAddOnPlan, accountType);
+            PlanAmountDetails amountDetails = await _accountPlansService.GetCalculateAmountToUpgrade(user.Email, planType, buyAddOnPlan.PlanId, currentBillingCredit.IdDiscountPlan ?? 0, promocode);
+
+            await addOnMapper.ProceedToBuy(user, buyAddOnPlan, userBillingInformation, currentBillingCredit, payment, amountDetails, userOrClientManagerBillingInformation, currentAddOnPlan, accountType, currentPromotion);
 
             if (buyAddOnPlan.Total.GetValueOrDefault() > 0 &&
                     ((userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC) ||
@@ -3488,21 +3519,24 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
+
+                Promotion currentPromotion = null;
+
                 if (currentBillingCredit != null)
                 {
-                    promotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
-                    if (promotion != null)
+                    currentPromotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
+                    if (currentPromotion != null)
                     {
-                        var timesAppliedPromocode = await _promotionRepository.GetHowManyTimesApplyedPromocode(promotion.Code, user.Email);
-                        if (promotion.Duration == timesAppliedPromocode.CountApplied)
+                        var timesAppliedPromocode = await _promotionRepository.GetHowManyTimesApplyedPromocode(currentPromotion.Code, user.Email, (int)PlanTypeEnum.Marketing);
+                        if (currentPromotion.Duration == timesAppliedPromocode.CountApplied)
                         {
-                            promotion = null;
+                            currentPromotion = null;
                         }
                     }
                 }
 
                 var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Upgrade_Between_Monthlies);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Upgrade_Between_Monthlies, currentPromotion);
                 billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
 
                 var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
@@ -3554,7 +3588,7 @@ namespace Doppler.BillingUser.Controllers
             await _billingRepository.CreateMovementBalanceAdjustmentAsync(user.IdUser, creditsLeft, UserTypeEnum.INDIVIDUAL, UserTypeEnum.MONTHLY);
 
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-            var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Monthly);
+            var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Monthly, null);
             billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
 
             var billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
@@ -3596,21 +3630,33 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
+
+                Promotion currentPromotion = null;
                 if (currentBillingCredit != null)
                 {
-                    promotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
-                    if (promotion != null)
+                    currentPromotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
+                    if (currentPromotion != null)
                     {
-                        var timesAppliedPromocode = await _promotionRepository.GetHowManyTimesApplyedPromocode(promotion.Code, user.Email);
-                        if (promotion.Duration == timesAppliedPromocode.CountApplied)
+                        var promotionForNewPlanId = await _promotionRepository.GetPromotionByCode(currentPromotion.Code, (int)newPlan.IdUserType, agreementInformation.PlanId);
+                        if (promotionForNewPlanId != null)
                         {
-                            promotion = null;
+                            var timesAppliedPromocode = await _promotionRepository.GetHowManyTimesApplyedPromocode(promotionForNewPlanId.Code, user.Email, (int)PlanTypeEnum.Marketing);
+                            if (currentPromotion.Duration == timesAppliedPromocode.CountApplied)
+                            {
+                                currentPromotion = null;
+                            }
+                        }
+                        else
+                        {
+                            currentPromotion = null;
                         }
                     }
                 }
 
+                await UpdateAddonPromotionWhenChangePromocode(user.IdUser, promotion ?? currentPromotion);
+
                 var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Upgrade_Between_Subscribers);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Upgrade_Between_Subscribers, currentPromotion);
                 billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
                 billingCreditAgreement.BillingCredit.ActivationDate = DateTime.UtcNow;
 
@@ -3627,6 +3673,9 @@ namespace Doppler.BillingUser.Controllers
 
                 if (promotion != null)
                     await _promotionRepository.IncrementUsedTimes(promotion);
+
+                if (currentPromotion != null)
+                    await _promotionRepository.IncrementUsedTimes(currentPromotion);
 
                 var status = PaymentStatusEnum.Approved.ToDescription();
                 await CreateUserPaymentHistory(user.IdUser, (int)user.PaymentMethod, agreementInformation.PlanId, status, billingCreditId, string.Empty, Source);
@@ -3666,7 +3715,22 @@ namespace Doppler.BillingUser.Controllers
 
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-            var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Subscribers);
+
+            Promotion currentPromotion = null;
+            if (currentBillingCredit != null)
+            {
+                currentPromotion = await _promotionRepository.GetById(currentBillingCredit.IdPromotion ?? 0);
+                if (currentPromotion != null)
+                {
+                    var timesAppliedPromocode = await _promotionRepository.GetHowManyTimesApplyedPromocode(currentPromotion.Code, user.Email, (int)PlanTypeEnum.Marketing);
+                    if (currentPromotion.Duration == timesAppliedPromocode.CountApplied)
+                    {
+                        currentPromotion = null;
+                    }
+                }
+            }
+
+            var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, BillingCreditTypeEnum.Individual_to_Subscribers, currentPromotion);
 
             billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
             billingCreditAgreement.BillingCredit.ActivationDate = DateTime.UtcNow;
@@ -3699,7 +3763,7 @@ namespace Doppler.BillingUser.Controllers
             var currentBillingCredit = await _billingRepository.GetBillingCredit(user.IdCurrentBillingCredit.Value);
             var billingCreditType = user.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Credit_Buyed_CC : BillingCreditTypeEnum.Credit_Request;
             var billingCreditMapper = GetBillingCreditMapper(user.PaymentMethod);
-            var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, billingCreditType);
+            var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(agreementInformation, user, newPlan, promotion, payment, currentBillingCredit, billingCreditType, null);
             billingCreditAgreement.BillingCredit.DiscountPlanFeeAdmin = currentBillingCredit.DiscountPlanFeeAdmin;
 
             if (isPaymentPending)
@@ -3935,7 +3999,7 @@ namespace Doppler.BillingUser.Controllers
                     var billingCreditMapper = GetAddOnBillingCreditMapper(paymentMethod);
 
                     var total = chatPlan.Fee;
-                    var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType);
+                    var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, user, currentBillingCredit, payment, billingCreditType, null);
 
                     billingCreditId = await _billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
@@ -4114,6 +4178,28 @@ namespace Doppler.BillingUser.Controllers
             if (sendNotificationEmail)
             {
                 await _emailTemplatesService.SendNotificationForCancelAddOnPlan(user.Email, user, (AddOnType)userAddOn.IdAddOnType);
+            }
+        }
+
+        private async Task UpdateAddonPromotionWhenChangePromocode(int userId, Promotion promotion)
+        {
+            var addOnsByUserId = await _userAddOnRepository.GetAllByUserIdAsync(userId);
+
+            foreach (var addOn in addOnsByUserId)
+            {
+                var promoCode = promotion != null ? promotion.Code : string.Empty;
+                var addOnPromotion = await _promotionRepository.GetAddOnPromotionByCodeAndAddOnType(promoCode, addOn.IdAddOnType);
+                var billingCredit = await _billingRepository.GetBillingCredit(addOn.IdCurrentBillingCredit);
+
+                if (billingCredit != null)
+                {
+                    var idBillingCredit = billingCredit.IdBillingCredit;
+                    var idPromotion = addOnPromotion != null ? addOnPromotion.IdPromotion : (int?)null;
+                    var durationPromotion = addOnPromotion != null ? addOnPromotion.Duration : (int?)null;
+                    var discountPromotion = addOnPromotion != null ? addOnPromotion.DiscountPercentage : (int?)null;
+
+                    await _billingRepository.UpdatePromotionInformationAsync(idBillingCredit, idPromotion, durationPromotion, discountPromotion);
+                }
             }
         }
     }

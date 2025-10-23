@@ -171,7 +171,8 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
             PlanAmountDetails amountDetails,
             UserBillingInformation userOrClientManagerBillingInformation,
             CurrentPlan currentAddOnPlan,
-            AccountTypeEnum accountType)
+            AccountTypeEnum accountType,
+            Promotion currentPromotion)
         {
             var pushNotificationPlan = await pushNotificationPlanRepository.GetById(buyAddOnPlan.PlanId);
 
@@ -184,7 +185,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.PushNotification
                 }
 
                 var total = pushNotificationPlan.Fee;
-                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType);
+                var billingCreditAgreement = await billingCreditMapper.MapToBillingCreditAgreement(total, userBillingInformation, currentBillingCredit, payment, billingCreditType, currentPromotion);
                 var billingCreditId = await billingRepository.CreateBillingCreditAsync(billingCreditAgreement);
 
                 var pushNotificationPlanUser = new PushNotificationPlanUser
