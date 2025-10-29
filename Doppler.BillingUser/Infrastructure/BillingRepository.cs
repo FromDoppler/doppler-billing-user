@@ -1538,7 +1538,8 @@ SET
     PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
     RazonSocial = @razonSocial,
     IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling
+    IdResponsabileBilling = @idResponsabileBilling,
+    WorldPayToken = @worldPayToken
 WHERE
     IdUser = @IdUser;",
             new
@@ -1553,7 +1554,8 @@ WHERE
                 @paymentMethodName = paymentMethod.PaymentMethodName,
                 @razonSocial = paymentMethod.RazonSocial,
                 @idConsumerType = paymentMethod.IdConsumerType,
-                @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL
+                @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
+                @worldPayToken = user.WorldPayToken
             });
         }
 

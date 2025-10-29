@@ -48,6 +48,6 @@ namespace Doppler.BillingUser.Model
         public int? IdClientManager { get; set; }
         public DateTime? TrialExpirationDate { get; set; }
         public int? AccountCancellationReasonId { get; set; }
-
+        public string WorldPayToken { get; set; }
     }
 }
