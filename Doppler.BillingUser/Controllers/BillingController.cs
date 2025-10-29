@@ -11,6 +11,7 @@ using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.MercadoPagoApi;
+using Doppler.BillingUser.ExternalServices.PaymentsApi;
 using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.ExternalServices.Slack;
 using Doppler.BillingUser.ExternalServices.StaticDataCllient;
@@ -96,6 +97,7 @@ namespace Doppler.BillingUser.Controllers
         private readonly IAccountCancellationReasonRepository _accountCancellationReasonRepository;
         private readonly IUserAccountCancellationRequestRepository _userAccountCancellationRequestRepository;
         private readonly IUserAccountCancellationReasonRepository _userAccountCancellationReasonRepository;
+        private readonly IPaymentsService _paymentsService;
 
         private readonly IFileStorage _fileStorage;
         private readonly JsonSerializerSettings settings = new JsonSerializerSettings
@@ -226,7 +228,8 @@ namespace Doppler.BillingUser.Controllers
             IOptions<CancellationAccountSettings> cancellationAccountSettings,
             IAccountCancellationReasonRepository accountCancellationReasonRepository,
             IUserAccountCancellationRequestRepository userAccountCancellationRequestRepository,
-            IUserAccountCancellationReasonRepository userAccountCancellationReasonRepository)
+            IUserAccountCancellationReasonRepository userAccountCancellationReasonRepository,
+            IPaymentsService paymentsService)
         {
             _logger = logger;
             _billingRepository = billingRepository;
@@ -271,6 +274,7 @@ namespace Doppler.BillingUser.Controllers
             _accountCancellationReasonRepository = accountCancellationReasonRepository;
             _userAccountCancellationRequestRepository = userAccountCancellationRequestRepository;
             _userAccountCancellationReasonRepository = userAccountCancellationReasonRepository;
+            _paymentsService = paymentsService;
         }
 
         [Authorize(Policies.OWN_RESOURCE_OR_SUPERUSER_OR_PROVISORY_USER)]
@@ -410,6 +414,14 @@ namespace Doppler.BillingUser.Controllers
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "BIN validation error");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
+                    {
+                        var paymentToken = await _paymentsService.GeneratePaymentToken(paymentMethod.WorldPayLowValueToken, paymentMethod.CCNumber);
+                        await _slackService.SendNotification($"WorldPay token generated - {paymentToken}");
+                        _logger.LogInformation("WorldPay token generated - {paymentToken}", paymentToken);
+                        userInformation.WorldPayToken = paymentToken;
                     }
                 }
                 else
