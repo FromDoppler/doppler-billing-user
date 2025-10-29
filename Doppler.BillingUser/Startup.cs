@@ -29,6 +29,7 @@ using Doppler.BillingUser.ExternalServices.Clover;
 using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.ExternalServices.BeplicApi;
 using Doppler.BillingUser.ExternalServices.BinApi;
+using Doppler.BillingUser.ExternalServices.PaymentsApi;
 
 namespace Doppler.BillingUser
 {
@@ -141,6 +142,8 @@ namespace Doppler.BillingUser
             services.AddScoped<IAccountCancellationReasonRepository, AccountCancellationReasonRepository>();
             services.AddScoped<IUserAccountCancellationRequestRepository, UserAccountCancellationRequestRepository>();
             services.AddScoped<IUserAccountCancellationReasonRepository, UserAccountCancellationReasonRepository>();
+            services.Configure<PaymentsSettings>(Configuration.GetSection(nameof(PaymentsSettings)));
+            services.AddScoped<IPaymentsService, PaymentsService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -241,7 +241,8 @@ SELECT
     U.TrialExpirationDate,
     U.IdResponsabileBilling,
     U.PaymentMethod,
-    U.IdAccountCancellationReason AS AccountCancellationReasonId
+    U.IdAccountCancellationReason AS AccountCancellationReasonId,
+    U.WorldPayToken
 FROM
     [User] U
 LEFT JOIN
