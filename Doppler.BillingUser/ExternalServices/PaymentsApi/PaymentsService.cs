@@ -9,6 +9,9 @@ using System;
 using System.Threading.Tasks;
 using Tavis.UriTemplates;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Doppler.BillingUser.Controllers;
+using Newtonsoft.Json;
 
 namespace Doppler.BillingUser.ExternalServices.PaymentsApi
 {
@@ -16,21 +19,29 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
     {
         private readonly IOptions<PaymentsSettings> _options;
         private readonly IFlurlClient _flurlClient;
+        private readonly ILogger _logger;
 
-        public PaymentsService(IOptions<PaymentsSettings> options, IFlurlClientFactory flurlClientFactory)
+        public PaymentsService(ILogger<PaymentsService> logger, IOptions<PaymentsSettings> options, IFlurlClientFactory flurlClientFactory)
         {
             _options = options;
             _flurlClient = flurlClientFactory.Get(_options.Value.BaseUrl);
+            _logger = logger;
         }
 
         public async Task<string> GeneratePaymentToken(string WorldPayLowValueToken, string CardNumber)
         {
             try
             {
+                var body = new { cardNumber = CardNumber, worldPayLowValueToken = WorldPayLowValueToken };
+
+                _logger.LogInformation($"Token - Json request: {JsonConvert.SerializeObject(body)}");
+
                 var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/token")
                                 .Resolve())
-                                .PostJsonAsync(new { cardNumber = CardNumber, worldPayLowValueToken = WorldPayLowValueToken })
+                                .PostJsonAsync(body)
                                 .ReceiveJson<PaymentTokenResponse>();
+
+                _logger.LogInformation($"Token - Json response: {JsonConvert.SerializeObject(response)}");
 
                 if (response?.DeregistrationLohiResponse == null)
                 {
@@ -74,10 +85,16 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
         {
             try
             {
+                var body = new { token = paymentToken, amount };
+
+                _logger.LogInformation($"Purchase - Json request: {JsonConvert.SerializeObject(body)}");
+
                 var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/purchase")
                                 .Resolve())
-                                .PostJsonAsync(new { token = paymentToken, amount })
+                                .PostJsonAsync(body)
                                 .ReceiveJson<PurchaseResponse>();
+
+                _logger.LogInformation($"Purchase - Json response: {JsonConvert.SerializeObject(response)}");
 
                 if (response?.CreditPurchaseResponse == null)
                 {
