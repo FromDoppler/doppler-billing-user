@@ -69,5 +69,43 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
                 throw;
             }
         }
+
+        public async Task<string> Purchase(string paymentToken, decimal amount)
+        {
+            try
+            {
+                var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/purchase")
+                                .Resolve())
+                                .PostJsonAsync(new { token = paymentToken, amount })
+                                .ReceiveJson<PurchaseResponse>();
+
+                if (response?.CreditPurchaseResponse == null)
+                {
+                    throw new Exception("Payment API returned null or invalid response");
+                }
+
+                if (!response.CreditPurchaseResponse.IsSuccessful)
+                {
+                    var errorMessage = $"purchase failed. ReturnCode: {response.CreditPurchaseResponse.ReturnCode}, " +
+                                        $"ReasonCode: {response.CreditPurchaseResponse.ReasonCode}, " +
+                                        $"ResponseCode: {response.CreditPurchaseResponse.ResponseCode}, ";
+                    throw new Exception(errorMessage);
+                }
+
+                return response?.CreditPurchaseResponse.ReferenceTraceNumbers.AuthorizationNumber;
+            }
+            catch (FlurlHttpException ex)
+            {
+                var errorMessage = $"HTTP error calling Payment API: {ex.StatusCode}";
+                var responseBody = await ex.GetResponseStringAsync();
+                errorMessage += $", Response: {responseBody}";
+
+                throw new Exception(errorMessage, ex);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
     }
 }
