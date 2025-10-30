@@ -1,17 +1,13 @@
-using Doppler.BillingUser.ExternalServices.BinApi;
-using Doppler.BillingUser.ExternalServices.BinApi.Responses;
+using Doppler.BillingUser.Authorization;
 using Doppler.BillingUser.ExternalServices.PaymentsApi.Responses;
 using Flurl.Http;
 using Flurl.Http.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Net;
+using Newtonsoft.Json;
 using System;
 using System.Threading.Tasks;
 using Tavis.UriTemplates;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Doppler.BillingUser.Controllers;
-using Newtonsoft.Json;
 
 namespace Doppler.BillingUser.ExternalServices.PaymentsApi
 {
@@ -20,12 +16,18 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
         private readonly IOptions<PaymentsSettings> _options;
         private readonly IFlurlClient _flurlClient;
         private readonly ILogger _logger;
+        private readonly IJwtTokenGenerator _jwtTokenGenerator;
 
-        public PaymentsService(ILogger<PaymentsService> logger, IOptions<PaymentsSettings> options, IFlurlClientFactory flurlClientFactory)
+        public PaymentsService(
+            ILogger<PaymentsService> logger,
+            IOptions<PaymentsSettings> options,
+            IFlurlClientFactory flurlClientFactory,
+            IJwtTokenGenerator jwtTokenGenerator)
         {
             _options = options;
             _flurlClient = flurlClientFactory.Get(_options.Value.BaseUrl);
             _logger = logger;
+            _jwtTokenGenerator = jwtTokenGenerator;
         }
 
         public async Task<string> GeneratePaymentToken(string WorldPayLowValueToken, string CardNumber)
@@ -38,6 +40,7 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
 
                 var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/token")
                                 .Resolve())
+                                .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
                                 .PostJsonAsync(body)
                                 .ReceiveJson<PaymentTokenResponse>();
 
@@ -91,6 +94,7 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
 
                 var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/purchase")
                                 .Resolve())
+                                .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
                                 .PostJsonAsync(body)
                                 .ReceiveJson<PurchaseResponse>();
 
