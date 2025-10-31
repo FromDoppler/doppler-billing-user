@@ -57,7 +57,9 @@ SELECT
     U.IsCancelated,
     U.UpgradePending,
     U.TaxRegime,
-    U.Cbu
+    U.Cbu,
+    U.WorldPayToken,
+    U.LastFourDigitsCCNumber
 FROM
     [User] U
     LEFT JOIN
@@ -242,7 +244,8 @@ SELECT
     U.IdResponsabileBilling,
     U.PaymentMethod,
     U.IdAccountCancellationReason AS AccountCancellationReasonId,
-    U.WorldPayToken
+    U.WorldPayToken,
+    U.LastFourDigitsCCNumber
 FROM
     [User] U
 LEFT JOIN

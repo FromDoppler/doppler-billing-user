@@ -1,6 +1,7 @@
 using Doppler.BillingUser.Enums;
 using Doppler.BillingUser.ExternalServices.EmailSender;
 using Doppler.BillingUser.ExternalServices.FirstData;
+using Doppler.BillingUser.ExternalServices.PaymentsApi;
 using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Infrastructure;
 using Doppler.BillingUser.Model;
@@ -191,6 +192,15 @@ namespace Doppler.BillingUser.Test
             var emailSenderMock = new Mock<IEmailSender>();
             emailSenderMock.Setup(x => x.SafeSendWithTemplateAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>(), It.IsAny<IEnumerable<string>>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IEnumerable<Attachment>>(), It.IsAny<CancellationToken>()));
 
+            var paymentServiceMock = new Mock<IPaymentsService>();
+            paymentServiceMock.Setup(x => x.Purchase(
+                It.IsAny<string>(),
+                It.IsAny<decimal>(),
+                It.IsAny<string>(),
+                It.IsAny<BillingUser.ExternalServices.FirstData.CreditCard>(),
+                It.IsAny<int>(),
+                It.IsAny<bool>(),
+                It.IsAny<string>())).ReturnsAsync("123456");
 
             var client = _factory.WithWebHostBuilder(builder =>
             {
@@ -200,6 +210,7 @@ namespace Doppler.BillingUser.Test
                     services.AddSingleton(paymentGatewayMock.Object);
                     services.AddSingleton(billingRepositoryMock.Object);
                     services.AddSingleton(emailSenderMock.Object);
+                    services.AddSingleton(paymentServiceMock.Object);
                 });
             }).CreateClient(new WebApplicationFactoryClientOptions());
 

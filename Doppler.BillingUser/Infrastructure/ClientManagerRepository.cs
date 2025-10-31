@@ -56,7 +56,9 @@ SELECT
     CM.IsCancelated,
     0 AS UpgradePending,
     0 AS TaxRegime,
-    '' AS Cbu
+    '' AS Cbu,
+    U.WorldPayToken,
+    U.LastFourDigitsCCNumber
 FROM ClientManager CM
 LEFT JOIN State CMS ON CM.IdBillingState = CMS.IdState
 WHERE CM.IdClientManager =  @idClientManager;",
