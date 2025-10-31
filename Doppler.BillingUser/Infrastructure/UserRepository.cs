@@ -57,7 +57,8 @@ SELECT
     U.IsCancelated,
     U.UpgradePending,
     U.TaxRegime,
-    U.Cbu
+    U.Cbu,
+    U.WorldPayToken
 FROM
     [User] U
     LEFT JOIN

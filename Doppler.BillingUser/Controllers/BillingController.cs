@@ -455,31 +455,34 @@ namespace Doppler.BillingUser.Controllers
                     return new BadRequestObjectResult("Failed at updating payment");
                 }
 
-                /* Create or update the customer in clover if it not exists or change the credit card */
-                if (_cloverSettings.Value.UseCloverApi)
+                if (string.IsNullOrEmpty(userInformation.WorldPayToken))
                 {
-                    if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
+                    /* Create or update the customer in clover if it not exists or change the credit card */
+                    if (_cloverSettings.Value.UseCloverApi)
                     {
-                        var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
-                        var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await _cloverService.IsValidCreditCard(accountname, encryptedCreditCard, userInformation.IdUser, true);
-                        if (validCc)
+                        if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
                         {
-                            var customer = await _cloverService.GetCustomerAsync(accountname);
-                            if (customer == null)
+                            var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
+                            var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await _cloverService.IsValidCreditCard(accountname, encryptedCreditCard, userInformation.IdUser, true);
+                            if (validCc)
                             {
-                                await _cloverService.CreateCustomerAsync(accountname, _encryptionService.DecryptAES256(encryptedCreditCard.HolderName), encryptedCreditCard);
-                            }
-                            else
-                            {
-                                var creditCardNumber = _encryptionService.DecryptAES256(encryptedCreditCard.Number);
-                                var first6 = creditCardNumber[0..6];
-                                var last4 = creditCardNumber[^4..];
-
-                                var currentCreditCard = customer.Cards.Elements.FirstOrDefault();
-
-                                if (currentCreditCard.First6 != first6 || currentCreditCard.Last4 != last4)
+                                var customer = await _cloverService.GetCustomerAsync(accountname);
+                                if (customer == null)
                                 {
-                                    await _cloverService.UpdateCustomerAsync(accountname, _encryptionService.DecryptAES256(encryptedCreditCard.HolderName), encryptedCreditCard, customer.Id);
+                                    await _cloverService.CreateCustomerAsync(accountname, _encryptionService.DecryptAES256(encryptedCreditCard.HolderName), encryptedCreditCard);
+                                }
+                                else
+                                {
+                                    var creditCardNumber = _encryptionService.DecryptAES256(encryptedCreditCard.Number);
+                                    var first6 = creditCardNumber[0..6];
+                                    var last4 = creditCardNumber[^4..];
+
+                                    var currentCreditCard = customer.Cards.Elements.FirstOrDefault();
+
+                                    if (currentCreditCard.First6 != first6 || currentCreditCard.Last4 != last4)
+                                    {
+                                        await _cloverService.UpdateCustomerAsync(accountname, _encryptionService.DecryptAES256(encryptedCreditCard.HolderName), encryptedCreditCard, customer.Id);
+                                    }
                                 }
                             }
                         }
@@ -687,7 +690,7 @@ namespace Doppler.BillingUser.Controllers
                                 };
                             }
 
-                            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false, encryptedCreditCard, string.Empty);
+                            payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, false, false, encryptedCreditCard, user.WorldPayToken);
 
                             var accountEntyMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
                             AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment, AccountTypeEnum.User);
@@ -926,7 +929,7 @@ namespace Doppler.BillingUser.Controllers
 
             var currentPlan = await _userRepository.GetUserCurrentTypePlan(user.IdUser);
 
-            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null, true, encryptedCreditCard, string.Empty);
+            var payment = await CreateCreditCardPayment(invoice.Amount, user.IdUser, accountname, userBillingInfo.PaymentMethod, currentPlan == null, true, encryptedCreditCard, user.WorldPayToken);
 
             if (payment.Status == PaymentStatusEnum.DeclinedPaymentTransaction)
             {
@@ -1195,6 +1198,7 @@ namespace Doppler.BillingUser.Controllers
                 if (agreementInformation.Total.GetValueOrDefault() > 0 &&
                     (user.PaymentMethod == PaymentMethodEnum.CC || user.PaymentMethod == PaymentMethodEnum.MP))
                 {
+                    var currentUser = await _userRepository.GetUserInformation(user.Email);
                     encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
 
                     if (encryptedCreditCard == null)
@@ -1208,7 +1212,7 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod, currentPlan == null, false, encryptedCreditCard, string.Empty);
+                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, user.IdUser, accountname, user.PaymentMethod, currentPlan == null, false, encryptedCreditCard, currentUser.WorldPayToken);
 
                     var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
                     AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, user, newPlan, payment, AccountTypeEnum.User);
@@ -1538,7 +1542,7 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, clientManager.IdUser, accountname, clientManager.PaymentMethod, false, false, encryptedCreditCard, string.Empty);
+                    payment = await CreateCreditCardPayment(agreementInformation.Total.Value, clientManager.IdUser, accountname, clientManager.PaymentMethod, false, false, encryptedCreditCard, clientManager.WorldPayToken);
 
                     var accountEntyMapper = GetAccountingEntryMapper(clientManager.PaymentMethod);
                     AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(agreementInformation.Total.Value, clientManager, new UserTypePlanInformation { IdUserTypePlan = (int)UserTypeEnum.MONTHLY }, payment, AccountTypeEnum.CM);
@@ -1810,7 +1814,7 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, user.IdUser, accountname, user.PaymentMethod, false, false, encryptedCreditCard, string.Empty);
+                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, user.IdUser, accountname, user.PaymentMethod, false, false, encryptedCreditCard, user.WorldPayToken);
 
                     var accountEntyMapper = GetAccountingEntryMapper(user.PaymentMethod);
                     AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyLandingPlans.Total.Value, user.IdUser, SourceTypeEnum.BuyLandingId, payment, AccountTypeEnum.User);
@@ -2024,7 +2028,7 @@ namespace Doppler.BillingUser.Controllers
                         };
                     }
 
-                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, clientManager.IdUser, accountname, clientManager.PaymentMethod, false, false, encryptedCreditCard, string.Empty);
+                    payment = await CreateCreditCardPayment(buyLandingPlans.Total.Value, clientManager.IdUser, accountname, clientManager.PaymentMethod, false, false, encryptedCreditCard, clientManager.WorldPayToken);
 
                     var accountEntyMapper = GetAccountingEntryMapper(clientManager.PaymentMethod);
                     AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyLandingPlans.Total.Value, clientManager.IdUser, SourceTypeEnum.BuyLandingId, payment, AccountTypeEnum.CM);
@@ -3000,7 +3004,7 @@ namespace Doppler.BillingUser.Controllers
                     encryptedCreditCard = await _clientManagerRepository.GetEncryptedCreditCard(user.IdClientManager.Value);
                 }
 
-                payment = await CreateCreditCardPayment(buyOnSitePlan.Total.Value, userId, accountname, userOrClientManagerBillingInformation.PaymentMethod, false, false, encryptedCreditCard, string.Empty);
+                payment = await CreateCreditCardPayment(buyOnSitePlan.Total.Value, userId, accountname, userOrClientManagerBillingInformation.PaymentMethod, false, false, encryptedCreditCard, userOrClientManagerBillingInformation.WorldPayToken);
                 var accountEntyMapper = GetAccountingEntryMapper(userOrClientManagerBillingInformation.PaymentMethod);
                 AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(buyOnSitePlan.Total.Value, userId, SourceTypeEnum.BuyOnSite, payment, accountType);
                 AccountingEntry paymentEntry = null;
@@ -3395,23 +3399,11 @@ namespace Doppler.BillingUser.Controllers
 
         private async Task<CreditCardPayment> CreateCreditCardPayment(decimal total, int userId, string accountname, PaymentMethodEnum paymentMethod, bool isFreeUser, bool isReprocessCall, CreditCard encryptedCreditCard, string worldPayToken)
         {
-            //var encryptedCreditCard = await _userRepository.GetEncryptedCreditCard(accountname);
-
             switch (paymentMethod)
             {
                 case PaymentMethodEnum.CC:
-                    var authorizationNumber = string.Empty;
-                    if (string.IsNullOrEmpty(worldPayToken))
-                    {
-                        authorizationNumber = _cloverSettings.Value.UseCloverApi ? await _cloverService.CreateCreditCardPayment(accountname, total, encryptedCreditCard, userId, isFreeUser, isReprocessCall) : await _paymentGateway.CreateCreditCardPayment(total, encryptedCreditCard, userId, isFreeUser, isReprocessCall);
-                    }
-                    else
-                    {
-                        authorizationNumber = await _paymentsService.Purchase(worldPayToken, total);
-                    }
-
+                    var authorizationNumber = await _paymentsService.Purchase(worldPayToken, total, accountname, encryptedCreditCard, userId, isFreeUser);
                     return new CreditCardPayment { Status = PaymentStatusEnum.Approved, AuthorizationNumber = authorizationNumber };
-
                 case PaymentMethodEnum.MP:
                     var paymentDetails = await _paymentAmountService.ConvertCurrencyAmount(CurrencyTypeEnum.UsS, CurrencyTypeEnum.sARG, total);
                     var mercadoPagoPayment = await _mercadoPagoService.CreatePayment(accountname, userId, paymentDetails.Total, encryptedCreditCard, isFreeUser, isReprocessCall);

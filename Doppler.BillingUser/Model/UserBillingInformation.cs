@@ -26,5 +26,6 @@ namespace Doppler.BillingUser.Model
         public int TaxRegime { get; set; }
         public string TaxRegimeDescription { get; set; }
         public string Cbu { get; set; }
+        public string WorldPayToken { get; set; }
     }
 }
