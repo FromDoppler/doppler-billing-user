@@ -21,11 +21,12 @@ namespace Doppler.BillingUser.Infrastructure
 SELECT
     OSP.[IdOnSitePlan] AS IdPlan,
     OSP.[Description],
-    OSP.[PrintQty],
-    OSP.[PrintQty] as Quantity,
+    OSP.[PrintQty] AS Quantity,
     OSP.[Fee],
     OSP.[Description],
-    BC.IdPaymentMethod AS PaymentMethod
+    BC.IdPaymentMethod AS PaymentMethod,
+    OSP.AdditionalPrint AS Additional,
+    OSP.Custom
 FROM [UserAddOn] UA
 INNER JOIN [BillingCredits] BC ON BC.IdBillingCredit = UA.IdCurrentBillingCredit
 INNER JOIN [OnSitePlanUser] OSPU ON OSPU.IdBillingCredit = BC.IdBillingCredit

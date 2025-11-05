@@ -84,7 +84,7 @@ namespace Doppler.BillingUser.Test
         public async Task Get_current_plan_return_ok_when_account_has_data_valid_of_current_plan()
         {
             // Arrange
-            var expectedContent = "{\"idPlan\":1,\"planSubscription\":0,\"planType\":\"individual\",\"remainingCredits\":0,\"emailQty\":10,\"subscribersQty\":null,\"conversationQty\":null,\"description\":null,\"fee\":0,\"paymentMethod\":0,\"printQty\":null,\"quantity\":null}";
+            var expectedContent = "{\"idPlan\":1,\"planSubscription\":0,\"planType\":\"individual\",\"remainingCredits\":0,\"emailQty\":10,\"subscribersQty\":null,\"description\":null,\"fee\":0,\"paymentMethod\":0,\"quantity\":null,\"additional\":null,\"custom\":false}";
             var mockConnection = new Mock<DbConnection>();
             var billingRepositoryMock = new Mock<IBillingRepository>();
             billingRepositoryMock.Setup(x => x.GetCurrentPlan(It.IsAny<string>()))
