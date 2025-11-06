@@ -15,5 +15,12 @@ namespace Doppler.BillingUser.ExternalServices.Sap
         public bool IsCustom { get; set; }
         public string UserEmail { get; set; }
         public int? Quantity { get; set; }
+
+        public double PlanFee { get; set; }
+        public int ExtraPeriodMonth { get; set; }
+        public int ExtraPeriodYear { get; set; }
+        public int? ExtraQty { get; set; }
+        public double ExtraFee { get; set; }
+        public double ExtraFeePerUnit { get; set; }
     }
 }

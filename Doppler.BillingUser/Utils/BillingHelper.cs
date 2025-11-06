@@ -239,7 +239,8 @@ namespace Doppler.BillingUser.Utils
             string cardHolderName,
             string authorizationNumber,
             AccountingEntry invoice,
-            DateTime? paymentDate)
+            DateTime? paymentDate,
+            IList<SapAdditionalServiceDto> additionalServices)
         {
             var sapBilling = new SapBillingDto
             {
@@ -275,10 +276,11 @@ namespace Doppler.BillingUser.Utils
                 TransferReference = authorizationNumber,
                 InvoiceId = invoice.IdAccountingEntry,
                 PaymentDate = paymentDate != null ? paymentDate.Value.ToHourOffset(timeZoneOffset.TimeZoneOffset) : null,
-                InvoiceDate = invoice.Date.ToHourOffset(timeZoneOffset.TimeZoneOffset),
+                InvoiceDate = DateTime.UtcNow.ToHourOffset(timeZoneOffset.TimeZoneOffset),
                 BillingSystemId = billingCredit.IdResponsabileBilling,
                 FiscalID = billingCredit.Cuit,
-                IsUpSelling = billingCredit.IdUserType != (int)UserTypeEnum.INDIVIDUAL
+                IsUpSelling = billingCredit.IdUserType != (int)UserTypeEnum.INDIVIDUAL,
+                AdditionalServices = additionalServices
             };
 
             return sapBilling;

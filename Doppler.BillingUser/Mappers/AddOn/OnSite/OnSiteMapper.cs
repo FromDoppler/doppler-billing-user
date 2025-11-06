@@ -183,7 +183,7 @@ namespace Doppler.BillingUser.Mappers.AddOn.OnSite
             if (currentAddOnPlan == null || (currentAddOnPlan != null && currentAddOnPlan.IdPlan != onSitePlan.PlanId))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.OnSite_Buyed_CC : BillingCreditTypeEnum.OnSite_Request;
-                if (currentAddOnPlan != null && currentAddOnPlan.PrintQty > onSitePlan.PrintQty)
+                if (currentAddOnPlan != null && currentAddOnPlan.Quantity > onSitePlan.PrintQty)
                 {
                     billingCreditType = BillingCreditTypeEnum.Downgrade_Between_OnSite;
                 }

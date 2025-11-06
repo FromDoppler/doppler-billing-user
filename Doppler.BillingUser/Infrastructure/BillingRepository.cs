@@ -1325,7 +1325,20 @@ SELECT [IdImportedBillingDetail],
     [Amount],
     [ExtraMonth],
     [ExtraAmount],
-    [Extra]
+    [Extra],
+    [LandingsAmount],
+    [ConversationsAmount],
+    [ConversationsExtraAmount],
+    [ConversationsExtraMonth],
+    [ConversationsExtra],
+    [PrintsAmount],
+    [PrintsExtraAmount],
+    [PrintsExtraMonth],
+    [PrintsExtra],
+    [PushNotificationsAmount],
+    [PushNotificationsExtraAmount],
+    [PushNotificationsExtraMonth],
+    [PushNotificationsExtra]
 FROM [ImportedBillingDetail]
 WHERE [IdImportedBillingDetail] = @idImportedBillingDetail;",
             new

@@ -21,10 +21,12 @@ namespace Doppler.BillingUser.Infrastructure
 SELECT
     PNP.[IdPushNotificationPlan] AS IdPlan,
     PNP.[Description],
-    PNP.[Quantity],
+    PNP.[Quantity] AS Quantity,
     PNP.[Fee],
     PNP.[Description],
-    BC.IdPaymentMethod AS PaymentMethod
+    BC.IdPaymentMethod AS PaymentMethod,
+    PNP.Additional AS Additional,
+    PNP.Custom
 FROM [UserAddOn] UA
 INNER JOIN [BillingCredits] BC ON BC.IdBillingCredit = UA.IdCurrentBillingCredit
 INNER JOIN [PushNotificationPlanUser] PNPU ON PNPU.IdBillingCredit = BC.IdBillingCredit

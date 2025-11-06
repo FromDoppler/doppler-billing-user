@@ -544,6 +544,12 @@ namespace Doppler.BillingUser.Controllers
                     if (billingCreditPaymentInfo != null)
                     {
                         await _billingRepository.UpdateBillingCreditAsync(userBillingInfo.IdCurrentBillingCredit.Value, billingCreditPaymentInfo);
+                        var addOns = await _userAddOnRepository.GetAllByUserIdAsync(userInformation.IdUser);
+
+                        foreach (var addOn in addOns)
+                        {
+                            await _billingRepository.UpdateBillingCreditAsync(addOn.IdCurrentBillingCredit, billingCreditPaymentInfo);
+                        }
                     }
                 }
 
@@ -695,6 +701,118 @@ namespace Doppler.BillingUser.Controllers
                         var billingCredit = await _billingRepository.GetBillingCredit(userBillingInfo.IdCurrentBillingCredit ?? 0);
                         var importedBillingDetail = await _billingRepository.GetImportedBillingDetailAsync(invoice.IdBillingSource ?? 0);
 
+                        var additionalServices = new List<SapAdditionalServiceDto>();
+
+                        /* Generate item for the landings plan */
+                        if (importedBillingDetail != null && importedBillingDetail.LandingsAmount > 0)
+                        {
+                            var landingAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType((int)invoice.IdClient, (int)AddOnType.Landing);
+
+                            if (landingAddOn != null)
+                            {
+                                var landings = await _landingPlanUserRepository.GetLandingPlansByUserIdAndBillingCreditIdAsync(invoice.IdClient, landingAddOn.IdCurrentBillingCredit);
+                                var additionalService = new SapAdditionalServiceDto
+                                {
+                                    UserEmail = user.Email,
+                                    Type = AdditionalServiceTypeEnum.Landing,
+                                    Charge = (double)importedBillingDetail.LandingsAmount,
+                                    Discount = (billingCredit?.DiscountPlanFee ?? 0),
+                                    Packs = [.. landings.Select(l => new SapPackDto
+                                    {
+                                        Amount = Convert.ToDecimal(l.Fee) * (billingCredit.TotalMonthPlan ?? 1),
+                                        PackId = l.IdLandingPlan,
+                                        Quantity = l.PackQty
+                                    })]
+                                };
+
+                                additionalServices.Add(additionalService);
+                            }
+                        }
+
+                        /* Generate item for the conversations plan */
+                        if (importedBillingDetail != null &&
+                            (importedBillingDetail.ConversationsAmount > 0 || importedBillingDetail.ConversationsExtraAmount > 0))
+                        {
+                            var conversationAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType((int)invoice.IdClient, (int)AddOnType.Chat);
+                            if (conversationAddOn != null)
+                            {
+                                var chatPlan = await _chatPlanUserRepository.GetCurrentPlan(user.Email);
+                                var additionalService = new SapAdditionalServiceDto
+                                {
+                                    Type = AdditionalServiceTypeEnum.Chat,
+                                    PlanFee = (double)(chatPlan.Fee * (billingCredit.TotalMonthPlan ?? 1)),
+                                    Charge = (double)importedBillingDetail.ConversationsAmount,
+                                    Discount = (billingCredit?.DiscountPlanFee ?? 0),
+                                    ExtraPeriodMonth = string.IsNullOrEmpty(importedBillingDetail.ConversationsExtraMonth) ? 0 : Convert.ToDateTime(importedBillingDetail.ConversationsExtraMonth).Month,
+                                    ExtraPeriodYear = string.IsNullOrEmpty(importedBillingDetail.ConversationsExtraMonth) ? 0 : Convert.ToDateTime(importedBillingDetail.ConversationsExtraMonth).Year,
+                                    ExtraFee = (double)importedBillingDetail.ConversationsExtraAmount,
+                                    ExtraFeePerUnit = (double)chatPlan.Additional,
+                                    ConversationQty = chatPlan != null ? chatPlan.Quantity : 0,
+                                    ExtraQty = importedBillingDetail.ConversationsExtra,
+                                    IsCustom = chatPlan != null && chatPlan.Custom,
+                                    UserEmail = user.Email
+                                };
+
+                                additionalServices.Add(additionalService);
+                            }
+                        }
+
+                        /* Generate item for the onsite plan */
+                        if (importedBillingDetail != null &&
+                            (importedBillingDetail.PrintsAmount > 0 || importedBillingDetail.PrintsExtraAmount > 0))
+                        {
+                            var onSiteAddOn = await _userAddOnRepository.GetByUserIdAndAddOnType((int)invoice.IdClient, (int)AddOnType.OnSite);
+                            if (onSiteAddOn != null)
+                            {
+                                var onSitePlan = await _onSitePlanUserRepository.GetCurrentPlan(userBillingInfo.Email);
+                                var additionalService = new SapAdditionalServiceDto
+                                {
+                                    Type = AdditionalServiceTypeEnum.OnSite,
+                                    PlanFee = (double)(onSitePlan != null ? onSitePlan.Fee * (billingCredit.TotalMonthPlan ?? 1) : 0),
+                                    Charge = (double)importedBillingDetail.PrintsAmount,
+                                    Discount = (billingCredit?.DiscountPlanFee ?? 0),
+                                    ExtraPeriodMonth = string.IsNullOrEmpty(importedBillingDetail.PrintsExtraMonth) ? 0 : Convert.ToDateTime(importedBillingDetail.PrintsExtraMonth).Month,
+                                    ExtraPeriodYear = string.IsNullOrEmpty(importedBillingDetail.PrintsExtraMonth) ? 0 : Convert.ToDateTime(importedBillingDetail.PrintsExtraMonth).Year,
+                                    ExtraFee = (double)importedBillingDetail.PrintsExtraAmount,
+                                    ExtraFeePerUnit = onSitePlan != null ? (double)onSitePlan.Additional : 0,
+                                    Quantity = onSitePlan != null ? onSitePlan.Quantity : 0,
+                                    ExtraQty = importedBillingDetail.PrintsExtra,
+                                    IsCustom = onSitePlan != null && onSitePlan.Custom,
+                                    UserEmail = user.Email
+                                };
+
+                                additionalServices.Add(additionalService);
+                            }
+                        }
+
+                        /* Generate item for the push notifications plan */
+                        if (importedBillingDetail != null &&
+                            (importedBillingDetail.PushNotificationsAmount > 0 || importedBillingDetail.PushNotificationsExtraAmount > 0))
+                        {
+                            var addOn = await _userAddOnRepository.GetByUserIdAndAddOnType((int)invoice.IdClient, (int)AddOnType.PushNotification);
+                            if (addOn != null)
+                            {
+                                var pushNotificationPlan = await _pushNotificationPlanUserRepository.GetCurrentPlan(userBillingInfo.Email);
+                                var additionalService = new SapAdditionalServiceDto
+                                {
+                                    Type = AdditionalServiceTypeEnum.PushNotification,
+                                    PlanFee = pushNotificationPlan != null ? (double)(pushNotificationPlan.Fee * (billingCredit.TotalMonthPlan ?? 1)) : 0,
+                                    Charge = (double)importedBillingDetail.PushNotificationsAmount,
+                                    Discount = (billingCredit?.DiscountPlanFee ?? 0),
+                                    ExtraPeriodMonth = string.IsNullOrEmpty(importedBillingDetail.PushNotificationsExtraMonth) ? 0 : Convert.ToDateTime(importedBillingDetail.PushNotificationsExtraMonth).Month,
+                                    ExtraPeriodYear = string.IsNullOrEmpty(importedBillingDetail.PushNotificationsExtraMonth) ? 0 : Convert.ToDateTime(importedBillingDetail.PushNotificationsExtraMonth).Year,
+                                    ExtraFee = (double)importedBillingDetail.PushNotificationsExtraAmount,
+                                    ExtraFeePerUnit = pushNotificationPlan != null ? (double)pushNotificationPlan.Additional : 0,
+                                    Quantity = pushNotificationPlan != null ? pushNotificationPlan.Quantity : 0,
+                                    ExtraQty = importedBillingDetail.PushNotificationsExtra,
+                                    IsCustom = pushNotificationPlan != null && pushNotificationPlan.Custom,
+                                    UserEmail = user.Email
+                                };
+
+                                additionalServices.Add(additionalService);
+                            }
+                        }
+
                         if (billingCredit != null)
                         {
                             await _sapService.SendBillingToSap(
@@ -705,7 +823,8 @@ namespace Doppler.BillingUser.Controllers
                                     holderName,
                                     payment != null ? payment.AuthorizationNumber : string.Empty,
                                     invoice,
-                                    paymentEntry != null ? paymentEntry.Date : null),
+                                    paymentEntry != null ? paymentEntry.Date : null,
+                                    additionalServices),
                                 accountname);
                         }
                         else
@@ -1516,7 +1635,7 @@ namespace Doppler.BillingUser.Controllers
                     var conversationPlan = await _chatPlanRepository.GetById(additionalService.PlanId.Value);
                     var isUpSelling = (currentChatPlan != null && currentChatPlan.Fee > 0);
 
-                    if ((currentChatPlan != null && currentChatPlan.ConversationQty != conversationPlan.ConversationQty) ||
+                    if ((currentChatPlan != null && currentChatPlan.Quantity != conversationPlan.ConversationQty) ||
                         currentChatPlan == null)
                     {
                         var planFee = (double)conversationPlan.Fee * (billingCredit.TotalMonthPlan ?? 1);
@@ -2887,7 +3006,7 @@ namespace Doppler.BillingUser.Controllers
             if (currentOnSitePlan == null || (currentOnSitePlan != null && currentOnSitePlan.IdPlan != onSitePlan.PlanId))
             {
                 var billingCreditType = userOrClientManagerBillingInformation.PaymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.OnSite_Buyed_CC : BillingCreditTypeEnum.OnSite_Request;
-                if (currentOnSitePlan != null && currentOnSitePlan.PrintQty > onSitePlan.PrintQty)
+                if (currentOnSitePlan != null && currentOnSitePlan.Quantity > onSitePlan.PrintQty)
                 {
                     billingCreditType = BillingCreditTypeEnum.Downgrade_Between_OnSite;
                 }
@@ -3781,7 +3900,7 @@ namespace Doppler.BillingUser.Controllers
                 if (currentChatPlan == null || (currentChatPlan != null && currentChatPlan.IdPlan != chatPlan.IdChatPlan))
                 {
                     var billingCreditType = paymentMethod == PaymentMethodEnum.CC ? BillingCreditTypeEnum.Conversation_Buyed_CC : BillingCreditTypeEnum.Conversation_Request;
-                    if (currentChatPlan != null && currentChatPlan.ConversationQty > chatPlan.ConversationQty)
+                    if (currentChatPlan != null && currentChatPlan.Quantity > chatPlan.ConversationQty)
                     {
                         billingCreditType = BillingCreditTypeEnum.Downgrade_Between_Conversation;
                     }

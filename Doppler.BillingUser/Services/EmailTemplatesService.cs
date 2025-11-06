@@ -946,7 +946,7 @@ namespace Doppler.BillingUser.Services
                         isPaymentMethodTransf = user.PaymentMethod == PaymentMethodEnum.TRANSF,
                         isPaymentMethodDA = user.PaymentMethod == PaymentMethodEnum.DA,
                         discountMonthPlan = planDiscountInformation != null ? planDiscountInformation.MonthPlan : 0,
-                        currentConversationsQty = currentPlan.ConversationQty,
+                        currentConversationsQty = currentPlan.Quantity,
                         currentAmount = currentPlan.Fee,
                         currentIsPaymentMethodCC = currentPlan.PaymentMethod == (int)PaymentMethodEnum.CC,
                         currentIsPaymentMethodMP = currentPlan.PaymentMethod == (int)PaymentMethodEnum.MP,

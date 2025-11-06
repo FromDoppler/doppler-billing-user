@@ -21,9 +21,11 @@ namespace Doppler.BillingUser.Infrastructure
 SELECT
     CP.[IdChatPlan] AS IdPlan,
     CP.[Description],
-    CP.[ConversationQty],
+    CP.[ConversationQty] AS Quantity,
     CP.[Fee],
     CP.[Description],
+    CP.AdditionalConversation AS Additional,
+    CP.Custom,
     BC.IdPaymentMethod AS PaymentMethod
 FROM [UserAddOn] UA
 INNER JOIN [BillingCredits] BC ON BC.IdBillingCredit = UA.IdCurrentBillingCredit

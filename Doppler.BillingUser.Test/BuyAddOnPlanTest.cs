@@ -757,7 +757,7 @@ namespace Doppler.BillingUser.Test
             var onSitePlanUser = new CurrentPlan
             {
                 IdPlan = 1,
-                PrintQty = 1
+                Quantity = 1
             };
 
             var pushNotificationPlanUser = new CurrentPlan
@@ -901,7 +901,7 @@ namespace Doppler.BillingUser.Test
             var onSitePlanUser = new CurrentPlan
             {
                 IdPlan = 1,
-                PrintQty = 1
+                Quantity = 1
             };
 
             var pushNotificationPlanUser = new CurrentPlan
