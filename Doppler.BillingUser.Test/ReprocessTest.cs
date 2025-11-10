@@ -242,6 +242,8 @@ namespace Doppler.BillingUser.Test
                 {
                     new AccountingEntry() { Amount = 1, Status = PaymentStatusEnum.DeclinedPaymentTransaction, IdInvoiceBillingType = (int)InvoiceBillingTypeEnum.QBL, Date = new DateTime(2021, 12, 10) }
                 });
+            billingRepositoryMock.Setup(x => x.GetInvoiceByInvoiceId(It.IsAny<int>()))
+                .ReturnsAsync(new AccountingEntry() { Amount = 1, Status = PaymentStatusEnum.DeclinedPaymentTransaction, IdInvoiceBillingType = (int)InvoiceBillingTypeEnum.QBL, Date = new DateTime(2021, 12, 10) });
 
             var userRepositoryMock = new Mock<IUserRepository>();
             userRepositoryMock.Setup(x => x.UnblockAccountNotPayed(It.IsAny<string>()));
