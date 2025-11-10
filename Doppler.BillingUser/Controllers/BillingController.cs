@@ -659,6 +659,7 @@ namespace Doppler.BillingUser.Controllers
                         var holderName = string.Empty;
                         CreditCardPayment payment = null;
                         AccountingEntry paymentEntry = null;
+                        var invoiceId = 0;
 
                         if (userBillingInfo.PaymentMethod == PaymentMethodEnum.MP || userBillingInfo.PaymentMethod == PaymentMethodEnum.CC)
                         {
@@ -678,13 +679,14 @@ namespace Doppler.BillingUser.Controllers
 
                             var accountEntyMapper = GetAccountingEntryMapper(userBillingInfo.PaymentMethod);
                             AccountingEntry invoiceEntry = await accountEntyMapper.MapToInvoiceAccountingEntry(invoice.Amount, userBillingInfo.IdUser, invoice.Source, payment, AccountTypeEnum.User);
+                            invoiceEntry.IdBillingSource = invoice.IdBillingSource;
 
                             if (payment.Status == PaymentStatusEnum.Approved)
                             {
                                 paymentEntry = await accountEntyMapper.MapToPaymentAccountingEntry(invoiceEntry, encryptedCreditCard);
                             }
 
-                            await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
+                            invoiceId = await _billingRepository.CreateAccountingEntriesAsync(invoiceEntry, paymentEntry);
 
                             if (userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ||
                                 userBillingInfo.PaymentMethod == PaymentMethodEnum.MP)
@@ -815,6 +817,8 @@ namespace Doppler.BillingUser.Controllers
 
                         if (billingCredit != null)
                         {
+                            var invoiceToSap = await _billingRepository.GetInvoiceByInvoiceId(invoiceId);
+
                             await _sapService.SendBillingToSap(
                                 BillingHelper.MapBillingToSapToReprocessAsync(_sapSettings.Value,
                                     importedBillingDetail,
@@ -822,7 +826,7 @@ namespace Doppler.BillingUser.Controllers
                                     cardNumber,
                                     holderName,
                                     payment != null ? payment.AuthorizationNumber : string.Empty,
-                                    invoice,
+                                    invoiceToSap,
                                     paymentEntry != null ? paymentEntry.Date : null,
                                     additionalServices),
                                 accountname);

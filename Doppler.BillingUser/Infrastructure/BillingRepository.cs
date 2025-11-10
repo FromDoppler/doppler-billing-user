@@ -842,7 +842,8 @@ INSERT INTO [dbo].[AccountingEntry]
     [IdInvoiceBillingType],
     [IdCurrencyType],
     [CurrencyRate],
-    [Taxes]
+    [Taxes],
+    [IdBillingSource]
     )
 VALUES
     (@date,
@@ -858,7 +859,8 @@ VALUES
     @idInvoiceBillingType,
     @idCurrencyType,
     @currencyRate,
-    @taxes);
+    @taxes,
+    @idBillingSource);
 SELECT CAST(SCOPE_IDENTITY() AS INT)",
             new
             {
@@ -875,7 +877,8 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
                 @accountEntryType = invoiceEntry.AccountEntryType,
                 @idCurrencyType = invoiceEntry.IdCurrencyType,
                 @currencyRate = invoiceEntry.CurrencyRate,
-                @taxes = invoiceEntry.Taxes
+                @taxes = invoiceEntry.Taxes,
+                @idBillingSource = invoiceEntry.IdBillingSource
             });
 
             if (paymentEntry != null)
@@ -1812,6 +1815,38 @@ SELECT CAST(SCOPE_IDENTITY() AS INT)",
             });
 
             return result.FirstOrDefault();
+        }
+
+        public async Task<AccountingEntry> GetInvoiceByInvoiceId(int invoiceId)
+        {
+            using var connection = _connectionFactory.GetConnection();
+            var invoice = await connection.QueryFirstOrDefaultAsync<AccountingEntry>(@"
+SELECT
+    AE.[IdAccountingEntry],
+    AE.[IdInvoice],
+    AE.[Date],
+    AE.[Amount],
+    AE.[Status],
+    AE.[Source],
+    AE.[AuthorizationNumber],
+    AE.[InvoiceNumber],
+    AE.[AccountEntryType],
+    AE.[AccountingTypeDescription],
+    AE.[IdClient],
+    AE.[IdAccountType],
+    AE.[IdInvoiceBillingType],
+    AE.[IdCurrencyType],
+    AE.[CurrencyRate],
+    AE.[Taxes]
+FROM
+    [dbo].[AccountingEntry] AE
+WHERE
+    IdAccountingEntry = @invoiceId",
+                new
+                {
+                    invoiceId
+                });
+            return invoice;
         }
     }
 }
