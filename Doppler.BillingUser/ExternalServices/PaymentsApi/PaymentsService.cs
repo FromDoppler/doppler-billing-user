@@ -30,45 +30,44 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi
             _jwtTokenGenerator = jwtTokenGenerator;
         }
 
-        public async Task<string> GeneratePaymentToken(string WorldPayLowValueToken, string CardNumber)
+        public async Task<string> GeneratePaymentToken(string WorldPayLowValueToken)
         {
             try
             {
-                var body = new { cardNumber = CardNumber, worldPayLowValueToken = WorldPayLowValueToken };
+                var body = new { worldPayLowValueToken = WorldPayLowValueToken };
 
-                _logger.LogInformation($"Token - Json request: {JsonConvert.SerializeObject(body)}");
+                _logger.LogInformation($"Authorization - Json request: {JsonConvert.SerializeObject(body)}");
 
-                var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/token")
+                var response = await _flurlClient.Request(new UriTemplate(_options.Value.BaseUrl + "/authorization")
                                 .Resolve())
                                 .WithHeader("Authorization", $"Bearer {_jwtTokenGenerator.GenerateSuperUserJwtToken()}")
                                 .PostJsonAsync(body)
-                                .ReceiveJson<PaymentTokenResponse>();
+                                .ReceiveJson<AuthorizationResponse>();
 
-                _logger.LogInformation($"Token - Json response: {JsonConvert.SerializeObject(response)}");
+                _logger.LogInformation($"Authorization - Json response: {JsonConvert.SerializeObject(response)}");
 
-                if (response?.DeregistrationLohiResponse == null)
+                if (response?.CreditAuthResponse == null)
                 {
                     throw new Exception("Payment API returned null or invalid response");
                 }
 
-                var lohiResponse = response.DeregistrationLohiResponse;
+                var authResponse = response.CreditAuthResponse;
 
-                if (!lohiResponse.IsSuccessful)
+                if (!authResponse.IsSuccessful)
                 {
-                    var errorMessage = $"Payment token generation failed. ReturnCode: {lohiResponse.ReturnCode}, " +
-                                        $"ReasonCode: {lohiResponse.ReasonCode}, " +
-                                        $"ResponseCode: {lohiResponse.ResponseCode}, " +
-                                        $"ReturnText: {lohiResponse.ReturnText ?? "N/A"}, " +
-                                        $"ErrorInformation: {lohiResponse.ErrorInformation ?? "N/A"}";
+                    var errorMessage = $"Payment token generation failed. ReturnCode: {authResponse.ReturnCode}, " +
+                                        $"ReasonCode: {authResponse.ReasonCode}, " +
+                                        $"ResponseCode: {authResponse.ResponseCode}, " +
+                                        $"ReturnText: {authResponse.ReturnText ?? "N/A"}";
                     throw new Exception(errorMessage);
                 }
 
-                if (lohiResponse.EncryptionTokenData == null || string.IsNullOrEmpty(lohiResponse.EncryptionTokenData.TokenizedPan))
+                if (authResponse.EncryptionTokenData == null || string.IsNullOrEmpty(authResponse.EncryptionTokenData.TokenizedPan))
                 {
                     throw new Exception("Payment API did not return a tokenized PAN");
                 }
 
-                return lohiResponse.EncryptionTokenData.TokenizedPan;
+                return authResponse.EncryptionTokenData.TokenizedPan;
             }
             catch (FlurlHttpException ex)
             {

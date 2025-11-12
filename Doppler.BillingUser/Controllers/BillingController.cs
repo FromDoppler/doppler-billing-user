@@ -418,7 +418,7 @@ namespace Doppler.BillingUser.Controllers
 
                     if (!string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
                     {
-                        var paymentToken = await _paymentsService.GeneratePaymentToken(paymentMethod.WorldPayLowValueToken, paymentMethod.CCNumber);
+                        var paymentToken = await _paymentsService.GeneratePaymentToken(paymentMethod.WorldPayLowValueToken);
                         await _slackService.SendNotification($"WorldPay token generated - {paymentToken}");
                         _logger.LogInformation("WorldPay token generated - {paymentToken}", paymentToken);
                         userInformation.WorldPayToken = paymentToken;
