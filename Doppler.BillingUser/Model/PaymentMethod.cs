@@ -28,5 +28,6 @@ namespace Doppler.BillingUser.Model
         public IFormFile TaxCertificate { get; set; }
         public string TaxCertificateUrl { get; set; }
         public string Cbu { get; set; }
+        public string WorldPayLowValueToken { get; set; }
     }
 }
