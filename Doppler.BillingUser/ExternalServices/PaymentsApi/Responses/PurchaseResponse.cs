@@ -4,6 +4,7 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi.Responses
     {
         public CreditPurchaseResponse CreditPurchaseResponse { get; set; }
     }
+
     public class CreditPurchaseResponse
     {
         public string ReturnCode { get; set; }
@@ -22,33 +23,12 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi.Responses
 
         public bool IsSuccessful => ReturnCode == "0000" && ResponseCode == "000";
     }
-    public class MiscAmountsBalances
-    {
-        public string AvailableBALFromAcct { get; set; }
-    }
-    public class CardInfo
-    {
-        public string CardProductCode { get; set; }
-    }
+
     public class AddressVerificationData
     {
         public string AVSResult { get; set; }
     }
-    public class CardVerificationData
-    {
-        public string Cvv2Cvc2CIDResult { get; set; }
-    }
-    public class VisaSpecificData
-    {
-        public string VisaSpendQualifier { get; set; }
-        public string VisaAccountType { get; set; }
-        public string VisaResponseCode { get; set; }
-        public string VisaValidationCode { get; set; }
-        public string VisaCardLevelResults { get; set; }
-        public string VisaTransactionId { get; set; }
-        public string VisaAuthCharId { get; set; }
-        public string VisaAccountFundingSource { get; set; }
-    }
+
     public class WorldPayRoutingData
     {
         public string DCCEligibleBin { get; set; }

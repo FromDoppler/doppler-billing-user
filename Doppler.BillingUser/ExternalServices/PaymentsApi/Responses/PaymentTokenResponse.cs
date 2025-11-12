@@ -39,31 +39,4 @@ namespace Doppler.BillingUser.ExternalServices.PaymentsApi.Responses
 
         public bool IsSuccessful => ReturnCode == "0000" && ResponseCode == "000" && string.IsNullOrEmpty(ErrorInformation);
     }
-
-    public class EncryptionTokenData
-    {
-        [JsonPropertyName("tokenizedPAN")]
-        public string TokenizedPan { get; set; }
-    }
-
-    public class ReferenceTraceNumbers
-    {
-        [JsonPropertyName("systemTraceNumber")]
-        public string SystemTraceNumber { get; set; }
-
-        [JsonPropertyName("authorizationNumber")]
-        public string AuthorizationNumber { get; set; }
-    }
-
-    public class SettlementData
-    {
-        [JsonPropertyName("settlementDate")]
-        public string SettlementDate { get; set; }
-
-        [JsonPropertyName("settlementNetwork")]
-        public string SettlementNetwork { get; set; }
-
-        [JsonPropertyName("regulationIndicator")]
-        public string RegulationIndicator { get; set; }
-    }
 }
