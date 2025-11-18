@@ -393,35 +393,37 @@ namespace Doppler.BillingUser.Controllers
                 //Credit Card Validation
                 if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
                 {
-                    paymentMethod.CCNumber = CreditCardHelper.SanitizeCreditCardNumber(paymentMethod.CCNumber);
-
-                    var bin = paymentMethod.CCNumber[..6];
-
-                    try
-                    {
-                        var response = await _binService.IsAllowedCreditCard(bin);
-
-                        if (!response.IsValid)
-                        {
-                            return new BadRequestObjectResult(response.ErrorCode);
-                        }
-                    }
-                    catch (CardNotFoundException)
-                    {
-                        _logger.LogInformation("BIN '{bin}' not found", bin);
-                        await _slackService.SendNotification($"BIN '{bin}' not found");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "BIN validation error");
-                    }
-
                     if (!string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
                     {
                         var paymentToken = await _paymentsService.GeneratePaymentToken(paymentMethod.WorldPayLowValueToken);
                         await _slackService.SendNotification($"WorldPay token generated - {paymentToken}");
                         _logger.LogInformation("WorldPay token generated - {paymentToken}", paymentToken);
                         userInformation.WorldPayToken = paymentToken;
+                    }
+                    else
+                    {
+                        paymentMethod.CCNumber = CreditCardHelper.SanitizeCreditCardNumber(paymentMethod.CCNumber);
+
+                        var bin = paymentMethod.CCNumber[..6];
+
+                        try
+                        {
+                            var response = await _binService.IsAllowedCreditCard(bin);
+
+                            if (!response.IsValid)
+                            {
+                                return new BadRequestObjectResult(response.ErrorCode);
+                            }
+                        }
+                        catch (CardNotFoundException)
+                        {
+                            _logger.LogInformation("BIN '{bin}' not found", bin);
+                            await _slackService.SendNotification($"BIN '{bin}' not found");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "BIN validation error");
+                        }
                     }
                 }
                 else
