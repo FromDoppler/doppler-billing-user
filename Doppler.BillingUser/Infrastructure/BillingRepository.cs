@@ -1529,42 +1529,66 @@ WHERE
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
-            await connection.ExecuteAsync(@"
-UPDATE
-    [USER]
-SET
-    CCHolderFullName = @ccHolderFullName,
-    CCNumber = @ccNumber,
-    CCExpMonth = @ccExpMonth,
-    CCExpYear = @ccExpYear,
-    CCVerification = @ccVerification,
-    IdCCType = @idCCType,
-    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    RazonSocial = @razonSocial,
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling,
-    WorldPayToken = @worldPayToken,
-    LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
-    FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
-WHERE
-    IdUser = @IdUser;",
-            new
+            if (string.IsNullOrEmpty(paymentMethod.WorldPayLowValueToken))
             {
-                user.IdUser,
-                @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
-                @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
-                @ccExpMonth = paymentMethod.CCExpMonth,
-                @ccExpYear = paymentMethod.CCExpYear,
-                @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
-                @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
-                @paymentMethodName = paymentMethod.PaymentMethodName,
-                @razonSocial = paymentMethod.RazonSocial,
-                @idConsumerType = paymentMethod.IdConsumerType,
-                @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
-                @worldPayToken = user.WorldPayToken,
-                @lastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
-                @firstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
-            });
+                await connection.ExecuteAsync(@"
+                UPDATE
+                    [USER]
+                SET
+                    CCHolderFullName = @ccHolderFullName,
+                    CCNumber = @ccNumber,
+                    CCExpMonth = @ccExpMonth,
+                    CCExpYear = @ccExpYear,
+                    CCVerification = @ccVerification,
+                    IdCCType = @idCCType,
+                    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                    RazonSocial = @razonSocial,
+                    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                    IdResponsabileBilling = @idResponsabileBilling
+                WHERE
+                    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                    @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                    @ccExpMonth = paymentMethod.CCExpMonth,
+                    @ccExpYear = paymentMethod.CCExpYear,
+                    @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                    @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @razonSocial = paymentMethod.RazonSocial,
+                    @idConsumerType = paymentMethod.IdConsumerType,
+                    @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL
+                });
+            }
+            else
+            {
+                await connection.ExecuteAsync(@"
+                UPDATE
+                    [USER]
+                SET
+                    IdCCType = @idCCType,
+                    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                    RazonSocial = @razonSocial,
+                    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                    IdResponsabileBilling = @idResponsabileBilling,
+                    WorldPayToken = @worldPayToken,
+                    LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
+                    FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
+                WHERE
+                    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
+                    @worldPayToken = user.WorldPayToken,
+                    @lastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
+                    @firstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
+                });
+            }
         }
 
         private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, ExternalServices.FirstData.CreditCard creditCard)
