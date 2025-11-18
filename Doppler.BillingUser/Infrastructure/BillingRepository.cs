@@ -1555,7 +1555,9 @@ WHERE
                 @razonSocial = paymentMethod.RazonSocial,
                 @idConsumerType = paymentMethod.IdConsumerType,
                 @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
-                @worldPayToken = user.WorldPayToken
+                @worldPayToken = user.WorldPayToken,
+                @lastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
+                @firstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
             });
         }
 
