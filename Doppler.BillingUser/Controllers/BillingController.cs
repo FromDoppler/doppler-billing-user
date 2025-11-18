@@ -442,10 +442,14 @@ namespace Doppler.BillingUser.Controllers
                     }
                 }
 
+                _logger.LogError("test 1");
+
                 if (string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
                 {
                     paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
                 }
+
+                _logger.LogError("test 2");
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
