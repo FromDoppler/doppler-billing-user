@@ -1543,7 +1543,9 @@ SET
     RazonSocial = @razonSocial,
     IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
     IdResponsabileBilling = @idResponsabileBilling,
-    WorldPayToken = @worldPayToken
+    WorldPayToken = @worldPayToken,
+    LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
+    FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
 WHERE
     IdUser = @IdUser;",
             new
