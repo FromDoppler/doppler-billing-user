@@ -1568,10 +1568,7 @@ WHERE
                 UPDATE
                     [USER]
                 SET
-                    IdCCType = @idCCType,
                     PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-                    RazonSocial = @razonSocial,
-                    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
                     IdResponsabileBilling = @idResponsabileBilling,
                     WorldPayToken = @worldPayToken,
                     LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
@@ -1581,7 +1578,6 @@ WHERE
                 new
                 {
                     user.IdUser,
-                    @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
                     @paymentMethodName = paymentMethod.PaymentMethodName,
                     @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
                     @worldPayToken = user.WorldPayToken,
