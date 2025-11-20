@@ -393,35 +393,37 @@ namespace Doppler.BillingUser.Controllers
                 //Credit Card Validation
                 if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
                 {
-                    paymentMethod.CCNumber = CreditCardHelper.SanitizeCreditCardNumber(paymentMethod.CCNumber);
-
-                    var bin = paymentMethod.CCNumber[..6];
-
-                    try
-                    {
-                        var response = await _binService.IsAllowedCreditCard(bin);
-
-                        if (!response.IsValid)
-                        {
-                            return new BadRequestObjectResult(response.ErrorCode);
-                        }
-                    }
-                    catch (CardNotFoundException)
-                    {
-                        _logger.LogInformation("BIN '{bin}' not found", bin);
-                        await _slackService.SendNotification($"BIN '{bin}' not found");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "BIN validation error");
-                    }
-
                     if (!string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
                     {
                         var paymentToken = await _paymentsService.GeneratePaymentToken(paymentMethod.WorldPayLowValueToken);
                         await _slackService.SendNotification($"WorldPay token generated - {paymentToken}");
                         _logger.LogInformation("WorldPay token generated - {paymentToken}", paymentToken);
                         userInformation.WorldPayToken = paymentToken;
+                    }
+                    else
+                    {
+                        paymentMethod.CCNumber = CreditCardHelper.SanitizeCreditCardNumber(paymentMethod.CCNumber);
+
+                        var bin = paymentMethod.CCNumber[..6];
+
+                        try
+                        {
+                            var response = await _binService.IsAllowedCreditCard(bin);
+
+                            if (!response.IsValid)
+                            {
+                                return new BadRequestObjectResult(response.ErrorCode);
+                            }
+                        }
+                        catch (CardNotFoundException)
+                        {
+                            _logger.LogInformation("BIN '{bin}' not found", bin);
+                            await _slackService.SendNotification($"BIN '{bin}' not found");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "BIN validation error");
+                        }
                     }
                 }
                 else
@@ -440,13 +442,16 @@ namespace Doppler.BillingUser.Controllers
                     }
                 }
 
-                paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
+                if (string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
+                {
+                    paymentMethod.TaxCertificateUrl = await PutTaxCertificateUrl(paymentMethod, accountname);
+                }
 
                 var isSuccess = await _billingRepository.UpdateCurrentPaymentMethod(userInformation, paymentMethod);
 
                 if (!isSuccess)
                 {
-                    var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.CCNumber[^4..] : "";
+                    var cardNumberDetails = paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString() ? "with credit card's last 4 digits: " + paymentMethod.LastFourDigitsCCNumber : "";
                     var messageError = $"Failed at updating payment method for user {accountname} {cardNumberDetails}.";
 
                     _logger.LogError(messageError);
@@ -456,7 +461,7 @@ namespace Doppler.BillingUser.Controllers
                 }
 
                 /* Create or update the customer in clover if it not exists or change the credit card */
-                if (_cloverSettings.Value.UseCloverApi)
+                if (_cloverSettings.Value.UseCloverApi && string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
                 {
                     if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
                     {
@@ -498,16 +503,21 @@ namespace Doppler.BillingUser.Controllers
                         case PaymentMethodEnum.MP:
                             billingCreditPaymentInfo = new BillingCreditPaymentInfo()
                             {
-                                CCNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                                CCNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber?.Replace(" ", "")),
                                 CCExpMonth = int.Parse(paymentMethod.CCExpMonth),
                                 CCExpYear = int.Parse(paymentMethod.CCExpYear),
                                 CCVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
                                 CCHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
                                 CCType = paymentMethod.CCType,
                                 Cuit = paymentMethod.IdentificationNumber,
-                                IdentificationNumber = CreditCardHelper.ObfuscateNumber(paymentMethod.CCNumber),
+                                IdentificationNumber = !string.IsNullOrWhiteSpace(paymentMethod.LastFourDigitsCCNumber)
+                                    ? $"{new string('*', 12)}{paymentMethod.LastFourDigitsCCNumber}"
+                                    : CreditCardHelper.ObfuscateNumber(paymentMethod.CCNumber),
                                 PaymentMethodName = paymentMethod.PaymentMethodName,
-                                ResponsabileBilling = userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ? ResponsabileBillingEnum.QBL : ResponsabileBillingEnum.Mercadopago
+                                ResponsabileBilling = userBillingInfo.PaymentMethod == PaymentMethodEnum.CC ? ResponsabileBillingEnum.QBL : ResponsabileBillingEnum.Mercadopago,
+                                WorldPayToken = userInformation.WorldPayToken,
+                                FirstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber,
+                                LastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber
                             };
                             break;
                         case PaymentMethodEnum.TRANSF:
