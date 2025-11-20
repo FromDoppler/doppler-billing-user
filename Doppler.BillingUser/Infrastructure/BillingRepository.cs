@@ -1547,14 +1547,16 @@ SET
     RazonSocial = @razonSocial,
     IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
     IdResponsabileBilling = @idResponsabileBilling,
-    WorldPayToken = @worldPayToken
+                WorldPayToken = @worldPayToken,
+                LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
+                FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
 WHERE
     IdUser = @IdUser;",
             new
             {
                 user.IdUser,
                 @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
-                @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber?.Replace(" ", "")),
                 @ccExpMonth = paymentMethod.CCExpMonth,
                 @ccExpYear = paymentMethod.CCExpYear,
                 @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
@@ -1563,7 +1565,9 @@ WHERE
                 @razonSocial = paymentMethod.RazonSocial,
                 @idConsumerType = paymentMethod.IdConsumerType,
                 @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
-                @worldPayToken = user.WorldPayToken
+                @worldPayToken = user.WorldPayToken,
+                @lastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
+                @firstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
             });
         }
 
