@@ -435,7 +435,10 @@ SET CCNumber = @ccNumber,
     CUIT = @cuit,
     CCIdentificationType = @ccIdentificationType,
     CCIdentificationNumber = @ccIdentificationNumber,
-    Cbu = @cbu
+    Cbu = @cbu,
+    WorldPayToken = @worldPayToken,
+    FirstSixDigitsCCNumber = @firstSixDigitsCCNumber,
+    LastFourDigitsCCNumber = @lastFourDigitsCCNumber
 WHERE
     IdBillingCredit = @billingCreditId
 ",
@@ -454,7 +457,10 @@ WHERE
                     @cuit = billingCreditPaymentInfo.Cuit,
                     @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
                     @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
-                    @cbu = billingCreditPaymentInfo.Cbu
+                    @cbu = billingCreditPaymentInfo.Cbu,
+                    @worldPayToken = billingCreditPaymentInfo.WorldPayToken,
+                    @firstSixDigitsCCNumber = billingCreditPaymentInfo.FirstSixDigitsCCNumber,
+                    @lastFourDigitsCCNumber = billingCreditPaymentInfo.LastFourDigitsCCNumber
                 });
         }
 
