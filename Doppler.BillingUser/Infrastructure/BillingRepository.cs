@@ -140,7 +140,9 @@ SELECT
     U.BankName,
     U.TaxRegime,
     U.TaxCertificateUrl,
-    U.Cbu
+    U.Cbu,
+    U.LastFourDigitsCCNumber,
+    U.FirstSixDigitsCCNumber
 FROM
     [User] U
 LEFT JOIN
