@@ -259,28 +259,32 @@ WHERE
 
             if (paymentMethod.PaymentMethodName == PaymentMethodEnum.CC.ToString())
             {
-                var creditCard = new ExternalServices.FirstData.CreditCard
+                // In case WorldPay Low Value Token is not sent, validate credit card
+                if (string.IsNullOrWhiteSpace(paymentMethod.WorldPayLowValueToken))
                 {
-                    Number = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
-                    HolderName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
-                    ExpirationMonth = int.Parse(paymentMethod.CCExpMonth),
-                    ExpirationYear = int.Parse(paymentMethod.CCExpYear),
-                    Code = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
-                    CardType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true)
-                };
+                    var creditCard = new ExternalServices.FirstData.CreditCard
+                    {
+                        Number = _encryptionService.EncryptAES256(paymentMethod.CCNumber.Replace(" ", "")),
+                        HolderName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                        ExpirationMonth = int.Parse(paymentMethod.CCExpMonth),
+                        ExpirationYear = int.Parse(paymentMethod.CCExpYear),
+                        Code = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                        CardType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true)
+                    };
 
-                var cultureInfo = Thread.CurrentThread.CurrentCulture;
-                var textInfo = cultureInfo.TextInfo;
+                    var cultureInfo = Thread.CurrentThread.CurrentCulture;
+                    var textInfo = cultureInfo.TextInfo;
 
-                paymentMethod.CCType = textInfo.ToTitleCase(paymentMethod.CCType);
+                    paymentMethod.CCType = textInfo.ToTitleCase(paymentMethod.CCType);
 
-                //Validate CC
-                var validCc = _cloverSettings.Value.UseCloverApi ? await _cloverService.IsValidCreditCard(user.Email, creditCard, user.IdUser, true) : await _paymentGateway.IsValidCreditCard(creditCard, user.IdUser, true);
+                    //Validate CC
+                    var validCc = _cloverSettings.Value.UseCloverApi ? await _cloverService.IsValidCreditCard(user.Email, creditCard, user.IdUser, true) : await _paymentGateway.IsValidCreditCard(creditCard, user.IdUser, true);
 
-                //var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await ;
-                if (!validCc)
-                {
-                    return false;
+                    //var validCc = Enum.Parse<CardTypeEnum>(paymentMethod.CCType) != CardTypeEnum.Unknown && await ;
+                    if (!validCc)
+                    {
+                        return false;
+                    }
                 }
 
                 //Update user payment method in DB
@@ -1534,24 +1538,24 @@ WHERE
             using var connection = _connectionFactory.GetConnection();
 
             await connection.ExecuteAsync(@"
-UPDATE
-    [USER]
-SET
-    CCHolderFullName = @ccHolderFullName,
-    CCNumber = @ccNumber,
-    CCExpMonth = @ccExpMonth,
-    CCExpYear = @ccExpYear,
-    CCVerification = @ccVerification,
-    IdCCType = @idCCType,
-    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    RazonSocial = @razonSocial,
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling,
+            UPDATE
+                [USER]
+            SET
+                CCHolderFullName = @ccHolderFullName,
+                CCNumber = @ccNumber,
+                CCExpMonth = @ccExpMonth,
+                CCExpYear = @ccExpYear,
+                CCVerification = @ccVerification,
+                IdCCType = @idCCType,
+                PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                RazonSocial = @razonSocial,
+                IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                IdResponsabileBilling = @idResponsabileBilling,
                 WorldPayToken = @worldPayToken,
                 LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
                 FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
-WHERE
-    IdUser = @IdUser;",
+            WHERE
+                IdUser = @IdUser;",
             new
             {
                 user.IdUser,
