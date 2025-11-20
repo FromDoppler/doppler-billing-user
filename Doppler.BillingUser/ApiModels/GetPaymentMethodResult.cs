@@ -27,5 +27,7 @@ namespace Doppler.BillingUser.ApiModels
         public int TaxRegime { get; set; }
         public string Cbu { get; set; }
         public TaxCertificate TaxCertificate { get; set; }
+        public string LastFourDigitsCCNumber { get; set; }
+        public string FirstSixDigitsCCNumber { get; set; }
     }
 }

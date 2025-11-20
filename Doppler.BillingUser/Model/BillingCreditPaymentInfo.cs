@@ -16,5 +16,8 @@ namespace Doppler.BillingUser.Model
         public string Cuit { get; set; }
         public string Cbu { get; set; }
         public ResponsabileBillingEnum ResponsabileBilling { get; set; }
+        public string LastFourDigitsCCNumber { get; set; }
+        public string FirstSixDigitsCCNumber { get; set; }
+        public string WorldPayToken { get; set; }
     }
 }
