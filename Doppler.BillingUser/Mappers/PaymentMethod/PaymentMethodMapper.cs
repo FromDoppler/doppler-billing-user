@@ -37,6 +37,8 @@ namespace Doppler.BillingUser.Mappers.PaymentMethod
                 TaxRegime = paymentMethod.TaxRegime,
                 UseCFDI = paymentMethod.UseCFDI,
                 Cbu = paymentMethod.Cbu,
+                LastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
+                FirstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
             };
 
             return getPaymentMethodResult;
