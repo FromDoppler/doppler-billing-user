@@ -7,6 +7,7 @@ using Doppler.BillingUser.ExternalServices.Clover.Entities;
 using Doppler.BillingUser.ExternalServices.FirstData;
 using Doppler.BillingUser.ExternalServices.Sap;
 using Doppler.BillingUser.Model;
+using Doppler.BillingUser.Settings;
 using Doppler.BillingUser.TimeCollector;
 using Doppler.BillingUser.Utils;
 using Microsoft.Extensions.Options;
@@ -30,6 +31,7 @@ namespace Doppler.BillingUser.Infrastructure
         private readonly IOptions<CloverSettings> _cloverSettings;
         private readonly ICloverService _cloverService;
         private readonly ITimeCollector _timeCollector;
+        private readonly IOptions<WorldPaySettings> _worldPaySettings;
 
         private const int InvoiceBillingTypeQBL = 1;
         private const int UserAccountType = 1;
@@ -51,7 +53,8 @@ namespace Doppler.BillingUser.Infrastructure
             ISapService sapService,
             IOptions<CloverSettings> cloverSettings,
             ICloverService cloverService,
-            ITimeCollector timeCollector)
+            ITimeCollector timeCollector,
+            IOptions<WorldPaySettings> worldPaySettings)
         {
             _connectionFactory = connectionFactory;
             _encryptionService = encryptionService;
@@ -60,6 +63,7 @@ namespace Doppler.BillingUser.Infrastructure
             _cloverSettings = cloverSettings;
             _cloverService = cloverService;
             _timeCollector = timeCollector;
+            _worldPaySettings = worldPaySettings;
         }
         public async Task<BillingInformation> GetBillingInformation(string email)
         {
@@ -118,45 +122,89 @@ WHERE
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
-            var result = await connection.QueryFirstOrDefaultAsync<PaymentMethod>(@"
+            var saveWorldPayData = _worldPaySettings.Value.SaveWorldPayData;
 
-SELECT
-    CASE WHEN U.CCHolderFullName IS NOT NULL THEN U.CCHolderFullName ELSE BC.CCHolderFullName END AS CCHolderFullName,
-    CASE WHEN U.CCNumber IS NOT NULL THEN U.CCNumber ELSE BC.CCNumber END AS CCNumber,
-    U.CCExpMonth,
-    U.CCExpYear,
-    CASE WHEN U.CCVerification IS NOT NULL THEN U.CCVerification ELSE BC.CCVerification END AS CCVerification,
-    C.[Description] AS CCType,
-    P.PaymentMethodName AS PaymentMethodName,
-    U.RazonSocial,
-    U.IdConsumerType,
-    U.CUIT as IdentificationNumber,
-    U.ResponsableIVA,
-    U.IdCCType,
-    U.CFDIUse AS UseCFDI,
-    U.PaymentType,
-    U.PaymentWay,
-    U.BankAccount,
-    U.BankName,
-    U.TaxRegime,
-    U.TaxCertificateUrl,
-    U.Cbu,
-    U.LastFourDigitsCCNumber,
-    U.FirstSixDigitsCCNumber
-FROM
-    [User] U
-LEFT JOIN
-    [CreditCardTypes] C ON C.IdCCType = U.IdCCType
-LEFT JOIN
-    [PaymentMethods] P ON P.IdPaymentMethod = U.PaymentMethod
-LEFT JOIN
-    [BillingCredits] BC ON BC.IdBillingCredit = U.IdCurrentBillingCredit
-WHERE
-    U.Email = @email;",
-                new
-                {
-                    @email = username
-                });
+            PaymentMethod result;
+            if (saveWorldPayData)
+            {
+                result = await connection.QueryFirstOrDefaultAsync<PaymentMethod>(@"
+                    SELECT
+                        CASE WHEN U.CCHolderFullName IS NOT NULL THEN U.CCHolderFullName ELSE BC.CCHolderFullName END AS CCHolderFullName,
+                        CASE WHEN U.CCNumber IS NOT NULL THEN U.CCNumber ELSE BC.CCNumber END AS CCNumber,
+                        U.CCExpMonth,
+                        U.CCExpYear,
+                        CASE WHEN U.CCVerification IS NOT NULL THEN U.CCVerification ELSE BC.CCVerification END AS CCVerification,
+                        C.[Description] AS CCType,
+                        P.PaymentMethodName AS PaymentMethodName,
+                        U.RazonSocial,
+                        U.IdConsumerType,
+                        U.CUIT as IdentificationNumber,
+                        U.ResponsableIVA,
+                        U.IdCCType,
+                        U.CFDIUse AS UseCFDI,
+                        U.PaymentType,
+                        U.PaymentWay,
+                        U.BankAccount,
+                        U.BankName,
+                        U.TaxRegime,
+                        U.TaxCertificateUrl,
+                        U.Cbu,
+                        U.LastFourDigitsCCNumber,
+                        U.FirstSixDigitsCCNumber
+                    FROM
+                        [User] U
+                    LEFT JOIN
+                        [CreditCardTypes] C ON C.IdCCType = U.IdCCType
+                    LEFT JOIN
+                        [PaymentMethods] P ON P.IdPaymentMethod = U.PaymentMethod
+                    LEFT JOIN
+                        [BillingCredits] BC ON BC.IdBillingCredit = U.IdCurrentBillingCredit
+                    WHERE
+                        U.Email = @email;",
+                    new
+                    {
+                        @email = username
+                    });
+            }
+            else
+            {
+                result = await connection.QueryFirstOrDefaultAsync<PaymentMethod>(@"
+                    SELECT
+                        CASE WHEN U.CCHolderFullName IS NOT NULL THEN U.CCHolderFullName ELSE BC.CCHolderFullName END AS CCHolderFullName,
+                        CASE WHEN U.CCNumber IS NOT NULL THEN U.CCNumber ELSE BC.CCNumber END AS CCNumber,
+                        U.CCExpMonth,
+                        U.CCExpYear,
+                        CASE WHEN U.CCVerification IS NOT NULL THEN U.CCVerification ELSE BC.CCVerification END AS CCVerification,
+                        C.[Description] AS CCType,
+                        P.PaymentMethodName AS PaymentMethodName,
+                        U.RazonSocial,
+                        U.IdConsumerType,
+                        U.CUIT as IdentificationNumber,
+                        U.ResponsableIVA,
+                        U.IdCCType,
+                        U.CFDIUse AS UseCFDI,
+                        U.PaymentType,
+                        U.PaymentWay,
+                        U.BankAccount,
+                        U.BankName,
+                        U.TaxRegime,
+                        U.TaxCertificateUrl,
+                        U.Cbu
+                    FROM
+                        [User] U
+                    LEFT JOIN
+                        [CreditCardTypes] C ON C.IdCCType = U.IdCCType
+                    LEFT JOIN
+                        [PaymentMethods] P ON P.IdPaymentMethod = U.PaymentMethod
+                    LEFT JOIN
+                        [BillingCredits] BC ON BC.IdBillingCredit = U.IdCurrentBillingCredit
+                    WHERE
+                        U.Email = @email;",
+                    new
+                    {
+                        @email = username
+                    });
+            }
 
             result.IdConsumerType = ConsumerTypeHelper.GetConsumerType(result.IdConsumerType);
 
@@ -425,47 +473,90 @@ WHERE
             var useCard = billingCreditPaymentInfo.PaymentMethodName != PaymentMethodEnum.TRANSF.ToString() &&
                             billingCreditPaymentInfo.PaymentMethodName != PaymentMethodEnum.DA.ToString();
 
-            await connection.QueryFirstOrDefaultAsync(@"
-UPDATE [dbo].[BillingCredits]
-SET CCNumber = @ccNumber,
-    CCExpMonth = @ccExpMonth,
-    CCExpYear = @ccExpYear,
-    CCVerification = @ccVerification,
-    CCHolderFullName = @ccHolderFullName,
-    IdCCType = @idCCType,
-    IdPaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-    IdResponsabileBilling = @idResponsabileBilling,
-    CUIT = @cuit,
-    CCIdentificationType = @ccIdentificationType,
-    CCIdentificationNumber = @ccIdentificationNumber,
-    Cbu = @cbu,
-    WorldPayToken = @worldPayToken,
-    FirstSixDigitsCCNumber = @firstSixDigitsCCNumber,
-    LastFourDigitsCCNumber = @lastFourDigitsCCNumber
-WHERE
-    IdBillingCredit = @billingCreditId
-",
-                new
-                {
-                    billingCreditId,
-                    @ccNumber = billingCreditPaymentInfo.CCNumber,
-                    @ccExpMonth = billingCreditPaymentInfo.CCExpMonth,
-                    @ccExpYear = billingCreditPaymentInfo.CCExpYear,
-                    @ccVerification = billingCreditPaymentInfo.CCVerification,
-                    @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
-                    @idCCType = useCard ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
-                    @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
-                    @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
-                    @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
-                    @cuit = billingCreditPaymentInfo.Cuit,
-                    @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
-                    @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
-                    @cbu = billingCreditPaymentInfo.Cbu,
-                    @worldPayToken = billingCreditPaymentInfo.WorldPayToken,
-                    @firstSixDigitsCCNumber = billingCreditPaymentInfo.FirstSixDigitsCCNumber,
-                    @lastFourDigitsCCNumber = billingCreditPaymentInfo.LastFourDigitsCCNumber
-                });
+            var saveWorldPayData = _worldPaySettings.Value.SaveWorldPayData;
+
+            if (saveWorldPayData)
+            {
+                await connection.QueryFirstOrDefaultAsync(@"
+                    UPDATE [dbo].[BillingCredits]
+                    SET CCNumber = @ccNumber,
+                        CCExpMonth = @ccExpMonth,
+                        CCExpYear = @ccExpYear,
+                        CCVerification = @ccVerification,
+                        CCHolderFullName = @ccHolderFullName,
+                        IdCCType = @idCCType,
+                        IdPaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                        IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                        IdResponsabileBilling = @idResponsabileBilling,
+                        CUIT = @cuit,
+                        CCIdentificationType = @ccIdentificationType,
+                        CCIdentificationNumber = @ccIdentificationNumber,
+                        Cbu = @cbu,
+                        WorldPayToken = @worldPayToken,
+                        FirstSixDigitsCCNumber = @firstSixDigitsCCNumber,
+                        LastFourDigitsCCNumber = @lastFourDigitsCCNumber
+                    WHERE
+                        IdBillingCredit = @billingCreditId
+                    ",
+                    new
+                    {
+                        billingCreditId,
+                        @ccNumber = billingCreditPaymentInfo.CCNumber,
+                        @ccExpMonth = billingCreditPaymentInfo.CCExpMonth,
+                        @ccExpYear = billingCreditPaymentInfo.CCExpYear,
+                        @ccVerification = billingCreditPaymentInfo.CCVerification,
+                        @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
+                        @idCCType = useCard ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
+                        @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
+                        @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
+                        @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
+                        @cuit = billingCreditPaymentInfo.Cuit,
+                        @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
+                        @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
+                        @cbu = billingCreditPaymentInfo.Cbu,
+                        @worldPayToken = billingCreditPaymentInfo.WorldPayToken,
+                        @firstSixDigitsCCNumber = billingCreditPaymentInfo.FirstSixDigitsCCNumber,
+                        @lastFourDigitsCCNumber = billingCreditPaymentInfo.LastFourDigitsCCNumber
+                    });
+            }
+            else
+            {
+                await connection.QueryFirstOrDefaultAsync(@"
+                    UPDATE [dbo].[BillingCredits]
+                    SET CCNumber = @ccNumber,
+                        CCExpMonth = @ccExpMonth,
+                        CCExpYear = @ccExpYear,
+                        CCVerification = @ccVerification,
+                        CCHolderFullName = @ccHolderFullName,
+                        IdCCType = @idCCType,
+                        IdPaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                        IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                        IdResponsabileBilling = @idResponsabileBilling,
+                        CUIT = @cuit,
+                        CCIdentificationType = @ccIdentificationType,
+                        CCIdentificationNumber = @ccIdentificationNumber,
+                        Cbu = @cbu
+                    WHERE
+                        IdBillingCredit = @billingCreditId
+                    ",
+                   new
+                   {
+                       billingCreditId,
+                       @ccNumber = billingCreditPaymentInfo.CCNumber,
+                       @ccExpMonth = billingCreditPaymentInfo.CCExpMonth,
+                       @ccExpYear = billingCreditPaymentInfo.CCExpYear,
+                       @ccVerification = billingCreditPaymentInfo.CCVerification,
+                       @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
+                       @idCCType = useCard ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
+                       @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
+                       @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
+                       @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
+                       @cuit = billingCreditPaymentInfo.Cuit,
+                       @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
+                       @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
+                       @cbu = billingCreditPaymentInfo.Cbu
+                   });
+            }
         }
 
         public async Task<int> CreateBillingCreditAsync(BillingCreditAgreement buyCreditAgreement)
@@ -1537,42 +1628,80 @@ WHERE
             using var _ = _timeCollector.StartScope();
             using var connection = _connectionFactory.GetConnection();
 
-            await connection.ExecuteAsync(@"
-            UPDATE
-                [USER]
-            SET
-                CCHolderFullName = @ccHolderFullName,
-                CCNumber = @ccNumber,
-                CCExpMonth = @ccExpMonth,
-                CCExpYear = @ccExpYear,
-                CCVerification = @ccVerification,
-                IdCCType = @idCCType,
-                PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
-                RazonSocial = @razonSocial,
-                IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
-                IdResponsabileBilling = @idResponsabileBilling,
-                WorldPayToken = @worldPayToken,
-                LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
-                FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
-            WHERE
-                IdUser = @IdUser;",
-            new
+            var saveWorldPayData = _worldPaySettings.Value.SaveWorldPayData;
+
+            if (saveWorldPayData)
             {
-                user.IdUser,
-                @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
-                @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber?.Replace(" ", "")),
-                @ccExpMonth = paymentMethod.CCExpMonth,
-                @ccExpYear = paymentMethod.CCExpYear,
-                @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
-                @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
-                @paymentMethodName = paymentMethod.PaymentMethodName,
-                @razonSocial = paymentMethod.RazonSocial,
-                @idConsumerType = paymentMethod.IdConsumerType,
-                @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
-                @worldPayToken = user.WorldPayToken,
-                @lastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
-                @firstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
-            });
+                await connection.ExecuteAsync(@"
+                UPDATE
+                    [USER]
+                SET
+                    CCHolderFullName = @ccHolderFullName,
+                    CCNumber = @ccNumber,
+                    CCExpMonth = @ccExpMonth,
+                    CCExpYear = @ccExpYear,
+                    CCVerification = @ccVerification,
+                    IdCCType = @idCCType,
+                    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                    RazonSocial = @razonSocial,
+                    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                    IdResponsabileBilling = @idResponsabileBilling,
+                    WorldPayToken = @worldPayToken,
+                    LastFourDigitsCCNumber = @lastFourDigitsCCNumber,
+                    FirstSixDigitsCCNumber = @firstSixDigitsCCNumber
+                WHERE
+                    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                    @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber?.Replace(" ", "")),
+                    @ccExpMonth = paymentMethod.CCExpMonth,
+                    @ccExpYear = paymentMethod.CCExpYear,
+                    @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                    @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @razonSocial = paymentMethod.RazonSocial,
+                    @idConsumerType = paymentMethod.IdConsumerType,
+                    @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL,
+                    @worldPayToken = user.WorldPayToken,
+                    @lastFourDigitsCCNumber = paymentMethod.LastFourDigitsCCNumber,
+                    @firstSixDigitsCCNumber = paymentMethod.FirstSixDigitsCCNumber
+                });
+            }
+            else
+            {
+                await connection.ExecuteAsync(@"
+                UPDATE
+                    [USER]
+                SET
+                    CCHolderFullName = @ccHolderFullName,
+                    CCNumber = @ccNumber,
+                    CCExpMonth = @ccExpMonth,
+                    CCExpYear = @ccExpYear,
+                    CCVerification = @ccVerification,
+                    IdCCType = @idCCType,
+                    PaymentMethod = (SELECT IdPaymentMethod FROM [PaymentMethods] WHERE PaymentMethodName = @paymentMethodName),
+                    RazonSocial = @razonSocial,
+                    IdConsumerType = (SELECT IdConsumerType FROM [ConsumerTypes] WHERE Name = @idConsumerType),
+                    IdResponsabileBilling = @idResponsabileBilling
+                WHERE
+                    IdUser = @IdUser;",
+                new
+                {
+                    user.IdUser,
+                    @ccHolderFullName = _encryptionService.EncryptAES256(paymentMethod.CCHolderFullName),
+                    @ccNumber = _encryptionService.EncryptAES256(paymentMethod.CCNumber?.Replace(" ", "")),
+                    @ccExpMonth = paymentMethod.CCExpMonth,
+                    @ccExpYear = paymentMethod.CCExpYear,
+                    @ccVerification = _encryptionService.EncryptAES256(paymentMethod.CCVerification),
+                    @idCCType = Enum.Parse<CardTypeEnum>(paymentMethod.CCType, true),
+                    @paymentMethodName = paymentMethod.PaymentMethodName,
+                    @razonSocial = paymentMethod.RazonSocial,
+                    @idConsumerType = paymentMethod.IdConsumerType,
+                    @idResponsabileBilling = (int)ResponsabileBillingEnum.QBL
+                });
+            }
         }
 
         private async Task UpdateUserPaymentMethodByMercadopago(User user, PaymentMethod paymentMethod, ExternalServices.FirstData.CreditCard creditCard)

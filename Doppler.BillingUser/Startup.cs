@@ -144,6 +144,7 @@ namespace Doppler.BillingUser
             services.AddScoped<IUserAccountCancellationReasonRepository, UserAccountCancellationReasonRepository>();
             services.Configure<PaymentsSettings>(Configuration.GetSection(nameof(PaymentsSettings)));
             services.AddScoped<IPaymentsService, PaymentsService>();
+            services.Configure<WorldPaySettings>(Configuration.GetSection(nameof(WorldPaySettings)));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
