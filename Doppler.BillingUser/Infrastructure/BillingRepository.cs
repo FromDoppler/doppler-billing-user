@@ -539,23 +539,23 @@ WHERE
                     WHERE
                         IdBillingCredit = @billingCreditId
                     ",
-                   new
-                   {
-                       billingCreditId,
-                       @ccNumber = billingCreditPaymentInfo.CCNumber,
-                       @ccExpMonth = billingCreditPaymentInfo.CCExpMonth,
-                       @ccExpYear = billingCreditPaymentInfo.CCExpYear,
-                       @ccVerification = billingCreditPaymentInfo.CCVerification,
-                       @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
-                       @idCCType = useCard ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
-                       @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
-                       @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
-                       @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
-                       @cuit = billingCreditPaymentInfo.Cuit,
-                       @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
-                       @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
-                       @cbu = billingCreditPaymentInfo.Cbu
-                   });
+                    new
+                    {
+                        billingCreditId,
+                        @ccNumber = billingCreditPaymentInfo.CCNumber,
+                        @ccExpMonth = billingCreditPaymentInfo.CCExpMonth,
+                        @ccExpYear = billingCreditPaymentInfo.CCExpYear,
+                        @ccVerification = billingCreditPaymentInfo.CCVerification,
+                        @ccHolderFullName = billingCreditPaymentInfo.CCHolderFullName,
+                        @idCCType = useCard ? (int?)Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true) : null,
+                        @paymentMethodName = billingCreditPaymentInfo.PaymentMethodName,
+                        @idConsumerType = billingCreditPaymentInfo.IdConsumerType ?? FinalConsumer,
+                        @idResponsabileBilling = (int)billingCreditPaymentInfo.ResponsabileBilling,
+                        @cuit = billingCreditPaymentInfo.Cuit,
+                        @ccIdentificationType = useCard ? Enum.Parse<CardTypeEnum>(billingCreditPaymentInfo.CCType, true).ToString() : string.Empty,
+                        @ccIdentificationNumber = billingCreditPaymentInfo.IdentificationNumber,
+                        @cbu = billingCreditPaymentInfo.Cbu
+                    });
             }
         }
 
